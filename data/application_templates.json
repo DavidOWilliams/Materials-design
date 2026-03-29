@@ -1,0 +1,34 @@
+{
+  "hot": {
+    "creep_priority": 0.40,
+    "toughness_priority": 0.15,
+    "temperature_priority": 0.30,
+    "cost_priority": 0.10,
+    "sustainability_priority": 0.05,
+    "notes": ["High-temperature use case inferred."]
+  },
+  "aviation": {
+    "creep_priority": 0.25,
+    "toughness_priority": 0.25,
+    "temperature_priority": 0.20,
+    "cost_priority": 0.10,
+    "sustainability_priority": 0.20,
+    "notes": ["Aviation context inferred."]
+  },
+  "creep": {
+    "creep_priority": 0.55,
+    "toughness_priority": 0.10,
+    "temperature_priority": 0.20,
+    "cost_priority": 0.10,
+    "sustainability_priority": 0.05,
+    "notes": ["Creep treated as primary requirement."]
+  },
+  "lightweight": {
+    "creep_priority": 0.15,
+    "toughness_priority": 0.25,
+    "temperature_priority": 0.10,
+    "cost_priority": 0.10,
+    "sustainability_priority": 0.40,
+    "notes": ["Lightweight use case inferred."]
+  }
+}

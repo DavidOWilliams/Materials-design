@@ -1,0 +1,12 @@
+{
+  "am_preferred_routes": [
+    "Gas atomized powder -> LPBF -> stress relief -> age treatment",
+    "Powder bed fusion -> stress relief -> anneal",
+    "Gas atomized powder -> LPBF -> HIP -> age treatment"
+  ],
+  "conventional_routes": [
+    "Cast -> HIP -> heat treatment",
+    "Wrought -> solution treat -> age",
+    "Powder metallurgy -> sinter -> heat treat"
+  ]
+}

@@ -1,0 +1,7 @@
+candidate_id,material_family,composition_concept,base_process_route,base_creep_score,base_toughness_score,base_temp_score,base_cost_score,base_sustainability_score,am_capable
+MAT-001,Ni-based superalloy,Ni-Cr-Co-Al-Ti variant,Gas atomized powder -> LPBF -> stress relief -> age treatment,92,68,95,35,30,yes
+MAT-002,Ni-based superalloy,Ni-Cr-Al-Ta variant,Cast -> HIP -> heat treatment,90,62,94,28,25,no
+MAT-003,Co-based alloy,Co-Cr-W-Ni variant,Gas atomized powder -> LPBF -> stress relief,82,70,88,40,32,yes
+MAT-004,Ti alloy,Ti-Al-V-Mo variant,Powder bed fusion -> stress relief -> anneal,54,78,58,55,52,yes
+MAT-005,Fe-Ni alloy,Fe-Ni-Cr-Al variant,Conventional powder metallurgy -> sinter -> heat treat,66,60,72,62,58,yes
+MAT-006,Refractory alloy concept,Mo-Nb-Ti-Zr variant,Powder processing -> hot consolidation -> heat treatment,88,50,97,18,12,no

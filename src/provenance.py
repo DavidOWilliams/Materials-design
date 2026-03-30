@@ -4,6 +4,6 @@ import pandas as pd
 def add_provenance(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     out["provenance"] = (
-        "Generated from seeded materials dataset with rule-based requirement inference and proxy scoring."
+        "Retrieved from Materials Project summary data, then filtered and labeled using prototype alloy-family rules and engineering proxy scoring."
     )
     return out

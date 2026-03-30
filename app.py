@@ -21,10 +21,6 @@ st.markdown(
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
-        .small-muted {
-            color: #6b7280;
-            font-size: 0.92rem;
-        }
         .section-card {
             padding: 1rem 1.1rem;
             border: 1px solid rgba(120,120,120,0.2);
@@ -133,10 +129,13 @@ def make_display_table(df):
             "composition_concept": "Composition",
             "base_process_route": "Process route",
             "chemsys": "Chemical system",
+            "n_elements": "No. of elements",
             "density": "Density",
             "energy_above_hull": "Energy above hull",
             "is_stable": "Stable",
             "theoretical": "Theoretical",
+            "engineering_plausibility": "Engineering plausibility",
+            "classification_reason": "Why included",
             "creep_score": "Creep suitability",
             "toughness_score": "Toughness proxy",
             "temperature_score": "Temperature suitability",
@@ -152,10 +151,12 @@ def make_display_table(df):
         "Material family",
         "Composition",
         "Chemical system",
+        "No. of elements",
         "Density",
         "Energy above hull",
         "Stable",
         "Theoretical",
+        "Engineering plausibility",
         "Process route",
         "Creep suitability",
         "Toughness proxy",
@@ -165,6 +166,7 @@ def make_display_table(df):
         "Overall fit",
         "Confidence",
         "Commentary",
+        "Why included",
     ]
     existing = [c for c in keep_cols if c in out.columns]
     return out[existing]
@@ -192,13 +194,14 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
         st.write(req_view["application"])
         st.markdown("**Material families currently in scope**")
         st.write(req_view["allowed_families"])
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with info_col2:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown("**Inference notes**")
         for note in req_view["notes"]:
             st.markdown(f"- {note}")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("## Ranked Candidate Concepts")
     display_table = make_display_table(top)
@@ -214,20 +217,24 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
 
             **Composition concept:** {best['composition_concept']}
 
-            **Recommended process route:** {best['base_process_route']}
+            **Illustrative process route:** {best['base_process_route']}
 
-            **Why it ranks first:** this concept currently offers the strongest balance of
-            creep suitability, elevated-temperature suitability, and fit with the inferred
-            engineering priorities for the use case.
+            **Why it ranks first:** this candidate currently offers the strongest balance of
+            inferred creep relevance, elevated-temperature suitability, and chemistry-based
+            fit with the prototype's alloy-family rules.
 
-            **Main trade-off:** cost and sustainability remain less favorable than for some lower-performance alternatives.
+            **Why it was included:** {best.get('classification_reason', 'Matched prototype screening rules.')}
+
+            **Main trade-off:** the current ranking is still based on engineering proxy scores,
+            not validated creep or toughness prediction models.
 
             **Confidence:** {best['confidence']}
             """
         )
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     left, right = st.columns([1.2, 1])
+
     with left:
         st.markdown("## Trade-off View")
         chart_df = top.copy()
@@ -263,16 +270,15 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
                 "risk, or process considerations outweigh raw performance."
             )
         else:
-            st.write(
-                "No obvious near-feasible alternatives were identified in the current seeded set."
-            )
+            st.write("No obvious near-feasible alternatives were identified in the current screened set.")
 
     with st.expander("Method, provenance, and disclaimer"):
         st.markdown("**How this prototype currently works**")
         st.markdown(
             """
             - infers design priorities from the application prompt and temperature  
-            - filters a small seeded candidate set  
+            - retrieves candidates from Materials Project  
+            - filters them using prototype alloy-family rules  
             - applies simple proxy scoring for performance and trade-offs  
             - ranks concepts and highlights best / near-feasible options
             """

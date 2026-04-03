@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import plotly.express as px
 import streamlit as st
 
@@ -66,6 +67,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+if "last_run" not in st.session_state:
+    st.session_state["last_run"] = None
+
 with st.sidebar:
     st.header("Design Inputs")
     application_prompt = st.text_area(
@@ -121,6 +125,9 @@ def format_requirements(requirements: dict) -> dict:
     }
 
 def make_display_table(df):
+    if df is None or len(df) == 0:
+        return df
+
     out = df.copy()
     out = out.rename(
         columns={
@@ -136,6 +143,8 @@ def make_display_table(df):
             "theoretical": "Theoretical",
             "engineering_plausibility": "Engineering plausibility",
             "classification_reason": "Why included",
+            "alloy_likeness_score": "Alloy likeness",
+            "alloy_likeness_reason": "Alloy likeness note",
             "creep_score": "Creep suitability",
             "toughness_score": "Toughness proxy",
             "temperature_score": "Temperature suitability",
@@ -152,11 +161,12 @@ def make_display_table(df):
         "Composition",
         "Chemical system",
         "No. of elements",
-        "Density",
-        "Energy above hull",
         "Stable",
         "Theoretical",
         "Engineering plausibility",
+        "Alloy likeness",
+        "Density",
+        "Energy above hull",
         "Process route",
         "Creep suitability",
         "Toughness proxy",
@@ -167,17 +177,12 @@ def make_display_table(df):
         "Confidence",
         "Commentary",
         "Why included",
+        "Alloy likeness note",
     ]
     existing = [c for c in keep_cols if c in out.columns]
     return out[existing]
 
-if st.button("Generate concepts", type="primary", use_container_width=False):
-    requirements = infer_requirements(application_prompt, operating_temperature, am_preferred)
-    candidates = generate_candidates(requirements)
-    scored = score_candidates(candidates, requirements)
-    scored = add_provenance(scored)
-    top, near_miss = rank_candidates(scored)
-
+def render_design_frame(requirements: dict):
     req_view = format_requirements(requirements)
 
     col1, col2, col3, col4 = st.columns(4)
@@ -202,6 +207,61 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
         for note in req_view["notes"]:
             st.markdown(f"- {note}")
         st.markdown("</div>", unsafe_allow_html=True)
+
+def render_empty_state(requirements: dict, candidates, scored, near_miss, diagnostics=None):
+    render_design_frame(requirements)
+
+    raw_count = len(candidates) if candidates is not None else 0
+    scored_count = len(scored) if scored is not None else 0
+    near_count = len(near_miss) if near_miss is not None else 0
+
+    st.markdown("## What happened")
+    st.write(
+        f"- Raw retrieved candidates: **{raw_count}**\n"
+        f"- Candidates after scoring/provenance stage: **{scored_count}**\n"
+        f"- Near-feasible alternatives available: **{near_count}**"
+    )
+
+    if near_miss is not None and len(near_miss) > 0:
+        st.markdown("## Near-Feasible Alternatives")
+        near_cols = [
+            c for c in [
+                "candidate_id",
+                "material_family",
+                "overall_score",
+                "confidence",
+                "notes",
+                "classification_reason",
+                "alloy_likeness_reason",
+            ]
+            if c in near_miss.columns
+        ]
+        near_display = near_miss[near_cols].rename(
+            columns={
+                "candidate_id": "Candidate",
+                "material_family": "Material family",
+                "overall_score": "Overall fit",
+                "confidence": "Confidence",
+                "notes": "Commentary",
+                "classification_reason": "Why included",
+                "alloy_likeness_reason": "Alloy likeness note",
+            }
+        )
+        st.dataframe(near_display, use_container_width=True, hide_index=True)
+        st.caption(
+            "These did not survive as top-ranked concepts, but are the closest available outputs from the current screened set."
+        )
+    else:
+        st.info(
+            "No near-feasible alternatives were identified. The current screening may be too strict for this search scope."
+        )
+
+    if diagnostics:
+        with st.expander("Diagnostics"):
+            st.write(diagnostics)
+
+def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
+    render_design_frame(requirements)
 
     st.markdown("## Ranked Candidate Concepts")
     display_table = make_display_table(top)
@@ -237,25 +297,37 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
 
     with left:
         st.markdown("## Trade-off View")
-        chart_df = top.copy()
-        chart_df["label"] = chart_df["candidate_id"] + " | " + chart_df["material_family"]
-        fig = px.scatter(
-            chart_df,
-            x="cost_score",
-            y="creep_score",
-            size="overall_score",
-            hover_name="label",
-            title="Cost proxy vs creep suitability",
-        )
-        fig.update_layout(margin=dict(l=20, r=20, t=50, b=20))
-        st.plotly_chart(fig, use_container_width=True)
+        required_chart_cols = {"candidate_id", "material_family", "cost_score", "creep_score", "overall_score"}
+        if required_chart_cols.issubset(set(top.columns)) and len(top) > 0:
+            chart_df = top.copy()
+            chart_df["label"] = chart_df["candidate_id"] + " | " + chart_df["material_family"]
+            fig = px.scatter(
+                chart_df,
+                x="cost_score",
+                y="creep_score",
+                size="overall_score",
+                hover_name="label",
+                title="Cost proxy vs creep suitability",
+            )
+            fig.update_layout(margin=dict(l=20, r=20, t=50, b=20))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Trade-off chart unavailable for the current result set.")
 
     with right:
         st.markdown("## Near-Feasible Alternatives")
-        if len(near_miss) > 0:
-            near_display = near_miss[
-                ["candidate_id", "material_family", "overall_score", "confidence", "notes"]
-            ].rename(
+        if near_miss is not None and len(near_miss) > 0:
+            near_cols = [
+                c for c in [
+                    "candidate_id",
+                    "material_family",
+                    "overall_score",
+                    "confidence",
+                    "notes",
+                ]
+                if c in near_miss.columns
+            ]
+            near_display = near_miss[near_cols].rename(
                 columns={
                     "candidate_id": "Candidate",
                     "material_family": "Material family",
@@ -285,11 +357,14 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
         )
 
         st.markdown("**Provenance**")
-        st.write(
-            top[["candidate_id", "provenance"]].rename(
-                columns={"candidate_id": "Candidate", "provenance": "Provenance note"}
+        if "candidate_id" in top.columns and "provenance" in top.columns:
+            st.write(
+                top[["candidate_id", "provenance"]].rename(
+                    columns={"candidate_id": "Candidate", "provenance": "Provenance note"}
+                )
             )
-        )
+        else:
+            st.write("Provenance columns were not available in the current result set.")
 
         st.markdown("**Important disclaimer**")
         st.write(
@@ -297,6 +372,118 @@ if st.button("Generate concepts", type="primary", use_container_width=False):
             "It is not a qualification, certification, or manufacturing approval tool. "
             "All outputs require expert engineering review and validation."
         )
+
+    if diagnostics:
+        with st.expander("Diagnostics"):
+            st.write(diagnostics)
+
+def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
+    requirements = infer_requirements(application_prompt, operating_temperature, am_preferred)
+
+    candidate_result = generate_candidates(requirements)
+
+    if candidate_result["status"] == "error":
+        return {
+            "status": "error",
+            "message": candidate_result["message"],
+            "error_detail": candidate_result.get("error_detail"),
+            "requirements": requirements,
+            "candidates": candidate_result.get("candidates"),
+            "diagnostics": candidate_result.get("diagnostics", {}),
+        }
+
+    candidates = candidate_result["candidates"]
+
+    if candidate_result["status"] == "empty" or candidates is None or len(candidates) == 0:
+        return {
+            "status": "empty",
+            "requirements": requirements,
+            "candidates": candidates,
+            "scored": None,
+            "top": None,
+            "near_miss": None,
+            "diagnostics": candidate_result.get("diagnostics", {}),
+            "message": candidate_result["message"],
+        }
+
+    scored = score_candidates(candidates, requirements)
+
+    if scored is None or len(scored) == 0:
+        return {
+            "status": "empty",
+            "requirements": requirements,
+            "candidates": candidates,
+            "scored": scored,
+            "top": None,
+            "near_miss": None,
+            "diagnostics": candidate_result.get("diagnostics", {}),
+            "message": "Candidates were retrieved, but none survived scoring.",
+        }
+
+    scored = add_provenance(scored)
+    top, near_miss = rank_candidates(scored)
+
+    if top is None or len(top) == 0:
+        return {
+            "status": "empty",
+            "requirements": requirements,
+            "candidates": candidates,
+            "scored": scored,
+            "top": top,
+            "near_miss": near_miss,
+            "diagnostics": candidate_result.get("diagnostics", {}),
+            "message": "Candidates were retrieved, but none survived the current screening/ranking thresholds.",
+        }
+
+    return {
+        "status": "success",
+        "requirements": requirements,
+        "candidates": candidates,
+        "scored": scored,
+        "top": top,
+        "near_miss": near_miss,
+        "diagnostics": candidate_result.get("diagnostics", {}),
+        "message": candidate_result["message"],
+    }
+
+generate_clicked = st.button("Generate concepts", type="primary", use_container_width=False)
+
+if generate_clicked:
+    try:
+        with st.spinner("Generating candidate concepts..."):
+            result = run_pipeline_once(application_prompt, operating_temperature, am_preferred)
+        st.session_state["last_run"] = result
+    except Exception as exc:
+        st.session_state["last_run"] = {
+            "status": "error",
+            "message": "The backend encountered an error while generating concepts.",
+            "error_detail": str(exc),
+        }
+
+result = st.session_state.get("last_run")
+
+if result is not None:
+    if result["status"] == "success":
+        render_success_state(
+            requirements=result["requirements"],
+            top=result["top"],
+            near_miss=result["near_miss"],
+            diagnostics=result.get("diagnostics", {}),
+        )
+    elif result["status"] == "empty":
+        st.warning(result["message"])
+        render_empty_state(
+            requirements=result["requirements"],
+            candidates=result.get("candidates"),
+            scored=result.get("scored"),
+            near_miss=result.get("near_miss"),
+            diagnostics=result.get("diagnostics", {}),
+        )
+    else:
+        st.error(result["message"])
+        if result.get("error_detail"):
+            with st.expander("Technical detail"):
+                st.code(result["error_detail"])
 else:
     st.markdown("## How to use this prototype")
     st.markdown(

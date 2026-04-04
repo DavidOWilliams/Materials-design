@@ -222,40 +222,38 @@ def _classify_family(elements: List[str]) -> Tuple[str, str, bool]:
             False,
         )
 
-    if "Ni" in element_set and len(element_set.intersection(NI_FAMILY_HINTS)) >= 2:
+    if "Ni" in element_set and len(element_set.intersection(NI_FAMILY_HINTS)) >= 1:
         return (
             "Ni-based superalloy-like candidate",
-            "Contains Ni plus multiple alloying elements associated with high-temperature Ni alloy systems.",
+            "Contains Ni plus at least one alloying element associated with high-temperature Ni alloy systems.",
             True,
         )
 
-    if "Co" in element_set and len(element_set.intersection(CO_FAMILY_HINTS)) >= 2:
+    if "Co" in element_set and len(element_set.intersection(CO_FAMILY_HINTS)) >= 1:
         return (
             "Co-based high-temperature candidate",
-            "Contains Co plus multiple alloying elements associated with Co-based high-temperature alloy systems.",
+            "Contains Co plus at least one alloying element associated with Co-based high-temperature alloy systems.",
             True,
         )
 
-    if "Ti" in element_set and len(element_set.intersection(TI_FAMILY_HINTS)) >= 2:
+    if "Ti" in element_set and len(element_set.intersection(TI_FAMILY_HINTS)) >= 1:
         return (
             "Ti-alloy-like candidate",
-            "Contains Ti plus multiple alloying elements associated with engineering Ti alloy systems.",
+            "Contains Ti plus at least one alloying element associated with engineering Ti alloy systems.",
             True,
         )
 
-    if len(element_set.intersection(REFRACTORY_HINTS)) >= 3:
+    if len(element_set.intersection(REFRACTORY_HINTS)) >= 2:
         return (
             "Refractory-alloy-like candidate",
-            "Contains several refractory or high-temperature alloying elements.",
+            "Contains multiple refractory or high-temperature alloying elements.",
             True,
         )
 
-    if "Fe" in element_set and "Ni" in element_set and (
-        "Cr" in element_set or "Co" in element_set
-    ):
+    if "Fe" in element_set and "Ni" in element_set:
         return (
             "Fe-Ni high-temperature candidate",
-            "Contains Fe-Ni with additional alloying elements suggesting a more engineering-like alloy system.",
+            "Contains Fe-Ni chemistry suggesting a more engineering-like alloy system.",
             True,
         )
 
@@ -303,6 +301,8 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
         "removed_by_prefer_4plus_filter": 0,
         "removed_by_am_filter": 0,
         "final_candidate_count": 0,
+        "sample_returned_chemsys": [],
+        "sample_returned_formulas": [],
     }
 
     docs: List[Any] = []
@@ -346,6 +346,12 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
         is_stable = bool(getattr(d, "is_stable", False))
         theoretical = bool(getattr(d, "theoretical", True))
 
+        if len(diagnostics["sample_returned_chemsys"]) < 10: 
+            diagnostics["sample_returned_chemsys"].append(chemsys)
+        
+        if len(diagnostics["sample_returned_formulas"]) < 10:
+            diagnostics["sample_returned_formulas"].append(formula)
+        
         elements = _parse_elements(chemsys)
         n_elements = len(elements)
 
@@ -358,7 +364,7 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
             elements, formula, theoretical
         )
 
-        if n_elements < 4 and alloy_likeness_score < 40:
+        if n_elements <= 2 and alloy_likeness_score < 40:
             diagnostics["rejected_by_complexity_gate"] += 1
             continue
 

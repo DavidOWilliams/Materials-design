@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from mp_api.client import MPRester
 
+
 DEFAULT_FIELDS = [
     "material_id",
     "formula_pretty",
@@ -49,6 +50,27 @@ OUTPUT_COLUMNS = [
     "alloy_likeness_score",
     "alloy_likeness_reason",
     "generated_note",
+    "baseline_survives",
+    "baseline_rejection_stage",
+    "baseline_rejection_reason",
+    "diagnostic_family_match",
+    "diagnostic_complexity_score",
+    "diagnostic_complexity_threshold",
+]
+
+CANDIDATE_LOG_COLUMNS = [
+    "candidate_id",
+    "formula_pretty",
+    "chemsys",
+    "n_elements",
+    "assigned_family",
+    "family_match",
+    "complexity_score",
+    "complexity_threshold",
+    "passed_complexity_gate",
+    "rejection_stage",
+    "rejection_reason",
+    "survives_baseline",
 ]
 
 
@@ -191,7 +213,7 @@ def _alloy_likeness(
         notes.append("4+ element chemistry favored for engineering-alloy-like behavior.")
     elif n == 3:
         score += 5
-        notes.append("3-element chemistry allowed only as a weaker alloy-like candidate.")
+        notes.append("3-element chemistry retained as a plausible but weaker alloy-like candidate.")
     else:
         score -= 30
         notes.append("Low chemistry complexity reduces engineering alloy likeness.")
@@ -281,6 +303,74 @@ def _process_route_label(family: str, am_preferred: bool) -> str:
     return "No process route assigned."
 
 
+def _complexity_gate(
+    elements: List[str],
+    alloy_likeness_score: int,
+    assigned_family: str,
+) -> Tuple[bool, int, int, str]:
+    """
+    Freeze-phase baseline complexity gate.
+
+    Important:
+    - Treat this as a minimum viability gate, not a preference-ranking mechanism.
+    - Keep ternary systems alive if they are otherwise plausible.
+    - Avoid requiring 4+ elements as a hard survival rule.
+    """
+    n_elements = len(set(elements))
+
+    # Family-specific minimum thresholds kept intentionally conservative for freeze.
+    if "Ni-based" in assigned_family:
+        threshold = 3
+    elif "Co-based" in assigned_family:
+        threshold = 3
+    elif "Refractory" in assigned_family:
+        threshold = 3
+    elif "Ti-alloy" in assigned_family:
+        threshold = 3
+    elif "Fe-Ni" in assigned_family:
+        threshold = 3
+    else:
+        threshold = 3
+
+    complexity_score = n_elements
+
+    if n_elements < threshold and alloy_likeness_score < 40:
+        return (
+            False,
+            complexity_score,
+            threshold,
+            "Rejected by minimum complexity gate: too few elements and weak alloy-likeness.",
+        )
+
+    return (
+        True,
+        complexity_score,
+        threshold,
+        "Passed minimum baseline complexity gate.",
+    )
+
+
+def _build_candidate_log_rows(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    log_df = df.copy()
+
+    rename_map = {
+        "material_family": "assigned_family",
+        "diagnostic_family_match": "family_match",
+        "diagnostic_complexity_score": "complexity_score",
+        "diagnostic_complexity_threshold": "complexity_threshold",
+        "baseline_rejection_stage": "rejection_stage",
+        "baseline_rejection_reason": "rejection_reason",
+        "baseline_survives": "survives_baseline",
+    }
+    log_df = log_df.rename(columns=rename_map)
+
+    if "passed_complexity_gate" not in log_df.columns:
+        log_df["passed_complexity_gate"] = None
+
+    existing = [c for c in CANDIDATE_LOG_COLUMNS if c in log_df.columns]
+    return log_df[existing].to_dict(orient="records")
+
+
 def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
     api_key = _get_mp_api_key()
     if not api_key:
@@ -303,6 +393,10 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
         "final_candidate_count": 0,
         "sample_returned_chemsys": [],
         "sample_returned_formulas": [],
+        "candidate_names_before_final_filtering": [],
+        "candidate_names_after_final_filtering": [],
+        "candidate_logs": [],
+        "warnings": [],
     }
 
     docs: List[Any] = []
@@ -346,26 +440,62 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
         is_stable = bool(getattr(d, "is_stable", False))
         theoretical = bool(getattr(d, "theoretical", True))
 
-        if len(diagnostics["sample_returned_chemsys"]) < 10: 
+        if len(diagnostics["sample_returned_chemsys"]) < 10:
             diagnostics["sample_returned_chemsys"].append(chemsys)
-        
+
         if len(diagnostics["sample_returned_formulas"]) < 10:
             diagnostics["sample_returned_formulas"].append(formula)
-        
+
         elements = _parse_elements(chemsys)
         n_elements = len(elements)
 
         family, classification_reason, plausible = _classify_family(elements)
         if not plausible:
             diagnostics["rejected_by_family"] += 1
+            diagnostics["candidate_logs"].append(
+                {
+                    "candidate_id": mpid,
+                    "formula_pretty": formula,
+                    "chemsys": chemsys,
+                    "n_elements": n_elements,
+                    "assigned_family": family,
+                    "family_match": False,
+                    "complexity_score": None,
+                    "complexity_threshold": None,
+                    "passed_complexity_gate": None,
+                    "rejection_stage": "family_match",
+                    "rejection_reason": classification_reason,
+                    "survives_baseline": False,
+                }
+            )
             continue
 
         alloy_likeness_score, alloy_likeness_reason = _alloy_likeness(
             elements, formula, theoretical
         )
 
-        if n_elements <= 2 and alloy_likeness_score < 40:
+        complexity_pass, complexity_score, complexity_threshold, complexity_reason = _complexity_gate(
+            elements, alloy_likeness_score, family
+        )
+
+        if not complexity_pass:
             diagnostics["rejected_by_complexity_gate"] += 1
+            diagnostics["candidate_logs"].append(
+                {
+                    "candidate_id": mpid,
+                    "formula_pretty": formula,
+                    "chemsys": chemsys,
+                    "n_elements": n_elements,
+                    "assigned_family": family,
+                    "family_match": True,
+                    "complexity_score": complexity_score,
+                    "complexity_threshold": complexity_threshold,
+                    "passed_complexity_gate": False,
+                    "rejection_stage": "complexity_gate",
+                    "rejection_reason": complexity_reason,
+                    "survives_baseline": False,
+                }
+            )
             continue
 
         am_capable = (
@@ -504,7 +634,14 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
                 "engineering_plausibility": engineering_plausibility,
                 "alloy_likeness_score": alloy_likeness_score,
                 "alloy_likeness_reason": alloy_likeness_reason,
-                "generated_note": "Retrieved from Materials Project summary data and filtered through stricter prototype alloy-family rules.",
+                "generated_note": "Retrieved from Materials Project summary data and filtered through baseline alloy-family rules.",
+                "baseline_survives": True,
+                "baseline_rejection_stage": None,
+                "baseline_rejection_reason": None,
+                "diagnostic_family_match": True,
+                "diagnostic_complexity_score": complexity_score,
+                "diagnostic_complexity_threshold": complexity_threshold,
+                "passed_complexity_gate": True,
             }
         )
 
@@ -512,25 +649,29 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
 
     df = pd.DataFrame(rows)
     if df.empty:
+        if diagnostics["raw_docs_retrieved"] > 0:
+            diagnostics["warnings"].append(
+                "No final candidates survived filtering. This may indicate that the complexity gate or family rules are too strict."
+            )
+        if diagnostics["unique_docs_after_dedup"] > 0 and diagnostics["rejected_by_complexity_gate"] == diagnostics["unique_docs_after_dedup"]:
+            diagnostics["warnings"].append(
+                "All deduplicated candidates were removed by the complexity gate."
+            )
+
         return _empty_result(
             status="empty",
-            message="Materials Project records were found, but none matched the current alloy-family plausibility screen.",
+            message="Materials Project records were found, but none matched the current baseline plausibility screen.",
             diagnostics=diagnostics,
         )
 
-    before_complexity_preference = len(df)
-    preferred_complexity = df["n_elements"] >= 4
-    if preferred_complexity.any():
-        df = df[preferred_complexity].copy()
-        diagnostics["removed_by_prefer_4plus_filter"] = before_complexity_preference - len(df)
+    diagnostics["candidate_names_before_final_filtering"] = df["candidate_id"].astype(str).tolist()
 
-    if df.empty:
-        return _empty_result(
-            status="empty",
-            message="Candidates were found, but none survived the 4+ element preference filter.",
-            diagnostics=diagnostics,
-        )
+    # Freeze-phase change:
+    # DO NOT use the 4+ element preference as a hard exclusion filter.
+    diagnostics["removed_by_prefer_4plus_filter"] = 0
 
+    # Keep AM preference conservative:
+    # only filter if at least one AM-capable survivor exists.
     before_am_filter = len(df)
     if requirements.get("am_preferred", False):
         preferred = df["am_capable"].astype(str).str.lower() == "yes"
@@ -539,6 +680,9 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
             diagnostics["removed_by_am_filter"] = before_am_filter - len(df)
 
     if df.empty:
+        diagnostics["warnings"].append(
+            "No final candidates survived filtering. This may indicate that the AM preference filter is too strict for the current search scope."
+        )
         return _empty_result(
             status="empty",
             message="Candidates were found, but none survived the AM-capability preference filter.",
@@ -547,6 +691,18 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
 
     df = df.reset_index(drop=True)
     diagnostics["final_candidate_count"] = len(df)
+    diagnostics["candidate_names_after_final_filtering"] = df["candidate_id"].astype(str).tolist()
+    diagnostics["candidate_logs"].extend(_build_candidate_log_rows(df))
+
+    if diagnostics["raw_docs_retrieved"] > 0 and diagnostics["final_candidate_count"] == 0:
+        diagnostics["warnings"].append(
+            "No final candidates survived filtering. This may indicate that the complexity gate or other filters are too strict."
+        )
+
+    if diagnostics["unique_docs_after_dedup"] > 0 and diagnostics["rejected_by_complexity_gate"] == diagnostics["unique_docs_after_dedup"]:
+        diagnostics["warnings"].append(
+            "All deduplicated candidates were removed by the complexity gate."
+        )
 
     status = "success"
     message = "Candidates retrieved and filtered successfully."

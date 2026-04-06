@@ -257,6 +257,12 @@ def render_empty_state(requirements: dict, candidates, scored, near_miss, diagno
         )
 
     if diagnostics:
+        warnings = diagnostics.get("warnings", [])
+        if warnings:
+            st.markdown("## Screening warnings")
+            for warning in warnings:
+                st.warning(warning)
+
         with st.expander("Diagnostics"):
             st.write(diagnostics)
 
@@ -374,6 +380,12 @@ def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
         )
 
     if diagnostics:
+        warnings = diagnostics.get("warnings", [])
+        if warnings:
+            st.markdown("## Screening warnings")
+            for warning in warnings:
+                st.warning(warning)
+
         with st.expander("Diagnostics"):
             st.write(diagnostics)
 

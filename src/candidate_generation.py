@@ -244,6 +244,26 @@ def _classify_family(elements: List[str]) -> Tuple[str, str, bool]:
             False,
         )
 
+    # Refractory first:
+    # systems like Mo-Nb-Ti, Mo-Nb-Ta, Nb-Ti-Zr should not be captured by the Ti rule.
+    refractory_bases = {"Mo", "Nb", "Ta", "W"}
+    refractory_additions = {"Ti", "Zr", "Hf"}
+
+    if (
+        len(element_set.intersection(refractory_bases)) >= 2
+        or (
+            len(element_set.intersection(refractory_bases)) >= 1
+            and len(element_set.intersection(refractory_additions)) >= 2
+        )
+    ):
+        return (
+            "Refractory-alloy-like candidate",
+            "Contains refractory-base chemistry consistent with refractory alloy systems.",
+            True,
+        )
+
+    # Nickel family:
+    # keep Ni systems ahead of Co/Ti to avoid recategorising Ni-Cr-Co type systems.
     if "Ni" in element_set and len(element_set.intersection(NI_FAMILY_HINTS)) >= 1:
         return (
             "Ni-based superalloy-like candidate",
@@ -251,31 +271,39 @@ def _classify_family(elements: List[str]) -> Tuple[str, str, bool]:
             True,
         )
 
-    if "Co" in element_set and len(element_set.intersection(CO_FAMILY_HINTS)) >= 1:
+    # Cobalt family:
+    # require Co and avoid classifying clearly Ni-dominant systems as Co family.
+    if "Co" in element_set and "Ni" not in element_set and len(element_set.intersection(CO_FAMILY_HINTS)) >= 1:
         return (
             "Co-based high-temperature candidate",
-            "Contains Co plus at least one alloying element associated with Co-based high-temperature alloy systems.",
+            "Contains Co plus alloying additions consistent with Co-based high-temperature alloy systems.",
             True,
         )
 
-    if "Ti" in element_set and len(element_set.intersection(TI_FAMILY_HINTS)) >= 1:
-        return (
-            "Ti-alloy-like candidate",
-            "Contains Ti plus at least one alloying element associated with engineering Ti alloy systems.",
-            True,
-        )
-
-    if len(element_set.intersection(REFRACTORY_HINTS)) >= 2:
-        return (
-            "Refractory-alloy-like candidate",
-            "Contains multiple refractory or high-temperature alloying elements.",
-            True,
-        )
+    # If both Co and Ni are present, treat as cobalt only when there is a more cobalt-like pattern.
+    if "Co" in element_set and "Ni" in element_set:
+        co_support = len(element_set.intersection({"Cr", "W", "Mo"}))
+        ni_support = len(element_set.intersection({"Al", "Ti"}))
+        if co_support > ni_support:
+            return (
+                "Co-based high-temperature candidate",
+                "Contains Co-Ni chemistry with stronger cobalt-family alloying support.",
+                True,
+            )
 
     if "Fe" in element_set and "Ni" in element_set:
         return (
             "Fe-Ni high-temperature candidate",
             "Contains Fe-Ni chemistry suggesting a more engineering-like alloy system.",
+            True,
+        )
+
+    # Titanium family after refractory:
+    # only classify as Ti alloy when Ti is the obvious engineering base pattern.
+    if "Ti" in element_set and len(element_set.intersection(TI_FAMILY_HINTS)) >= 1:
+        return (
+            "Ti-alloy-like candidate",
+            "Contains Ti plus alloying additions associated with engineering Ti alloy systems.",
             True,
         )
 

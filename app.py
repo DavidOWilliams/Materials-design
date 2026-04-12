@@ -6,6 +6,7 @@ import streamlit as st
 from src.requirement_inference import infer_requirements
 from src.candidate_generation import generate_candidates
 from src.scoring import score_candidates
+from src.reranking import scientific_rerank
 from src.ranking import rank_candidates
 from src.provenance import add_provenance
 
@@ -151,8 +152,12 @@ def make_display_table(df):
             "cost_score": "Cost proxy",
             "sustainability_score": "Sustainability proxy",
             "overall_score": "Overall fit",
+            "scientific_rerank_score": "Scientific rerank",
             "confidence": "Confidence",
+            "rerank_reason": "Rerank reason",
             "notes": "Commentary",
+            "scientific_rerank_score": "Scientific rerank",
+            "rerank_reason": "Rerank reason",
         }
     )
     keep_cols = [
@@ -174,8 +179,10 @@ def make_display_table(df):
         "Cost proxy",
         "Sustainability proxy",
         "Overall fit",
+        "Scientific rerank",
         "Confidence",
         "Commentary",
+        "Rerank reason",
         "Why included",
         "Alloy likeness note",
     ]
@@ -432,6 +439,7 @@ def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
             "message": "Candidates were retrieved, but none survived scoring.",
         }
 
+    scored = scientific_rerank(scored, requirements)
     scored = add_provenance(scored)
     top, near_miss = rank_candidates(scored)
 

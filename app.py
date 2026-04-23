@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
 
 from src.requirement_inference import infer_requirements
 from src.candidate_generation import generate_candidates
+from src.evaluation import DECISION_PROFILES, PROFILE_ORDER, apply_decision_profile
 from src.scoring import score_candidates
 from src.reranking import scientific_rerank
 from src.ranking import rank_candidates
@@ -53,7 +56,7 @@ st.title("Application-Led Aviation Materials Design Assistant")
 st.markdown(
     """
     **Prototype purpose:** demonstrate how an engineer could move from an application-level need
-    to a short list of plausible material-and-process concepts, with trade-offs, confidence notes,
+    to a short list of plausible material-and-process concepts, with explicit trade-offs, confidence notes,
     and near-feasible alternatives in one workflow.
     """
 )
@@ -70,6 +73,7 @@ st.markdown(
 
 if "last_run" not in st.session_state:
     st.session_state["last_run"] = None
+
 
 with st.sidebar:
     st.header("Design Inputs")
@@ -92,17 +96,27 @@ with st.sidebar:
     am_preferred = st.checkbox("Additive manufacturing preferred", value=True)
 
     st.markdown("---")
+    scenario_profile = st.selectbox(
+        "Decision scenario",
+        options=PROFILE_ORDER,
+        index=PROFILE_ORDER.index("Balanced"),
+        help="Controls downstream ranking weights only. It does not change baseline survival.",
+    )
+    st.caption(DECISION_PROFILES[scenario_profile]["summary"])
+
+    st.markdown("---")
     st.markdown("### What the prototype returns")
     st.markdown(
         """
-        - 3–5 ranked concept candidates  
-        - process-route suggestions  
-        - property proxy scores  
-        - best-option summary  
-        - near-miss alternatives  
-        - confidence and provenance notes
+        - ranked concept candidates  
+        - performance and decision summaries  
+        - factor breakdowns per candidate  
+        - strengths and watch-outs  
+        - trade-off views  
+        - confidence, reranking, and provenance notes
         """
     )
+
 
 def format_requirements(requirements: dict) -> dict:
     weights = requirements["weights"]
@@ -123,9 +137,12 @@ def format_requirements(requirements: dict) -> dict:
         "allowed_families": ", ".join(requirements["allowed_material_families"]),
         "top_priorities": ", ".join(top_priorities),
         "notes": requirements["notes"],
+        "decision_profile_name": requirements.get("downstream_profile_name", "Balanced"),
+        "decision_profile_summary": requirements.get("downstream_profile", {}).get("summary", ""),
     }
 
-def make_display_table(df):
+
+def make_display_table(df: pd.DataFrame | None) -> pd.DataFrame | None:
     if df is None or len(df) == 0:
         return df
 
@@ -135,59 +152,191 @@ def make_display_table(df):
             "candidate_id": "Candidate",
             "material_family": "Material family",
             "composition_concept": "Composition",
-            "base_process_route": "Process route",
-            "chemsys": "Chemical system",
-            "n_elements": "No. of elements",
-            "density": "Density",
-            "energy_above_hull": "Energy above hull",
-            "is_stable": "Stable",
-            "theoretical": "Theoretical",
-            "engineering_plausibility": "Engineering plausibility",
-            "classification_reason": "Why included",
-            "alloy_likeness_score": "Alloy likeness",
-            "alloy_likeness_reason": "Alloy likeness note",
-            "creep_score": "Creep suitability",
-            "toughness_score": "Toughness proxy",
-            "temperature_score": "Temperature suitability",
-            "cost_score": "Cost proxy",
-            "sustainability_score": "Sustainability proxy",
+            "performance_summary_score": "Performance summary",
+            "decision_summary_score": "Decision summary",
             "overall_score": "Overall fit",
-            "scientific_rerank_score": "Scientific rerank",
+            "final_rank_score": "Final rank",
             "confidence": "Confidence",
-            "rerank_reason": "Rerank reason",
-            "notes": "Commentary",
-            "scientific_rerank_score": "Scientific rerank",
-            "rerank_reason": "Rerank reason",
+            "strengths": "Strengths",
+            "watch_outs": "Watch-outs",
+            "base_process_route": "Illustrative process route",
         }
     )
     keep_cols = [
         "Candidate",
         "Material family",
         "Composition",
-        "Chemical system",
-        "No. of elements",
-        "Stable",
-        "Theoretical",
-        "Engineering plausibility",
-        "Alloy likeness",
-        "Density",
-        "Energy above hull",
-        "Process route",
-        "Creep suitability",
-        "Toughness proxy",
-        "Temperature suitability",
-        "Cost proxy",
-        "Sustainability proxy",
+        "Performance summary",
+        "Decision summary",
         "Overall fit",
-        "Scientific rerank",
+        "Final rank",
         "Confidence",
-        "Commentary",
-        "Rerank reason",
-        "Why included",
-        "Alloy likeness note",
+        "Strengths",
+        "Watch-outs",
+        "Illustrative process route",
     ]
-    existing = [c for c in keep_cols if c in out.columns]
+    existing = [col for col in keep_cols if col in out.columns]
     return out[existing]
+
+
+def build_factor_breakdown(row: pd.Series) -> pd.DataFrame:
+    items = [
+        {
+            "Factor": "Creep suitability",
+            "Score": row.get("creep_score"),
+            "Explanation": row.get("creep_reason"),
+        },
+        {
+            "Factor": "Toughness proxy",
+            "Score": row.get("toughness_score"),
+            "Explanation": row.get("toughness_reason"),
+        },
+        {
+            "Factor": "Temperature suitability",
+            "Score": row.get("temperature_score"),
+            "Explanation": row.get("temperature_reason"),
+        },
+        {
+            "Factor": "Through-life cost",
+            "Score": row.get("through_life_cost_score"),
+            "Explanation": row.get("through_life_cost_reason"),
+        },
+        {
+            "Factor": "Sustainability",
+            "Score": row.get("sustainability_score_v1"),
+            "Explanation": row.get("sustainability_reason"),
+        },
+        {
+            "Factor": "Manufacturability",
+            "Score": row.get("manufacturability_score"),
+            "Explanation": row.get("manufacturability_reason"),
+        },
+        {
+            "Factor": "Preferred-route suitability",
+            "Score": row.get("route_suitability_score"),
+            "Explanation": row.get("route_suitability_reason"),
+        },
+        {
+            "Factor": "Supply-chain / critical-material risk",
+            "Score": row.get("supply_risk_score"),
+            "Explanation": row.get("supply_risk_reason"),
+        },
+        {
+            "Factor": "Evidence / maturity",
+            "Score": row.get("evidence_maturity_score"),
+            "Explanation": row.get("evidence_maturity_reason"),
+        },
+    ]
+    return pd.DataFrame(items)
+
+
+def build_parallel_coordinates_chart(df: pd.DataFrame):
+    dims = [
+        ("creep_score", "Creep"),
+        ("temperature_score", "Temperature"),
+        ("through_life_cost_score", "Through-life cost"),
+        ("sustainability_score_v1", "Sustainability"),
+        ("manufacturability_score", "Manufacturability"),
+        ("route_suitability_score", "Route suitability"),
+        ("evidence_maturity_score", "Evidence"),
+    ]
+
+    usable_dims = [col for col, _ in dims if col in df.columns]
+    if len(usable_dims) < 3:
+        return None
+
+    labels = {col: label for col, label in dims}
+
+    fig = px.parallel_coordinates(
+        df,
+        dimensions=usable_dims,
+        color="final_rank_score" if "final_rank_score" in df.columns else usable_dims[0],
+        labels=labels,
+    )
+
+    fig.update_layout(
+        margin=dict(l=40, r=40, t=50, b=20),
+    )
+    return fig
+
+def build_radar_chart(top: pd.DataFrame):
+    radar_dims = [
+        ("creep_score", "Creep"),
+        ("temperature_score", "Temperature"),
+        ("through_life_cost_score", "Through-life cost"),
+        ("sustainability_score_v1", "Sustainability"),
+        ("manufacturability_score", "Manufacturability"),
+        ("route_suitability_score", "Route suitability"),
+        ("evidence_maturity_score", "Evidence"),
+    ]
+
+    usable_dims = [(col, label) for col, label in radar_dims if col in top.columns]
+    if len(usable_dims) < 3 or len(top) == 0:
+        return None
+
+    top3 = top.head(3).copy()
+    categories = [label for _, label in usable_dims]
+    categories_closed = categories + [categories[0]]
+
+    fig = go.Figure()
+
+    for _, row in top3.iterrows():
+        values = [row.get(col, 0) for col, _ in usable_dims]
+        values_closed = values + [values[0]]
+
+        fig.add_trace(
+            go.Scatterpolar(
+                r=values_closed,
+                theta=categories_closed,
+                fill="toself",
+                name=row["candidate_id"],
+            )
+        )
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+            )
+        ),
+        margin=dict(l=40, r=40, t=50, b=20),
+        showlegend=True,
+        title="Top 3 candidate comparison",
+    )
+
+    return fig
+
+def render_candidate_detail_cards(top: pd.DataFrame):
+    st.markdown("## Candidate breakdown")
+    for i, (_, row) in enumerate(top.iterrows(), start=1):
+        title = f"{i}. {row['candidate_id']} — {row['material_family']}"
+        with st.expander(title, expanded=(i == 1)):
+            summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+            summary_col1.metric("Performance summary", f"{row.get('performance_summary_score', 0):.1f}")
+            summary_col2.metric("Decision summary", f"{row.get('decision_summary_score', 0):.1f}")
+            summary_col3.metric("Evidence", f"{row.get('evidence_maturity_score', 0):.1f}")
+            summary_col4.metric("Final rank", f"{row.get('final_rank_score', 0):.1f}")
+
+            st.write(f"**Strengths:** {row.get('strengths', 'None surfaced')}")
+            st.write(f"**Watch-outs:** {row.get('watch_outs', 'None surfaced')}")
+
+            factor_breakdown = build_factor_breakdown(row)
+            st.dataframe(factor_breakdown, use_container_width=True, hide_index=True)
+
+            route_df = pd.DataFrame(
+                [
+                    {"Route": "AM route score", "Score": row.get("am_route_score")},
+                    {"Route": "Conventional route score", "Score": row.get("conventional_route_score")},
+                ]
+            )
+            st.write("**Route comparison**")
+            st.dataframe(route_df, use_container_width=True, hide_index=True)
+
+            if "provenance" in row.index:
+                st.write(f"**Provenance:** {row['provenance']}")
+            st.write(f"**Rerank reason:** {row.get('rerank_reason', '')}")
+
 
 def render_design_frame(requirements: dict):
     req_view = format_requirements(requirements)
@@ -196,9 +345,9 @@ def render_design_frame(requirements: dict):
     col1.metric("Operating temperature", req_view["temperature"])
     col2.metric("AM preferred", req_view["am_preferred"])
     col3.metric("Candidate families", len(requirements["allowed_material_families"]))
-    col4.metric("Top priorities", req_view["top_priorities"])
+    col4.metric("Decision scenario", req_view["decision_profile_name"])
 
-    st.markdown("## Inferred Design Frame")
+    st.markdown("## Inferred design frame")
     info_col1, info_col2 = st.columns([1.3, 1])
     with info_col1:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
@@ -213,7 +362,10 @@ def render_design_frame(requirements: dict):
         st.markdown("**Inference notes**")
         for note in req_view["notes"]:
             st.markdown(f"- {note}")
+        st.markdown("**Downstream evaluation mode**")
+        st.write(req_view["decision_profile_summary"])
         st.markdown("</div>", unsafe_allow_html=True)
+
 
 def render_empty_state(requirements: dict, candidates, scored, near_miss, diagnostics=None):
     render_design_frame(requirements)
@@ -225,21 +377,20 @@ def render_empty_state(requirements: dict, candidates, scored, near_miss, diagno
     st.markdown("## What happened")
     st.write(
         f"- Raw retrieved candidates: **{raw_count}**\n"
-        f"- Candidates after scoring/provenance stage: **{scored_count}**\n"
+        f"- Candidates after downstream evaluation: **{scored_count}**\n"
         f"- Near-feasible alternatives available: **{near_count}**"
     )
 
     if near_miss is not None and len(near_miss) > 0:
-        st.markdown("## Near-Feasible Alternatives")
+        st.markdown("## Near-feasible alternatives")
         near_cols = [
             c for c in [
                 "candidate_id",
                 "material_family",
                 "overall_score",
                 "confidence",
-                "notes",
-                "classification_reason",
-                "alloy_likeness_reason",
+                "strengths",
+                "watch_outs",
             ]
             if c in near_miss.columns
         ]
@@ -249,19 +400,13 @@ def render_empty_state(requirements: dict, candidates, scored, near_miss, diagno
                 "material_family": "Material family",
                 "overall_score": "Overall fit",
                 "confidence": "Confidence",
-                "notes": "Commentary",
-                "classification_reason": "Why included",
-                "alloy_likeness_reason": "Alloy likeness note",
+                "strengths": "Strengths",
+                "watch_outs": "Watch-outs",
             }
         )
         st.dataframe(near_display, use_container_width=True, hide_index=True)
-        st.caption(
-            "These did not survive as top-ranked concepts, but are the closest available outputs from the current screened set."
-        )
     else:
-        st.info(
-            "No near-feasible alternatives were identified. The current screening may be too strict for this search scope."
-        )
+        st.info("No near-feasible alternatives were identified.")
 
     if diagnostics:
         warnings = diagnostics.get("warnings", [])
@@ -273,16 +418,17 @@ def render_empty_state(requirements: dict, candidates, scored, near_miss, diagno
         with st.expander("Diagnostics"):
             st.write(diagnostics)
 
-def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
+
+def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.DataFrame | None, diagnostics=None):
     render_design_frame(requirements)
 
-    st.markdown("## Ranked Candidate Concepts")
+    st.markdown("## Ranked candidate concepts")
     display_table = make_display_table(top)
     st.dataframe(display_table, use_container_width=True, hide_index=True)
 
     if len(top) > 0:
         best = top.iloc[0]
-        st.markdown("## Best Overall Concept")
+        st.markdown("## Best overall concept")
         st.markdown('<div class="highlight-card">', unsafe_allow_html=True)
         st.markdown(
             f"""
@@ -292,43 +438,103 @@ def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
 
             **Illustrative process route:** {best['base_process_route']}
 
-            **Why it ranks first:** this candidate currently offers the strongest balance of
-            inferred creep relevance, elevated-temperature suitability, and chemistry-based
-            fit with the prototype's alloy-family rules.
+            **Why it ranks first:** it currently offers the strongest combined balance of
+            performance summary, explicit downstream decision factors, and evidence/maturity.
 
-            **Why it was included:** {best.get('classification_reason', 'Matched prototype screening rules.')}
+            **Key strengths:** {best.get('strengths', 'None surfaced')}
 
-            **Main trade-off:** the current ranking is still based on engineering proxy scores,
-            not validated creep or toughness prediction models.
+            **Main watch-outs:** {best.get('watch_outs', 'None surfaced')}
 
             **Confidence:** {best['confidence']}
             """
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-    left, right = st.columns([1.2, 1])
+    left, right = st.columns([1.3, 1])
 
     with left:
-        st.markdown("## Trade-off View")
-        required_chart_cols = {"candidate_id", "material_family", "cost_score", "creep_score", "overall_score"}
+        st.markdown("## Trade-off view")
+        axis_options = {
+            "Creep suitability": "creep_score",
+            "Temperature suitability": "temperature_score",
+            "Through-life cost": "through_life_cost_score",
+            "Sustainability": "sustainability_score_v1",
+            "Manufacturability": "manufacturability_score",
+            "Route suitability": "route_suitability_score",
+            "Evidence / maturity": "evidence_maturity_score",
+            "Overall fit": "overall_score",
+        }
+        chart_x_label = st.selectbox("X-axis", options=list(axis_options.keys()), index=2, key="tradeoff_x_axis")
+        chart_y_label = st.selectbox("Y-axis", options=list(axis_options.keys()), index=0, key="tradeoff_y_axis")
+        x_col = axis_options[chart_x_label]
+        y_col = axis_options[chart_y_label]
+
+        required_chart_cols = {"candidate_id", "material_family", x_col, y_col, "final_rank_score"}
         if required_chart_cols.issubset(set(top.columns)) and len(top) > 0:
             chart_df = top.copy()
-            chart_df["label"] = chart_df["candidate_id"] + " | " + chart_df["material_family"]
+            chart_df["point_label"] = chart_df["candidate_id"]
+            chart_df["hover_label"] = (
+                chart_df["candidate_id"] + " | " + chart_df["material_family"]
+            )
+
             fig = px.scatter(
                 chart_df,
-                x="cost_score",
-                y="creep_score",
-                size="overall_score",
-                hover_name="label",
-                title="Cost proxy vs creep suitability",
+                x=x_col,
+                y=y_col,
+                size="final_rank_score",
+                text="point_label",
+                hover_name="hover_label",
+                hover_data={
+                    "material_family": True,
+                    "final_rank_score": ":.1f",
+                    x_col: ":.1f",
+                    y_col: ":.1f",
+                    "point_label": False,
+                    "hover_label": False,
+                },
+                title=f"{chart_x_label} vs {chart_y_label}",
             )
-            fig.update_layout(margin=dict(l=20, r=20, t=50, b=20))
+
+            fig.update_traces(
+                textposition="top center"
+            )
+
+            fig.update_layout(
+                margin=dict(l=20, r=20, t=50, b=20),
+                xaxis_title=chart_x_label,
+                yaxis_title=chart_y_label,
+            )
+
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Trade-off chart unavailable for the current result set.")
 
+        st.markdown("### Multidimensional comparison")
+        parallel_fig = build_parallel_coordinates_chart(top)
+        if parallel_fig is not None:
+            st.plotly_chart(parallel_fig, use_container_width=True)
+            if {"candidate_id", "final_rank_score"}.issubset(set(top.columns)):
+                parallel_key = top[["candidate_id", "final_rank_score"]].copy()
+                parallel_key = parallel_key.rename(
+                    columns={
+                        "candidate_id": "Candidate",
+                        "final_rank_score": "Final rank",
+                    }
+                )
+                st.caption("Use this key to identify the lines in the parallel coordinates chart.")
+                st.dataframe(parallel_key, use_container_width=True, hide_index=True)
+        else:
+            st.info("Parallel coordinates chart unavailable for the current result set.")
+
+        st.markdown("### Radar chart (top 3 only)")
+        radar_fig = build_radar_chart(top)
+        if radar_fig is not None:
+            st.plotly_chart(radar_fig, use_container_width=True)
+        else:
+            st.info("Radar chart unavailable for the current result set.")
+
     with right:
-        st.markdown("## Near-Feasible Alternatives")
+        st.markdown("## Near-feasible alternatives")
         if near_miss is not None and len(near_miss) > 0:
             near_cols = [
                 c for c in [
@@ -336,7 +542,8 @@ def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
                     "material_family",
                     "overall_score",
                     "confidence",
-                    "notes",
+                    "strengths",
+                    "watch_outs",
                 ]
                 if c in near_miss.columns
             ]
@@ -346,26 +553,28 @@ def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
                     "material_family": "Material family",
                     "overall_score": "Overall fit",
                     "confidence": "Confidence",
-                    "notes": "Commentary",
+                    "strengths": "Strengths",
+                    "watch_outs": "Watch-outs",
                 }
             )
             st.dataframe(near_display, use_container_width=True, hide_index=True)
             st.caption(
-                "These concepts do not rank highest overall, but may be useful where cost, "
-                "risk, or process considerations outweigh raw performance."
+                "These concepts do not rank highest overall, but remain interesting trade-off options."
             )
         else:
-            st.write("No obvious near-feasible alternatives were identified in the current screened set.")
+            st.write("No near-feasible alternatives were identified in the current screened set.")
+
+    render_candidate_detail_cards(top)
 
     with st.expander("Method, provenance, and disclaimer"):
         st.markdown("**How this prototype currently works**")
         st.markdown(
             """
             - infers design priorities from the application prompt and temperature  
-            - retrieves candidates from Materials Project  
-            - filters them using prototype alloy-family rules  
-            - applies simple proxy scoring for performance and trade-offs  
-            - ranks concepts and highlights best / near-feasible options
+            - retrieves baseline candidates from Materials Project  
+            - preserves baseline survival inside the frozen candidate-generation layer  
+            - adds an explicit downstream evaluation layer for cost, sustainability, manufacturability, route fit, and evidence  
+            - reranks already-plausible survivors without turning reranking into a survival filter
             """
         )
 
@@ -396,8 +605,10 @@ def render_success_state(requirements: dict, top, near_miss, diagnostics=None):
         with st.expander("Diagnostics"):
             st.write(diagnostics)
 
-def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
+
+def run_pipeline_once(application_prompt, operating_temperature, am_preferred, scenario_profile):
     requirements = infer_requirements(application_prompt, operating_temperature, am_preferred)
+    requirements = apply_decision_profile(requirements, scenario_profile)
 
     candidate_result = generate_candidates(requirements)
 
@@ -436,7 +647,7 @@ def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
             "top": None,
             "near_miss": None,
             "diagnostics": candidate_result.get("diagnostics", {}),
-            "message": "Candidates were retrieved, but none survived scoring.",
+            "message": "Candidates were retrieved, but none survived downstream evaluation.",
         }
 
     scored = scientific_rerank(scored, requirements)
@@ -452,7 +663,7 @@ def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
             "top": top,
             "near_miss": near_miss,
             "diagnostics": candidate_result.get("diagnostics", {}),
-            "message": "Candidates were retrieved, but none survived the current screening/ranking thresholds.",
+            "message": "Candidates were retrieved, but none survived the current ranking thresholds.",
         }
 
     return {
@@ -466,12 +677,18 @@ def run_pipeline_once(application_prompt, operating_temperature, am_preferred):
         "message": candidate_result["message"],
     }
 
+
 generate_clicked = st.button("Generate concepts", type="primary", use_container_width=False)
 
 if generate_clicked:
     try:
         with st.spinner("Generating candidate concepts..."):
-            result = run_pipeline_once(application_prompt, operating_temperature, am_preferred)
+            result = run_pipeline_once(
+                application_prompt,
+                operating_temperature,
+                am_preferred,
+                scenario_profile,
+            )
         st.session_state["last_run"] = result
     except Exception as exc:
         st.session_state["last_run"] = {
@@ -510,8 +727,9 @@ else:
         """
         1. Enter the application need in plain language.  
         2. Set the operating temperature and process preference.  
-        3. Click **Generate concepts**.  
-        4. Review the ranked concepts, best-option summary, and near-feasible alternatives.
+        3. Choose the downstream decision scenario.  
+        4. Click **Generate concepts**.  
+        5. Review the ranking table, strengths/watch-outs, trade-off chart, and candidate breakdowns.
         """
     )
 

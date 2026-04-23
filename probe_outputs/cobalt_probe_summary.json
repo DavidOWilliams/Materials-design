@@ -1,0 +1,206 @@
+{
+  "Co-Cr-W": {
+    "requested_family": "Co-based high-temperature candidate",
+    "strategies": [
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co-Cr-W",
+        "retrieval_mode": "exact",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co-Cr-Ni",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co-Cr-Mo",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co-Cr-Ni-W",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co+Cr+W",
+        "retrieval_mode": "fallback_elements_window",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co+Cr",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 25,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-W",
+        "matched_query_chemsys": "Co+W",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 10,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 5,
+        "error": null
+      }
+    ]
+  },
+  "Co-Cr-Ni": {
+    "requested_family": "Co-based high-temperature candidate",
+    "strategies": [
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co-Cr-Ni",
+        "retrieval_mode": "exact",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co-Cr-W",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co-Cr-Mo",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co-Cr-Ni-W",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co+Cr+Ni",
+        "retrieval_mode": "fallback_elements_window",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co+Cr",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 25,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Ni",
+        "matched_query_chemsys": "Co+Ni",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 25,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      }
+    ]
+  },
+  "Co-Cr-Mo": {
+    "requested_family": "Co-based high-temperature candidate",
+    "strategies": [
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co-Cr-Mo",
+        "retrieval_mode": "exact",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co-Cr-W",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co-Cr-Ni",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co-Cr-Ni-W",
+        "retrieval_mode": "fallback_cobalt_anchor_chemsys",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co+Cr+Mo",
+        "retrieval_mode": "fallback_elements_window",
+        "returned_count": 0,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co+Cr",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 25,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 0,
+        "error": null
+      },
+      {
+        "requested_chemsys": "Co-Cr-Mo",
+        "matched_query_chemsys": "Co+Mo",
+        "retrieval_mode": "fallback_cobalt_pair_window",
+        "returned_count": 25,
+        "accepted_for_request_count": 0,
+        "near_miss_count": 10,
+        "error": null
+      }
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
@@ -5,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from src.evaluation import apply_decision_profile, evaluate_candidates
+from src.manufacturing_recipes import attach_manufacturing_recipes
 
 
 def _normalised_weighted_average(score_pairs: List[Tuple[float, float]]) -> float:
@@ -29,6 +31,7 @@ def _build_strengths_and_watchouts(row: pd.Series) -> Tuple[str, str, str, str]:
         ("Sustainability", float(row.get("sustainability_score_v1", 0.0))),
         ("Manufacturability", float(row.get("manufacturability_score", 0.0))),
         ("Route fit", float(row.get("route_suitability_score", 0.0))),
+        ("Recipe support", float(row.get("recipe_support_score", 0.0))),
         ("Evidence", float(row.get("evidence_maturity_score", 0.0))),
     ]
     strengths = sorted(labelled_scores, key=lambda item: item[1], reverse=True)[:2]
@@ -45,17 +48,33 @@ def _build_strengths_and_watchouts(row: pd.Series) -> Tuple[str, str, str, str]:
 def _confidence(row: pd.Series) -> str:
     evidence = float(row.get("evidence_maturity_score", 0.0))
     temperature_score = float(row.get("temperature_score", 0.0))
+    recipe_support = float(row.get("recipe_support_score", 0.0))
     if evidence < 45 or temperature_score < 55:
         return "Low"
-    if evidence >= 70 and temperature_score >= 65:
+    if evidence >= 70 and temperature_score >= 65 and recipe_support >= 65:
         return "Medium-High"
     return "Medium"
+
+
+def _recipe_note(row: pd.Series) -> str:
+    recipe_mode = str(row.get("recipe_mode", "") or "")
+    matched_name = str(row.get("matched_alloy_name", "") or "").strip()
+    primary_route = str(row.get("manufacturing_primary_route", "") or "").strip()
+
+    if recipe_mode == "named_analogue" and matched_name:
+        return f"Manufacturing recipe is grounded in the named analogue {matched_name}."
+    if recipe_mode == "analogue_guided" and matched_name:
+        return f"Manufacturing recipe is analogue-guided using {matched_name} as the closest anchor."
+    if primary_route:
+        return "Manufacturing recipe falls back to a family-envelope route because no strong named analogue was found."
+    return "Manufacturing recipe support is limited."
 
 
 def _notes(row: pd.Series) -> str:
     strength = row.get("primary_strength", "performance")
     watchout = row.get("primary_watchout", "cost")
-    return f"Strongest signal: {strength}. Main watch-out: {watchout}."
+    recipe_note = _recipe_note(row)
+    return f"Strongest signal: {strength}. Main watch-out: {watchout}. {recipe_note}"
 
 
 def score_candidates(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.DataFrame:
@@ -87,6 +106,7 @@ def score_candidates(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.DataF
     )
 
     scored = evaluate_candidates(scored, profiled_requirements)
+    scored = attach_manufacturing_recipes(scored, profiled_requirements)
 
     scored["cost_score"] = scored["through_life_cost_score"]
     scored["sustainability_score"] = scored["sustainability_score_v1"]

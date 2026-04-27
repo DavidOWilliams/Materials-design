@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
+
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import pandas as pd
 import streamlit as st
 
 from src.requirement_inference import infer_requirements
@@ -57,7 +59,7 @@ st.markdown(
     """
     **Prototype purpose:** demonstrate how an engineer could move from an application-level need
     to a short list of plausible material-and-process concepts, with explicit trade-offs, confidence notes,
-    and near-feasible alternatives in one workflow.
+    and recipe-style manufacturing concepts in one workflow.
     """
 )
 
@@ -73,7 +75,6 @@ st.markdown(
 
 if "last_run" not in st.session_state:
     st.session_state["last_run"] = None
-
 
 with st.sidebar:
     st.header("Design Inputs")
@@ -112,7 +113,7 @@ with st.sidebar:
         - performance and decision summaries  
         - factor breakdowns per candidate  
         - strengths and watch-outs  
-        - trade-off views  
+        - recipe-style manufacturing concepts  
         - confidence, reranking, and provenance notes
         """
     )
@@ -154,12 +155,13 @@ def make_display_table(df: pd.DataFrame | None) -> pd.DataFrame | None:
             "composition_concept": "Composition",
             "performance_summary_score": "Performance summary",
             "decision_summary_score": "Decision summary",
-            "overall_score": "Overall fit",
             "final_rank_score": "Final rank",
+            "recipe_mode": "Recipe mode",
+            "matched_alloy_name": "Analogue",
+            "manufacturing_primary_route": "Primary route",
             "confidence": "Confidence",
             "strengths": "Strengths",
             "watch_outs": "Watch-outs",
-            "base_process_route": "Illustrative process route",
         }
     )
     keep_cols = [
@@ -168,174 +170,127 @@ def make_display_table(df: pd.DataFrame | None) -> pd.DataFrame | None:
         "Composition",
         "Performance summary",
         "Decision summary",
-        "Overall fit",
         "Final rank",
+        "Recipe mode",
+        "Analogue",
+        "Primary route",
         "Confidence",
         "Strengths",
         "Watch-outs",
-        "Illustrative process route",
     ]
     existing = [col for col in keep_cols if col in out.columns]
     return out[existing]
 
 
 def build_factor_breakdown(row: pd.Series) -> pd.DataFrame:
+    recipe_expl = (
+        f"{row.get('analogue_explanation', '')} | "
+        f"Similarity={row.get('analogue_similarity_score', '')}, "
+        f"Route={row.get('analogue_route_compatibility_score', '')}, "
+        f"Mode={row.get('recipe_mode', '')}"
+    )
     items = [
-        {
-            "Factor": "Creep suitability",
-            "Score": row.get("creep_score"),
-            "Explanation": row.get("creep_reason"),
-        },
-        {
-            "Factor": "Toughness proxy",
-            "Score": row.get("toughness_score"),
-            "Explanation": row.get("toughness_reason"),
-        },
-        {
-            "Factor": "Temperature suitability",
-            "Score": row.get("temperature_score"),
-            "Explanation": row.get("temperature_reason"),
-        },
-        {
-            "Factor": "Through-life cost",
-            "Score": row.get("through_life_cost_score"),
-            "Explanation": row.get("through_life_cost_reason"),
-        },
-        {
-            "Factor": "Sustainability",
-            "Score": row.get("sustainability_score_v1"),
-            "Explanation": row.get("sustainability_reason"),
-        },
-        {
-            "Factor": "Manufacturability",
-            "Score": row.get("manufacturability_score"),
-            "Explanation": row.get("manufacturability_reason"),
-        },
-        {
-            "Factor": "Preferred-route suitability",
-            "Score": row.get("route_suitability_score"),
-            "Explanation": row.get("route_suitability_reason"),
-        },
-        {
-            "Factor": "Supply-chain / critical-material risk",
-            "Score": row.get("supply_risk_score"),
-            "Explanation": row.get("supply_risk_reason"),
-        },
-        {
-            "Factor": "Evidence / maturity",
-            "Score": row.get("evidence_maturity_score"),
-            "Explanation": row.get("evidence_maturity_reason"),
-        },
+        {"Factor": "Creep suitability", "Score": row.get("creep_score"), "Explanation": row.get("creep_reason")},
+        {"Factor": "Toughness proxy", "Score": row.get("toughness_score"), "Explanation": row.get("toughness_reason")},
+        {"Factor": "Temperature suitability", "Score": row.get("temperature_score"), "Explanation": row.get("temperature_reason")},
+        {"Factor": "Through-life cost", "Score": row.get("through_life_cost_score"), "Explanation": row.get("through_life_cost_reason")},
+        {"Factor": "Sustainability", "Score": row.get("sustainability_score_v1"), "Explanation": row.get("sustainability_reason")},
+        {"Factor": "Manufacturability", "Score": row.get("manufacturability_score"), "Explanation": row.get("manufacturability_reason")},
+        {"Factor": "Preferred-route suitability", "Score": row.get("route_suitability_score"), "Explanation": row.get("route_suitability_reason")},
+        {"Factor": "Supply-chain / critical-material risk", "Score": row.get("supply_risk_score"), "Explanation": row.get("supply_risk_reason")},
+        {"Factor": "Evidence / maturity", "Score": row.get("evidence_maturity_score"), "Explanation": row.get("evidence_maturity_reason")},
+        {"Factor": "Recipe support", "Score": row.get("recipe_support_score"), "Explanation": recipe_expl},
     ]
     return pd.DataFrame(items)
 
 
-def build_parallel_coordinates_chart(df: pd.DataFrame):
-    dims = [
-        ("creep_score", "Creep"),
-        ("temperature_score", "Temperature"),
-        ("through_life_cost_score", "Through-life cost"),
-        ("sustainability_score_v1", "Sustainability"),
-        ("manufacturability_score", "Manufacturability"),
-        ("route_suitability_score", "Route suitability"),
-        ("evidence_maturity_score", "Evidence"),
-    ]
+def _json_to_df(value, *, empty_columns=None) -> pd.DataFrame:
+    empty_columns = empty_columns or []
+    if value is None:
+        return pd.DataFrame(columns=empty_columns)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return pd.DataFrame(columns=empty_columns)
+        try:
+            parsed = json.loads(stripped)
+        except Exception:
+            return pd.DataFrame(columns=empty_columns)
+    else:
+        parsed = value
+    if isinstance(parsed, dict):
+        parsed = [parsed]
+    if not isinstance(parsed, list):
+        return pd.DataFrame(columns=empty_columns)
+    if not parsed:
+        return pd.DataFrame(columns=empty_columns)
+    return pd.DataFrame(parsed)
 
-    usable_dims = [col for col, _ in dims if col in df.columns]
-    if len(usable_dims) < 3:
-        return None
 
-    labels = {col: label for col, label in dims}
-
-    fig = px.parallel_coordinates(
-        df,
-        dimensions=usable_dims,
-        color="final_rank_score" if "final_rank_score" in df.columns else usable_dims[0],
-        labels=labels,
-    )
-
-    fig.update_layout(
-        margin=dict(l=40, r=40, t=50, b=20),
-    )
-    return fig
-
-def build_radar_chart(top: pd.DataFrame):
-    radar_dims = [
-        ("creep_score", "Creep"),
-        ("temperature_score", "Temperature"),
-        ("through_life_cost_score", "Through-life cost"),
-        ("sustainability_score_v1", "Sustainability"),
-        ("manufacturability_score", "Manufacturability"),
-        ("route_suitability_score", "Route suitability"),
-        ("evidence_maturity_score", "Evidence"),
-    ]
-
-    usable_dims = [(col, label) for col, label in radar_dims if col in top.columns]
-    if len(usable_dims) < 3 or len(top) == 0:
-        return None
-
-    top3 = top.head(3).copy()
-    categories = [label for _, label in usable_dims]
-    categories_closed = categories + [categories[0]]
-
-    fig = go.Figure()
-
-    for _, row in top3.iterrows():
-        values = [row.get(col, 0) for col, _ in usable_dims]
-        values_closed = values + [values[0]]
-
-        fig.add_trace(
-            go.Scatterpolar(
-                r=values_closed,
-                theta=categories_closed,
-                fill="toself",
-                name=row["candidate_id"],
-            )
+def render_run_debug_summary(top: pd.DataFrame, requirements: dict, diagnostics: dict | None = None):
+    with st.expander("Debug / sensitivity diagnostics"):
+        req_cols = st.columns(4)
+        req_cols[0].metric("Allowed families", len(requirements.get("allowed_material_families", [])))
+        req_cols[1].metric("Profile", requirements.get("downstream_profile_name", "Balanced"))
+        req_cols[2].metric("Top candidate count", len(top) if top is not None else 0)
+        req_cols[3].metric(
+            "Unique top recipe modes",
+            len(set(top["recipe_mode"].astype(str).tolist())) if top is not None and "recipe_mode" in top.columns else 0,
         )
 
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 100],
-            )
-        ),
-        margin=dict(l=40, r=40, t=50, b=20),
-        showlegend=True,
-        title="Top 3 candidate comparison",
-    )
+        if top is not None and len(top) > 0:
+            summary_rows = [{
+                "Metric": "Unique top families",
+                "Value": len(set(top["material_family"].astype(str).tolist())) if "material_family" in top.columns else 0,
+            },{
+                "Metric": "Unique top analogues",
+                "Value": len({str(v) for v in top.get("matched_alloy_name", pd.Series(dtype=str)).fillna("").tolist() if str(v).strip()}),
+            },{
+                "Metric": "Final-rank spread",
+                "Value": round(float(top["final_rank_score"].max() - top["final_rank_score"].min()), 2) if "final_rank_score" in top.columns and len(top) > 1 else 0.0,
+            },{
+                "Metric": "Recipe-support spread",
+                "Value": round(float(top["recipe_support_score"].max() - top["recipe_support_score"].min()), 2) if "recipe_support_score" in top.columns and len(top) > 1 else 0.0,
+            }]
+            st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
-    return fig
+            warning_flags = []
+            if "material_family" in top.columns and len(set(top["material_family"].astype(str).tolist())) == 1:
+                warning_flags.append("Top set is dominated by one family.")
+            if "recipe_mode" in top.columns and len(set(top["recipe_mode"].astype(str).tolist())) == 1:
+                warning_flags.append("Top set is using one recipe mode only.")
+            if "final_rank_score" in top.columns and len(top) > 1 and float(top["final_rank_score"].max() - top["final_rank_score"].min()) < 3.0:
+                warning_flags.append("Final-rank spread is narrow (<3).")
+            if "recipe_support_score" in top.columns and len(top) > 1 and float(top["recipe_support_score"].max() - top["recipe_support_score"].min()) < 4.0:
+                warning_flags.append("Recipe-support spread is narrow (<4).")
 
-def render_candidate_detail_cards(top: pd.DataFrame):
-    st.markdown("## Candidate breakdown")
-    for i, (_, row) in enumerate(top.iterrows(), start=1):
-        title = f"{i}. {row['candidate_id']} — {row['material_family']}"
-        with st.expander(title, expanded=(i == 1)):
-            summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
-            summary_col1.metric("Performance summary", f"{row.get('performance_summary_score', 0):.1f}")
-            summary_col2.metric("Decision summary", f"{row.get('decision_summary_score', 0):.1f}")
-            summary_col3.metric("Evidence", f"{row.get('evidence_maturity_score', 0):.1f}")
-            summary_col4.metric("Final rank", f"{row.get('final_rank_score', 0):.1f}")
+            if warning_flags:
+                for item in warning_flags:
+                    st.warning(item)
+            else:
+                st.success("No immediate flattening flags were detected in the top set.")
 
-            st.write(f"**Strengths:** {row.get('strengths', 'None surfaced')}")
-            st.write(f"**Watch-outs:** {row.get('watch_outs', 'None surfaced')}")
+        if diagnostics:
+            warnings = diagnostics.get("warnings", [])
+            if warnings:
+                st.write("**Baseline / retrieval warnings**")
+                for item in warnings:
+                    st.markdown(f"- {item}")
 
-            factor_breakdown = build_factor_breakdown(row)
-            st.dataframe(factor_breakdown, use_container_width=True, hide_index=True)
 
-            route_df = pd.DataFrame(
-                [
-                    {"Route": "AM route score", "Score": row.get("am_route_score")},
-                    {"Route": "Conventional route score", "Score": row.get("conventional_route_score")},
-                ]
-            )
-            st.write("**Route comparison**")
-            st.dataframe(route_df, use_container_width=True, hide_index=True)
-
-            if "provenance" in row.index:
-                st.write(f"**Provenance:** {row['provenance']}")
-            st.write(f"**Rerank reason:** {row.get('rerank_reason', '')}")
+def _list_value(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+        return [stripped]
+    return [value]
 
 
 def render_design_frame(requirements: dict):
@@ -419,12 +374,202 @@ def render_empty_state(requirements: dict, candidates, scored, near_miss, diagno
             st.write(diagnostics)
 
 
+def render_recipe_block(row: pd.Series):
+    st.write("**Manufacturing recipe mode**")
+    st.write(f"{row.get('recipe_mode', 'family_envelope')}")
+
+    top_cols = st.columns(3)
+    top_cols[0].metric("Recipe support", f"{row.get('recipe_support_score', 0):.1f}")
+    top_cols[1].metric("Recipe confidence", str(row.get("recipe_confidence", "Low")))
+    top_cols[2].metric("Analogue confidence", str(row.get("analogue_confidence", "Low")))
+
+    matched_name = str(row.get("matched_alloy_name", "") or "").strip()
+    if matched_name:
+        st.write(f"**Closest analogue:** {matched_name}")
+    else:
+        st.write("**Closest analogue:** none — using family-envelope fallback")
+
+    primary_route = str(row.get("manufacturing_primary_route", "") or "").strip()
+    secondary_route = str(row.get("manufacturing_secondary_route", "") or "").strip()
+    if primary_route:
+        st.write(f"**Primary route:** {primary_route}")
+    if secondary_route:
+        st.write(f"**Secondary route:** {secondary_route}")
+
+    ingredients = row.get("ingredient_rows", [])
+    if ingredients:
+        st.write("**Ingredients / composition view**")
+        st.dataframe(pd.DataFrame(ingredients), use_container_width=True, hide_index=True)
+
+    steps = _list_value(row.get("process_steps"))
+    if steps:
+        st.write("**Recipe steps**")
+        for idx, step in enumerate(steps, start=1):
+            st.markdown(f"{idx}. {step}")
+
+    why_route = _list_value(row.get("why_this_route"))
+    if why_route:
+        st.write("**Why this route**")
+        for item in why_route:
+            st.markdown(f"- {item}")
+
+    watch_outs = _list_value(row.get("recipe_watch_outs"))
+    if watch_outs:
+        st.write("**Recipe watch-outs**")
+        for item in watch_outs:
+            st.markdown(f"- {item}")
+
+    provenance_refs = _list_value(row.get("recipe_provenance_refs"))
+    if provenance_refs:
+        st.write("**Recipe provenance refs**")
+        for item in provenance_refs:
+            st.code(str(item))
+
+    analogue_candidates_df = _json_to_df(
+        row.get("top_analogue_candidates_json"),
+        empty_columns=["alloy_id", "canonical_name", "weighted_score", "similarity_score", "route_compatibility_score"],
+    )
+    if len(analogue_candidates_df) > 0:
+        st.write("**Top analogue candidates considered**")
+        st.dataframe(analogue_candidates_df, use_container_width=True, hide_index=True)
+
+    recipe_support_df = _json_to_df(
+        row.get("recipe_support_breakdown_json"),
+        empty_columns=[
+            "analogue_confidence_component",
+            "analogue_similarity_component",
+            "route_match_component",
+            "manufacturability_component",
+            "route_suitability_component",
+            "evidence_component",
+            "alloy_likeness_component",
+            "mode_adjustment",
+            "stable_adjustment",
+            "theoretical_adjustment",
+        ],
+    )
+    if len(recipe_support_df) > 0:
+        st.write("**Recipe-support component breakdown**")
+        st.dataframe(recipe_support_df.T.reset_index().rename(columns={"index": "Component", 0: "Contribution"}), use_container_width=True, hide_index=True)
+
+
+def render_candidate_detail_cards(top: pd.DataFrame):
+    st.markdown("## Candidate breakdown")
+    for i, (_, row) in enumerate(top.iterrows(), start=1):
+        title = f"{i}. {row['candidate_id']} — {row['material_family']}"
+        with st.expander(title, expanded=(i == 1)):
+            summary_col1, summary_col2, summary_col3, summary_col4, summary_col5 = st.columns(5)
+            summary_col1.metric("Performance summary", f"{row.get('performance_summary_score', 0):.1f}")
+            summary_col2.metric("Decision summary", f"{row.get('decision_summary_score', 0):.1f}")
+            summary_col3.metric("Evidence", f"{row.get('evidence_maturity_score', 0):.1f}")
+            summary_col4.metric("Recipe support", f"{row.get('recipe_support_score', 0):.1f}")
+            summary_col5.metric("Final rank", f"{row.get('final_rank_score', 0):.1f}")
+
+            st.write(f"**Strengths:** {row.get('strengths', 'None surfaced')}")
+            st.write(f"**Watch-outs:** {row.get('watch_outs', 'None surfaced')}")
+
+            factor_breakdown = build_factor_breakdown(row)
+            st.dataframe(factor_breakdown, use_container_width=True, hide_index=True)
+
+            route_df = pd.DataFrame(
+                [
+                    {"Route": "AM route score", "Score": row.get("am_route_score")},
+                    {"Route": "Conventional route score", "Score": row.get("conventional_route_score")},
+                ]
+            )
+            st.write("**Route comparison**")
+            st.dataframe(route_df, use_container_width=True, hide_index=True)
+
+            st.write("---")
+            render_recipe_block(row)
+
+            warning = str(row.get("recipe_layer_warning", "") or "").strip()
+            if warning:
+                st.warning(warning)
+
+            if "provenance" in row.index:
+                st.write(f"**Provenance:** {row['provenance']}")
+            st.write(f"**Rerank reason:** {row.get('rerank_reason', '')}")
+
+
+def render_multidimensional_charts(top: pd.DataFrame):
+    if top is None or len(top) == 0:
+        return
+
+    st.markdown("## Multidimensional comparison")
+
+    parallel_dims = [
+        "creep_score",
+        "temperature_score",
+        "through_life_cost_score",
+        "sustainability_score_v1",
+        "manufacturability_score",
+        "route_suitability_score",
+        "recipe_support_score",
+        "evidence_maturity_score",
+        "final_rank_score",
+    ]
+    parallel_dims = [c for c in parallel_dims if c in top.columns]
+
+    if len(parallel_dims) >= 3:
+        fig_parallel = go.Figure(
+            data=go.Parcoords(
+                line=dict(color=top["final_rank_score"], showscale=True),
+                dimensions=[
+                    dict(label=col.replace("_", " ").title(), values=top[col])
+                    for col in parallel_dims
+                ],
+            )
+        )
+        fig_parallel.update_layout(margin=dict(l=30, r=30, t=40, b=20))
+        st.plotly_chart(fig_parallel, use_container_width=True)
+    else:
+        st.info("Parallel coordinates unavailable for the current result set.")
+
+    radar_metrics = [
+        "creep_score",
+        "temperature_score",
+        "through_life_cost_score",
+        "sustainability_score_v1",
+        "manufacturability_score",
+        "route_suitability_score",
+        "recipe_support_score",
+        "evidence_maturity_score",
+    ]
+    radar_metrics = [c for c in radar_metrics if c in top.columns]
+    radar_df = top.head(3).copy()
+
+    if len(radar_df) > 0 and len(radar_metrics) >= 3:
+        fig_radar = go.Figure()
+        theta = [metric.replace("_", " ").title() for metric in radar_metrics]
+        theta_closed = theta + [theta[0]]
+        for _, row in radar_df.iterrows():
+            values = [float(row[m]) for m in radar_metrics]
+            fig_radar.add_trace(
+                go.Scatterpolar(
+                    r=values + [values[0]],
+                    theta=theta_closed,
+                    fill="toself",
+                    name=str(row["candidate_id"]),
+                )
+            )
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            showlegend=True,
+            margin=dict(l=30, r=30, t=40, b=20),
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+    else:
+        st.info("Radar chart unavailable for the current result set.")
+
+
 def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.DataFrame | None, diagnostics=None):
     render_design_frame(requirements)
 
     st.markdown("## Ranked candidate concepts")
     display_table = make_display_table(top)
     st.dataframe(display_table, use_container_width=True, hide_index=True)
+    render_run_debug_summary(top, requirements, diagnostics)
 
     if len(top) > 0:
         best = top.iloc[0]
@@ -436,10 +581,14 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
 
             **Composition concept:** {best['composition_concept']}
 
-            **Illustrative process route:** {best['base_process_route']}
+            **Recipe mode:** {best.get('recipe_mode', 'family_envelope')}
+
+            **Closest analogue:** {best.get('matched_alloy_name', 'None')}
+
+            **Primary manufacturing route:** {best.get('manufacturing_primary_route', best.get('base_process_route', 'Not available'))}
 
             **Why it ranks first:** it currently offers the strongest combined balance of
-            performance summary, explicit downstream decision factors, and evidence/maturity.
+            performance summary, explicit downstream decision factors, evidence/maturity, and recipe support.
 
             **Key strengths:** {best.get('strengths', 'None surfaced')}
 
@@ -461,77 +610,33 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
             "Sustainability": "sustainability_score_v1",
             "Manufacturability": "manufacturability_score",
             "Route suitability": "route_suitability_score",
+            "Recipe support": "recipe_support_score",
             "Evidence / maturity": "evidence_maturity_score",
             "Overall fit": "overall_score",
         }
         chart_x_label = st.selectbox("X-axis", options=list(axis_options.keys()), index=2, key="tradeoff_x_axis")
-        chart_y_label = st.selectbox("Y-axis", options=list(axis_options.keys()), index=0, key="tradeoff_y_axis")
+        chart_y_label = st.selectbox("Y-axis", options=list(axis_options.keys()), index=6, key="tradeoff_y_axis")
         x_col = axis_options[chart_x_label]
         y_col = axis_options[chart_y_label]
 
         required_chart_cols = {"candidate_id", "material_family", x_col, y_col, "final_rank_score"}
         if required_chart_cols.issubset(set(top.columns)) and len(top) > 0:
             chart_df = top.copy()
-            chart_df["point_label"] = chart_df["candidate_id"]
-            chart_df["hover_label"] = (
-                chart_df["candidate_id"] + " | " + chart_df["material_family"]
-            )
-
+            chart_df["label"] = chart_df["candidate_id"] + " | " + chart_df["material_family"]
             fig = px.scatter(
                 chart_df,
                 x=x_col,
                 y=y_col,
                 size="final_rank_score",
-                text="point_label",
-                hover_name="hover_label",
-                hover_data={
-                    "material_family": True,
-                    "final_rank_score": ":.1f",
-                    x_col: ":.1f",
-                    y_col: ":.1f",
-                    "point_label": False,
-                    "hover_label": False,
-                },
+                text="candidate_id",
+                hover_name="label",
                 title=f"{chart_x_label} vs {chart_y_label}",
             )
-
-            fig.update_traces(
-                textposition="top center"
-            )
-
-            fig.update_layout(
-                margin=dict(l=20, r=20, t=50, b=20),
-                xaxis_title=chart_x_label,
-                yaxis_title=chart_y_label,
-            )
-
+            fig.update_traces(textposition="top center")
+            fig.update_layout(margin=dict(l=20, r=20, t=50, b=20))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Trade-off chart unavailable for the current result set.")
-
-        st.markdown("### Multidimensional comparison")
-        parallel_fig = build_parallel_coordinates_chart(top)
-        if parallel_fig is not None:
-            st.plotly_chart(parallel_fig, use_container_width=True)
-            if {"candidate_id", "final_rank_score"}.issubset(set(top.columns)):
-                parallel_key = top[["candidate_id", "final_rank_score"]].copy()
-                parallel_key = parallel_key.rename(
-                    columns={
-                        "candidate_id": "Candidate",
-                        "final_rank_score": "Final rank",
-                    }
-                )
-                st.caption("Use this key to identify the lines in the parallel coordinates chart.")
-                st.dataframe(parallel_key, use_container_width=True, hide_index=True)
-        else:
-            st.info("Parallel coordinates chart unavailable for the current result set.")
-
-        st.markdown("### Radar chart (top 3 only)")
-        radar_fig = build_radar_chart(top)
-        if radar_fig is not None:
-            st.plotly_chart(radar_fig, use_container_width=True)
-        else:
-            st.info("Radar chart unavailable for the current result set.")
 
     with right:
         st.markdown("## Near-feasible alternatives")
@@ -541,6 +646,8 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
                     "candidate_id",
                     "material_family",
                     "overall_score",
+                    "recipe_mode",
+                    "matched_alloy_name",
                     "confidence",
                     "strengths",
                     "watch_outs",
@@ -552,18 +659,19 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
                     "candidate_id": "Candidate",
                     "material_family": "Material family",
                     "overall_score": "Overall fit",
+                    "recipe_mode": "Recipe mode",
+                    "matched_alloy_name": "Analogue",
                     "confidence": "Confidence",
                     "strengths": "Strengths",
                     "watch_outs": "Watch-outs",
                 }
             )
             st.dataframe(near_display, use_container_width=True, hide_index=True)
-            st.caption(
-                "These concepts do not rank highest overall, but remain interesting trade-off options."
-            )
+            st.caption("These concepts do not rank highest overall, but remain interesting trade-off options.")
         else:
             st.write("No near-feasible alternatives were identified in the current screened set.")
 
+    render_multidimensional_charts(top)
     render_candidate_detail_cards(top)
 
     with st.expander("Method, provenance, and disclaimer"):
@@ -574,6 +682,7 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
             - retrieves baseline candidates from Materials Project  
             - preserves baseline survival inside the frozen candidate-generation layer  
             - adds an explicit downstream evaluation layer for cost, sustainability, manufacturability, route fit, and evidence  
+            - attaches a deterministic manufacturing-recipe layer using analogue matches where confidence is high and family-envelope fallback where it is not  
             - reranks already-plausible survivors without turning reranking into a survival filter
             """
         )
@@ -729,7 +838,7 @@ else:
         2. Set the operating temperature and process preference.  
         3. Choose the downstream decision scenario.  
         4. Click **Generate concepts**.  
-        5. Review the ranking table, strengths/watch-outs, trade-off chart, and candidate breakdowns.
+        5. Review the ranking table, recipe mode, trade-off chart, multidimensional charts, and detailed recipe cards.
         """
     )
 

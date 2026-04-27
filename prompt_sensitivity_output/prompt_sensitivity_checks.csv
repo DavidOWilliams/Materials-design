@@ -1,0 +1,8 @@
+case_id,status,top_candidate_id,top_material_family,issues
+baseline_hot_am,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+hot_conventional,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+cost_sustainability,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+lightweight_ti,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+refractory_extreme,success,mp-1228913,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+corrosion_wear,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.
+am_channels,success,mp-10885,Ni-based superalloy-like candidate,Top-ranked material family did not vary across all cases. | Top set used only family-envelope recipes. | Ni-based family dominated every case.

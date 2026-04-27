@@ -1,17 +1,16 @@
-
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
-import sys
+
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-import pandas as pd
 
 from src.requirement_inference import infer_requirements
 from src.candidate_generation import generate_candidates
@@ -20,7 +19,6 @@ from src.scoring import score_candidates
 from src.reranking import scientific_rerank
 from src.ranking import rank_candidates
 from src.provenance import add_provenance
-
 
 DEFAULT_CASES = [
     {
@@ -61,12 +59,51 @@ DEFAULT_CASES = [
 ]
 
 
+def _safe_len(value: Any) -> int:
+    if value is None:
+        return 0
+    try:
+        return int(len(value))
+    except Exception:
+        return 0
+
+
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value).strip().lower()
+    return text in {"1", "true", "yes", "y"}
+
+
 def _parse_list(value: Any) -> str:
     if isinstance(value, list):
         return "; ".join(str(v) for v in value)
     if value is None:
         return ""
     return str(value)
+
+
+def _read_csv_flex(path: Path) -> pd.DataFrame:
+    parsers = [
+        {"sep": ","},
+        {"sep": None, "engine": "python"},
+        {"sep": "\t"},
+        {"sep": r"\s{2,}", "engine": "python"},
+    ]
+    last_exc: Exception | None = None
+    for opts in parsers:
+        try:
+            df = pd.read_csv(path, **opts)
+            if len(df.columns) == 0:
+                continue
+            if len(df.columns) == 1 and "," not in str(df.columns[0]):
+                continue
+            return df
+        except Exception as exc:  # pragma: no cover - defensive
+            last_exc = exc
+    raise ValueError(f"Could not parse CSV case file: {path}. Last parser error: {last_exc}")
 
 
 def load_cases(path: Path | None) -> pd.DataFrame:
@@ -83,59 +120,41 @@ def load_cases(path: Path | None) -> pd.DataFrame:
 
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        parsers = [
-            {"sep": ","},
-            {"sep": None, "engine": "python"},
-            {"sep": "	"},
-            {"sep": r"\s{2,}", "engine": "python"},
-        ]
-        last_exc = None
-        for opts in parsers:
-            try:
-                df = pd.read_csv(path, **opts)
-                if len(df.columns) == 1 and "," not in str(df.columns[0]):
-                    # Likely still not split correctly; keep trying.
-                    continue
-                if df.empty and list(df.columns) == []:
-                    continue
-                if df.empty and "application_prompt" not in df.columns:
-                    continue
-                return df
-            except Exception as exc:
-                last_exc = exc
-        raise ValueError(
-            f"Could not parse case CSV: {path}. Last parser error: {last_exc}"
-        )
-    if suffix in {".xlsx", ".xls"}:
-        return pd.read_excel(path)
-    if suffix == ".json":
+        df = _read_csv_flex(path)
+    elif suffix in {".xlsx", ".xls"}:
+        df = pd.read_excel(path)
+    elif suffix == ".json":
         raw = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(raw, dict) and "cases" in raw:
             raw = raw["cases"]
-        return pd.DataFrame(raw)
-    raise ValueError(f"Unsupported case file type: {path.suffix}")
+        df = pd.DataFrame(raw)
+    else:
+        raise ValueError(f"Unsupported case file type: {path.suffix}")
 
+    if df.empty:
+        print(f"Case file parsed but contained no rows: {path}. Using built-in default cases instead.")
+        return pd.DataFrame(DEFAULT_CASES)
 
-def _safe_len(value: Any) -> int:
-    if value is None:
-        return 0
-    try:
-        return int(len(value))
-    except Exception:
-        return 0
+    required = ["case_id", "application_prompt", "operating_temperature", "am_preferred", "scenario_profile"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Case file is missing required columns: {missing}. Detected columns: {list(df.columns)}")
+
+    return df
 
 
 def run_case(case_row: pd.Series) -> Dict[str, Any]:
     case_id = str(case_row.get("case_id", "case"))
     prompt = str(case_row.get("application_prompt", ""))
     temp = int(case_row.get("operating_temperature", 850))
-    am_preferred = bool(case_row.get("am_preferred", True))
+    am_preferred = _to_bool(case_row.get("am_preferred", True))
     scenario_profile = str(case_row.get("scenario_profile", "Balanced"))
 
     requirements = infer_requirements(prompt, temp, am_preferred)
     requirements = apply_decision_profile(requirements, scenario_profile)
     candidate_result = generate_candidates(requirements)
 
+    diagnostics = candidate_result.get("diagnostics", {}) or {}
     result: Dict[str, Any] = {
         "case_id": case_id,
         "application_prompt": prompt,
@@ -157,43 +176,13 @@ def run_case(case_row: pd.Series) -> Dict[str, Any]:
         "top5_families": "",
         "score_range_top5": 0.0,
         "recipe_support_range_top5": 0.0,
-        "warnings": _parse_list(candidate_result.get("diagnostics", {}).get("warnings", [])),
+        "warnings": _parse_list(diagnostics.get("warnings", [])),
+        "raw_docs_retrieved": diagnostics.get("raw_docs_retrieved", 0),
+        "unique_docs_after_request_acceptance": diagnostics.get("unique_docs_after_request_acceptance", 0),
+        "rejected_by_family": diagnostics.get("rejected_by_family", 0),
+        "rejected_by_complexity_gate": diagnostics.get("rejected_by_complexity_gate", 0),
+        "baseline_final_candidate_count": diagnostics.get("final_candidate_count", 0),
     }
-
-    diagnostics = candidate_result.get("diagnostics", {})
-    for key in ["raw_docs_retrieved", "unique_docs_after_request_acceptance", "rejected_by_family", "rejected_by_complexity_gate", "final_candidate_count"]:
-        if key in diagnostics:
-            result[key] = diagnostics.get(key)
-
-    if candidate_result.get("status") != "success":
-        result["final_candidate_count"] = _safe_len(candidate_result.get("candidates"))
-        return {
-            "summary": result,
-            "requirements": pd.DataFrame([requirements]),
-            "candidates": pd.DataFrame(),
-            "top": pd.DataFrame(),
-            "near_miss": pd.DataFrame(),
-            "diagnostics": pd.json_normalize(diagnostics) if diagnostics else pd.DataFrame(),
-        }
-
-    candidates = candidate_result["candidates"]
-    scored = score_candidates(candidates, requirements)
-    reranked = scientific_rerank(scored, requirements)
-    reranked = add_provenance(reranked)
-    top, near_miss = rank_candidates(reranked)
-
-    result["final_candidate_count"] = int(len(reranked))
-    if len(top) > 0:
-        result["top_candidate_id"] = str(top.iloc[0].get("candidate_id", ""))
-        result["top_material_family"] = str(top.iloc[0].get("material_family", ""))
-        result["recipe_modes_top"] = "; ".join(sorted(set(top["recipe_mode"].astype(str).tolist()))) if "recipe_mode" in top.columns else ""
-        result["analogues_top"] = "; ".join(sorted({str(v) for v in top.get("matched_alloy_name", pd.Series(dtype=str)).fillna("").tolist() if str(v).strip()}))
-        result["top5_ids"] = "; ".join(top["candidate_id"].astype(str).tolist())
-        result["top5_families"] = "; ".join(top["material_family"].astype(str).tolist())
-        if "final_rank_score" in top.columns and len(top) > 1:
-            result["score_range_top5"] = round(float(top["final_rank_score"].max() - top["final_rank_score"].min()), 2)
-        if "recipe_support_score" in top.columns and len(top) > 1:
-            result["recipe_support_range_top5"] = round(float(top["recipe_support_score"].max() - top["recipe_support_score"].min()), 2)
 
     req_df = pd.DataFrame([{
         "case_id": case_id,
@@ -207,20 +196,55 @@ def run_case(case_row: pd.Series) -> Dict[str, Any]:
         "notes": _parse_list(requirements.get("notes")),
     }])
 
+    if candidate_result.get("status") != "success":
+        diag_df = pd.json_normalize(diagnostics) if diagnostics else pd.DataFrame()
+        if not diag_df.empty:
+            diag_df.insert(0, "case_id", case_id)
+        return {
+            "summary": result,
+            "requirements": req_df,
+            "candidates": pd.DataFrame(),
+            "top": pd.DataFrame(),
+            "near_miss": pd.DataFrame(),
+            "diagnostics": diag_df,
+        }
+
+    candidates = candidate_result["candidates"]
+    scored = score_candidates(candidates, requirements)
+    reranked = scientific_rerank(scored, requirements)
+    reranked = add_provenance(reranked)
+    top, near_miss = rank_candidates(reranked)
+
+    result["final_candidate_count"] = _safe_len(reranked)
+    if _safe_len(top) > 0:
+        top0 = top.iloc[0]
+        result["top_candidate_id"] = str(top0.get("candidate_id", ""))
+        result["top_material_family"] = str(top0.get("material_family", ""))
+        if "recipe_mode" in top.columns:
+            result["recipe_modes_top"] = "; ".join(sorted(set(top["recipe_mode"].astype(str).tolist())))
+        if "matched_alloy_name" in top.columns:
+            result["analogues_top"] = "; ".join(sorted({str(v) for v in top["matched_alloy_name"].fillna("").tolist() if str(v).strip()}))
+        result["top5_ids"] = "; ".join(top["candidate_id"].astype(str).tolist()) if "candidate_id" in top.columns else ""
+        result["top5_families"] = "; ".join(top["material_family"].astype(str).tolist()) if "material_family" in top.columns else ""
+        if "final_rank_score" in top.columns and _safe_len(top) > 1:
+            result["score_range_top5"] = round(float(top["final_rank_score"].max() - top["final_rank_score"].min()), 2)
+        if "recipe_support_score" in top.columns and _safe_len(top) > 1:
+            result["recipe_support_range_top5"] = round(float(top["recipe_support_score"].max() - top["recipe_support_score"].min()), 2)
+
     candidate_detail = reranked.copy()
-    if len(candidate_detail) > 0:
+    if not candidate_detail.empty:
         candidate_detail.insert(0, "case_id", case_id)
 
     top_detail = top.copy()
-    if len(top_detail) > 0:
+    if not top_detail.empty:
         top_detail.insert(0, "case_id", case_id)
 
     near_detail = near_miss.copy()
-    if len(near_detail) > 0:
+    if not near_detail.empty:
         near_detail.insert(0, "case_id", case_id)
 
     diag_df = pd.json_normalize(diagnostics) if diagnostics else pd.DataFrame()
-    if len(diag_df) > 0:
+    if not diag_df.empty:
         diag_df.insert(0, "case_id", case_id)
 
     return {
@@ -234,10 +258,10 @@ def run_case(case_row: pd.Series) -> Dict[str, Any]:
 
 
 def build_cross_case_checks(summary_df: pd.DataFrame) -> pd.DataFrame:
-    rows: List[Dict[str, Any]] = []
     if summary_df.empty:
         return pd.DataFrame()
 
+    rows: List[Dict[str, Any]] = []
     allowed_family_sets = summary_df["allowed_material_families"].astype(str).nunique()
     top5_sets = summary_df["top5_ids"].astype(str).nunique()
     top_family_sets = summary_df["top_material_family"].astype(str).nunique()
@@ -254,22 +278,31 @@ def build_cross_case_checks(summary_df: pd.DataFrame) -> pd.DataFrame:
             issues.append("Top-5 final-rank spread is narrow (<3).")
         if float(row.get("recipe_support_range_top5", 0.0) or 0.0) < 4.0:
             issues.append("Top-5 recipe-support spread is narrow (<4).")
-        recipe_modes_top = str(row.get("recipe_modes_top", ""))
-        if recipe_modes_top and recipe_modes_top.strip().lower() == "family_envelope":
+        if str(row.get("recipe_modes_top", "")).strip().lower() == "family_envelope":
             issues.append("Top set used only family-envelope recipes.")
         if str(row.get("top_material_family", "")).startswith("Ni-based") and top_family_sets == 1:
             issues.append("Ni-based family dominated every case.")
+
         rows.append({
             "case_id": row["case_id"],
             "status": row["status"],
-            "top_candidate_id": row["top_candidate_id"],
-            "top_material_family": row["top_material_family"],
+            "top_candidate_id": row.get("top_candidate_id", ""),
+            "top_material_family": row.get("top_material_family", ""),
             "issues": " | ".join(issues) if issues else "No immediate flattening flags.",
         })
     return pd.DataFrame(rows)
 
 
-def save_outputs(output_dir: Path, summary_df: pd.DataFrame, checks_df: pd.DataFrame, requirements_df: pd.DataFrame, candidates_df: pd.DataFrame, top_df: pd.DataFrame, near_df: pd.DataFrame, diagnostics_df: pd.DataFrame) -> None:
+def save_outputs(
+    output_dir: Path,
+    summary_df: pd.DataFrame,
+    checks_df: pd.DataFrame,
+    requirements_df: pd.DataFrame,
+    candidates_df: pd.DataFrame,
+    top_df: pd.DataFrame,
+    near_df: pd.DataFrame,
+    diagnostics_df: pd.DataFrame,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     summary_df.to_csv(output_dir / "prompt_sensitivity_summary.csv", index=False)
@@ -327,7 +360,6 @@ def main() -> None:
     diagnostics_df = pd.concat(diag_parts, ignore_index=True) if diag_parts else pd.DataFrame()
 
     save_outputs(Path(args.output_dir), summary_df, checks_df, requirements_df, candidates_df, top_df, near_df, diagnostics_df)
-
     print(f"Wrote harness outputs to {Path(args.output_dir).resolve()}")
 
 

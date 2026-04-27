@@ -1,0 +1,8 @@
+case_id,application_prompt,operating_temperature,am_preferred,scenario_profile
+baseline_hot_am,"Design a material for a hot aviation component operating at 850°C where creep is critical and additive manufacturing is preferred.",850,True,Balanced
+hot_conventional,"Design a material for a hot aviation component operating at 850°C where creep is critical and conventional manufacturing is preferred.",850,False,Balanced
+cost_sustainability,"Design a material for a component operating at 750°C where cost and sustainability matter almost as much as temperature capability.",750,False,Cost & sustainability-aware
+lightweight_ti,"Design a lightweight aerospace material for a component operating at 350°C where strength-to-weight ratio is critical and additive manufacturing is preferred.",350,True,Balanced
+refractory_extreme,"Design a material for an aerospace component operating at 1100°C where extreme temperature capability matters more than cost.",1100,False,Performance-first
+corrosion_wear,"Design a material for a hot aerospace component operating at 900°C where oxidation resistance, hot corrosion resistance, and wear resistance matter.",900,False,Balanced
+am_channels,"Design a material for a lightweight aerospace part with internal channels operating at 650°C where additive manufacturing is strongly preferred.",650,True,AM route-first

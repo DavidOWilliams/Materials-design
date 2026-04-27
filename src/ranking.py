@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from typing import Tuple
@@ -9,26 +10,23 @@ def rank_candidates(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if df is None or len(df) == 0:
         return df, df
 
-    if "final_rank_score" in df.columns:
-        sort_col = "final_rank_score"
-    elif "scientific_rerank_score" in df.columns:
-        sort_col = "scientific_rerank_score"
-    else:
-        sort_col = "overall_score"
-
+    sort_col = "final_rank_score" if "final_rank_score" in df.columns else "overall_score"
     ranked = df.sort_values(sort_col, ascending=False).reset_index(drop=True)
-    top = ranked.head(5).copy()
 
+    top = ranked.head(5).copy()
     remainder = ranked.iloc[5:].copy()
+
     if remainder.empty:
         return top, remainder
 
+    recipe_support = remainder["recipe_support_score"] if "recipe_support_score" in remainder.columns else pd.Series(index=remainder.index, dtype=float)
     tradeoff_mask = (
         remainder["overall_score"].between(55, 74)
         | (remainder.get("through_life_cost_score", pd.Series(index=remainder.index, dtype=float)).fillna(0) >= 72)
         | (remainder.get("sustainability_score_v1", pd.Series(index=remainder.index, dtype=float)).fillna(0) >= 72)
         | (remainder.get("manufacturability_score", pd.Series(index=remainder.index, dtype=float)).fillna(0) >= 72)
         | (remainder.get("route_suitability_score", pd.Series(index=remainder.index, dtype=float)).fillna(0) >= 72)
+        | (recipe_support.fillna(0) >= 72)
     )
 
     near_miss = remainder[tradeoff_mask].copy()

@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
@@ -58,6 +59,22 @@ def _profile_bonus(row: pd.Series, profile_name: str) -> Tuple[float, List[str]]
     return round(bonus, 2), reasons
 
 
+def _recipe_bonus(row: pd.Series) -> Tuple[float, str]:
+    recipe_mode = str(row.get("recipe_mode", "") or "")
+    support = float(row.get("recipe_support_score", 0.0) or 0.0)
+    matched = str(row.get("matched_alloy_name", "") or "").strip()
+
+    if recipe_mode == "named_analogue":
+        bonus = min(3.0, max(0.0, (support - 65.0) * 0.08))
+        reason = f"named analogue-backed recipe support ({matched})" if matched else "named analogue-backed recipe support"
+        return round(bonus, 2), reason if bonus > 0 else ""
+    if recipe_mode == "analogue_guided":
+        bonus = min(1.8, max(0.0, (support - 60.0) * 0.05))
+        reason = f"analogue-guided manufacturing recipe ({matched})" if matched else "analogue-guided manufacturing recipe"
+        return round(bonus, 2), reason if bonus > 0 else ""
+    return 0.0, ""
+
+
 def scientific_rerank(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.DataFrame:
     if df is None or len(df) == 0:
         return df
@@ -71,13 +88,22 @@ def scientific_rerank(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.Data
 
     profile_bonus_values: List[float] = []
     profile_bonus_reason_values: List[str] = []
+    recipe_bonus_values: List[float] = []
+    recipe_bonus_reason_values: List[str] = []
+
     for _, row in out.iterrows():
         bonus, reasons = _profile_bonus(row, profile_name)
         profile_bonus_values.append(bonus)
         profile_bonus_reason_values.append("; ".join(reasons))
 
+        recipe_bonus, recipe_reason = _recipe_bonus(row)
+        recipe_bonus_values.append(recipe_bonus)
+        recipe_bonus_reason_values.append(recipe_reason)
+
     out["profile_bonus"] = profile_bonus_values
     out["profile_bonus_reason"] = profile_bonus_reason_values
+    out["recipe_rerank_bonus"] = recipe_bonus_values
+    out["recipe_rerank_reason"] = recipe_bonus_reason_values
 
     out["scientific_rerank_score"] = (
         out["overall_score"]
@@ -85,6 +111,7 @@ def scientific_rerank(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.Data
         + out["chemistry_fit_score"]
         + out["rerank_evidence_bonus"]
         + out["profile_bonus"]
+        + out["recipe_rerank_bonus"]
     ).round(2)
     out["final_rank_score"] = out["scientific_rerank_score"]
 
@@ -96,12 +123,15 @@ def scientific_rerank(df: pd.DataFrame, requirements: Dict[str, Any]) -> pd.Data
             reasons.append("good chemistry-fit signal")
         if float(row.get("rerank_evidence_bonus", 0.0)) >= 5:
             reasons.append("good evidence/maturity support")
+        recipe_text = str(row.get("recipe_rerank_reason", "") or "").strip()
+        if recipe_text:
+            reasons.append(recipe_text)
         profile_text = str(row.get("profile_bonus_reason", "") or "").strip()
         if profile_text:
             reasons.append(profile_text)
         if not reasons:
             return "Ordered using the explicit downstream evaluation layer without any survival filtering."
-        return "Ordered using the explicit downstream evaluation layer: " + "; ".join(reasons) + "."
+        return "Ordered using " + "; ".join(reasons) + "."
 
     out["rerank_reason"] = out.apply(rerank_reason, axis=1)
     return out

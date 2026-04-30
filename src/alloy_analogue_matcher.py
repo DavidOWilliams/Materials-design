@@ -299,10 +299,107 @@ def classify_match_mode(weighted_score: float) -> tuple[str, str]:
     return "family_envelope", "family_envelope"
 
 
+
+
+def _direct_engineering_analogue_match(
+    candidate_row: pd.Series,
+    knowledge_table: pd.DataFrame,
+    *,
+    am_preferred: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Return a direct named-analogue match for curated knowledge-table candidates.
+
+    Engineering analogue candidates are generated from the same curated knowledge table.
+    They should therefore be able to attach directly back to their seed row rather than
+    re-entering the fuzzy similarity thresholds used for raw MP crystal records.
+    """
+    source_id = str(
+        candidate_row.get("source_alloy_id")
+        or candidate_row.get("analogue_seed_alloy_id")
+        or ""
+    ).strip()
+    candidate_source = str(candidate_row.get("candidate_source", "") or "").strip()
+    if not source_id or candidate_source != "engineering_analogue":
+        return None
+
+    matches = knowledge_table[knowledge_table["alloy_id"].astype(str) == source_id]
+    if matches.empty:
+        return None
+
+    analogue_row = matches.iloc[0]
+    candidate_id = str(candidate_row.get("candidate_id", "unknown"))
+    candidate_family = _normalize_family(candidate_row.get("material_family"))
+    analogue_family = _normalize_family(analogue_row.get("family"))
+    if candidate_family != analogue_family:
+        return None
+
+    route_score = _route_compatibility(analogue_row, am_preferred=am_preferred)
+    template_key = str(analogue_row.get("preferred_recipe_template", "") or "").strip()
+    if not template_key:
+        template_key = f"{candidate_family.lower().replace('-', '_')}_family_envelope"
+
+    candidate_elements = set(_parse_chemsys(candidate_row.get("chemsys")))
+    if not candidate_elements:
+        candidate_elements = set(analogue_row.get("composition_elements_list") or [])
+
+    weighted_score = round(min(0.98, 0.91 + route_score * 0.07), 4)
+    top_candidates_json = json.dumps([
+        {
+            "alloy_id": str(analogue_row.get("alloy_id", "")),
+            "canonical_name": str(analogue_row.get("canonical_name", "")),
+            "weighted_score": weighted_score,
+            "similarity_score": 1.0,
+            "route_compatibility_score": round(route_score, 4),
+            "base_component": 0.45,
+            "major_component": 0.35,
+            "secondary_component": 0.20,
+            "chemistry_penalty": 0.0,
+            "match_source": "direct_engineering_analogue_seed",
+        }
+    ])
+
+    return {
+        "candidate_id": candidate_id,
+        "recipe_mode": "named_analogue",
+        "analogue_match_class": "named_analogue",
+        "matched_alloy_id": str(analogue_row.get("alloy_id", "")),
+        "matched_alloy_name": str(analogue_row.get("canonical_name", "")),
+        "matched_family": candidate_family,
+        "analogue_similarity_score": 1.0,
+        "analogue_route_compatibility_score": round(route_score, 2),
+        "analogue_confidence": "High",
+        "analogue_explanation": (
+            f"Direct named-analogue match to curated knowledge-table seed "
+            f"{analogue_row.get('canonical_name')} ({analogue_row.get('alloy_id')}). "
+            "This candidate was introduced as an engineering analogue supplement, not as a raw Materials Project crystal record."
+        ),
+        "primary_template_key": template_key,
+        "candidate_family_normalized": candidate_family,
+        "candidate_elements": sorted(candidate_elements),
+        "analogue_weighted_score": weighted_score,
+        "analogue_base_component": 100.0,
+        "analogue_major_component": 100.0,
+        "analogue_secondary_component": 100.0,
+        "analogue_chemistry_penalty": 0.0,
+        "analogue_alloy_likeness_input": 100.0,
+        "analogue_stable_bonus": 0.0,
+        "analogue_theoretical_penalty": 0.0,
+        "analogue_family_candidate_count": int(len(knowledge_table[knowledge_table["family_normalized"] == candidate_family])),
+        "top_analogue_candidates_json": top_candidates_json,
+    }
+
 def choose_best_analogue(candidate_row: pd.Series, knowledge_table: pd.DataFrame, *, am_preferred: bool = False) -> Dict[str, Any]:
     candidate_id = str(candidate_row.get("candidate_id", "unknown"))
     candidate_family = _normalize_family(candidate_row.get("material_family"))
     candidate_elements = tuple(_parse_chemsys(candidate_row.get("chemsys")))
+
+    direct_match = _direct_engineering_analogue_match(
+        candidate_row,
+        knowledge_table,
+        am_preferred=am_preferred,
+    )
+    if direct_match is not None:
+        return direct_match
 
     family_slice = knowledge_table[knowledge_table["family_normalized"] == candidate_family].copy()
     family_slice_count = int(len(family_slice))

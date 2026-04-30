@@ -101,7 +101,35 @@ def _confidence_to_numeric(value: Any) -> float:
     return mapping.get(str(value or "").strip(), 45.0)
 
 
-def _recipe_support_components(candidate_row: pd.Series, match_row: pd.Series) -> Dict[str, float]:
+def _schema_alignment_component(candidate_row: pd.Series, requirements: Optional[Dict[str, Any]] = None) -> float:
+    requirements = requirements or {}
+    active_factors = list(requirements.get("active_factor_set") or requirements.get("scope_plan", {}).get("active_factor_set", []) or [])
+    optional_score_cols = {
+        "lightweight": "lightweight_score",
+        "oxidation": "oxidation_score",
+        "hot_corrosion": "hot_corrosion_score",
+        "wear": "wear_score",
+        "erosion": "erosion_score",
+        "fatigue": "fatigue_score",
+        "thermal_fatigue": "thermal_fatigue_score",
+        "repairability": "repairability_score",
+        "certification_maturity": "certification_maturity_score",
+    }
+    scores: List[float] = []
+    for factor in active_factors:
+        col = optional_score_cols.get(factor)
+        if col and col in candidate_row.index:
+            try:
+                scores.append(float(candidate_row.get(col, 0.0) or 0.0))
+            except Exception:
+                pass
+    if not scores:
+        return 0.0
+    avg = sum(scores) / len(scores)
+    return round(max(-2.0, min(5.0, (avg - 60.0) * 0.10)), 2)
+
+
+def _recipe_support_components(candidate_row: pd.Series, match_row: pd.Series, requirements: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     mode = str(match_row.get("recipe_mode", "") or "")
     similarity = float(match_row.get("analogue_similarity_score", 0.0) or 0.0) * 100.0
     route_match = float(match_row.get("analogue_route_compatibility_score", 0.0) or 0.0) * 100.0
@@ -123,6 +151,7 @@ def _recipe_support_components(candidate_row: pd.Series, match_row: pd.Series) -
         "route_suitability_component": round(route_suitability * 0.12, 2),
         "evidence_component": round(evidence * 0.12, 2),
         "alloy_likeness_component": round(alloy_likeness * 0.06, 2),
+        "schema_alignment_component": _schema_alignment_component(candidate_row, requirements),
         "mode_adjustment": 6.0 if mode == "named_analogue" else 2.0 if mode == "analogue_guided" else -6.0,
         "stable_adjustment": 3.0 if stable else 0.0,
         "theoretical_adjustment": -5.0 if theoretical else 0.0,
@@ -130,8 +159,8 @@ def _recipe_support_components(candidate_row: pd.Series, match_row: pd.Series) -
     return components
 
 
-def _recipe_support_score(candidate_row: pd.Series, match_row: pd.Series) -> float:
-    components = _recipe_support_components(candidate_row, match_row)
+def _recipe_support_score(candidate_row: pd.Series, match_row: pd.Series, requirements: Optional[Dict[str, Any]] = None) -> float:
+    components = _recipe_support_components(candidate_row, match_row, requirements=requirements)
     score = sum(components.values())
     return round(max(20.0, min(95.0, score)), 2)
 
@@ -215,8 +244,8 @@ def attach_manufacturing_recipes(candidates_df: pd.DataFrame, requirements: Opti
             requirements=requirements,
         )
         recipe_packages.append(recipe_package)
-        recipe_support_scores.append(_recipe_support_score(candidate_row, match_row))
-        recipe_support_breakdowns.append(json.dumps(_recipe_support_components(candidate_row, match_row)))
+        recipe_support_scores.append(_recipe_support_score(candidate_row, match_row, requirements=requirements))
+        recipe_support_breakdowns.append(json.dumps(_recipe_support_components(candidate_row, match_row, requirements=requirements)))
 
     for column in match_df.columns:
         if column == "candidate_id":

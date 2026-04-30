@@ -9,8 +9,6 @@ import pandas as pd
 import streamlit as st
 from mp_api.client import MPRester
 
-from src.engineering_analogue_candidates import add_engineering_analogue_candidates
-
 DEFAULT_FIELDS = [
     "material_id",
     "formula_pretty",
@@ -60,12 +58,6 @@ LOCAL_NON_TARGET_EXCLUSIONS = {
 
 OUTPUT_COLUMNS = [
     "candidate_id",
-    "candidate_source",
-    "candidate_role",
-    "source_alloy_id",
-    "source_alloy_name",
-    "source_family",
-    "source_selection_reason",
     "material_family",
     "composition_concept",
     "base_process_route",
@@ -170,71 +162,6 @@ FAMILY_LABEL_BY_KEY = {
     "fe_ni": "Fe-Ni high-temperature candidate",
 }
 
-SCOPE_FAMILY_TO_LABEL_KEY = {
-    "Ni-based superalloy": "ni",
-    "Co-based alloy": "co",
-    "Refractory alloy concept": "refractory",
-    "Ti alloy": "ti",
-    "Fe-Ni alloy": "fe_ni",
-}
-
-CANDIDATE_LABEL_TO_SCOPE_FAMILY = {
-    FAMILY_LABEL_BY_KEY["ni"]: "Ni-based superalloy",
-    FAMILY_LABEL_BY_KEY["co"]: "Co-based alloy",
-    FAMILY_LABEL_BY_KEY["refractory"]: "Refractory alloy concept",
-    FAMILY_LABEL_BY_KEY["ti"]: "Ti alloy",
-    FAMILY_LABEL_BY_KEY["fe_ni"]: "Fe-Ni alloy",
-}
-
-FAMILY_SEED_CHEMSYS = {
-    "Ni-based superalloy": [
-        "Ni-Cr-Al",
-        "Ni-Cr-Co",
-        "Ni-Co-Al",
-        "Ni-Cr-Ti",
-        "Ni-Cr-Co-Al",
-        "Ni-Cr-Co-Ti",
-        "Ni-Cr-Co-Al-Ti",
-        "Ni-Cr-Co-Mo",
-    ],
-    "Co-based alloy": [
-        "Co-Cr-W",
-        "Co-Cr-Ni",
-        "Co-Ni-W",
-        "Co-Cr-Mo",
-        "Co-Cr-Ni-W",
-        "Co-Cr-W-Ni",
-    ],
-    "Fe-Ni alloy": [
-        "Fe-Ni-Cr",
-        "Fe-Ni-Cr-Al",
-        "Fe-Ni-Cr-Co",
-        "Fe-Ni-Cr-Co-Al",
-    ],
-    "Ti alloy": [
-        "Ti-Al-V",
-        "Ti-Al-Mo",
-        "Ti-Al-Nb",
-        "Ti-V-Nb",
-        "Ti-Al-V-Mo",
-    ],
-    "Refractory alloy concept": [
-        "Mo-Nb-Ti",
-        "Mo-Nb-Ta",
-        "Nb-Ti-Zr",
-        "Mo-Nb-Ti-Zr",
-        "Mo-Nb-Ta-Ti",
-    ],
-}
-
-DEFAULT_FAMILY_PRIOR_ORDER = [
-    "Ni-based superalloy",
-    "Co-based alloy",
-    "Refractory alloy concept",
-    "Ti alloy",
-    "Fe-Ni alloy",
-]
-
 def _empty_candidates_df() -> pd.DataFrame:
     return pd.DataFrame(columns=OUTPUT_COLUMNS)
 
@@ -263,42 +190,8 @@ def _get_mp_api_key() -> str | None:
 
     return None
 
-def _family_priors(requirements: Dict[str, Any]) -> Dict[str, float]:
-    priors = requirements.get("family_priors")
-    if not priors:
-        priors = (requirements.get("scope_plan", {}) or {}).get("family_priors")
-    if not isinstance(priors, dict):
-        return {}
-    out: Dict[str, float] = {}
-    for family, value in priors.items():
-        try:
-            out[str(family)] = float(value)
-        except Exception:
-            continue
-    return out
-
-
-def _ordered_allowed_families(requirements: Dict[str, Any]) -> List[str]:
-    families = [str(f) for f in requirements.get("allowed_material_families", []) or []]
-    priors = _family_priors(requirements)
-    if not families:
-        families = [family for family in DEFAULT_FAMILY_PRIOR_ORDER if family in FAMILY_SEED_CHEMSYS]
-
-    indexed = {family: idx for idx, family in enumerate(DEFAULT_FAMILY_PRIOR_ORDER)}
-    return sorted(
-        list(dict.fromkeys(families)),
-        key=lambda family: (priors.get(family, 0.0), -indexed.get(family, 999)),
-        reverse=True,
-    )
-
-
 def _choose_chemsys(requirements: Dict[str, Any]) -> List[str]:
-    """Choose requested chemistry systems using prompt-sensitive family priors.
-
-    This function still only defines the retrieval scope. It does not decide candidate
-    survival or apply downstream soft preferences. The important change is that Ni no
-    longer consumes the fixed query budget simply because it appears first in the code.
-    """
+    families = requirements.get("allowed_material_families", [])
 
     forced_chemsys = requirements.get("forced_chemsys")
     if forced_chemsys:
@@ -306,31 +199,61 @@ def _choose_chemsys(requirements: Dict[str, Any]) -> List[str]:
             return [forced_chemsys]
         return list(dict.fromkeys(forced_chemsys))
 
-    priors = _family_priors(requirements)
-    ordered_families = _ordered_allowed_families(requirements)
-
     chemsys: List[str] = []
-    quotas = [6, 4, 3, 3, 2]
 
-    for idx, family in enumerate(ordered_families):
-        seeds = FAMILY_SEED_CHEMSYS.get(family, [])
-        if not seeds:
-            continue
-        quota = quotas[idx] if idx < len(quotas) else 2
-        # Keep strongly relevant lower-ranked families visible enough for recovery.
-        if priors.get(family, 0.0) >= 0.55:
-            quota = max(quota, min(5, len(seeds)))
-        elif priors.get(family, 0.0) >= 0.35:
-            quota = max(quota, min(3, len(seeds)))
-        chemsys.extend(seeds[:quota])
-
-    # If a family was allowed but missed because the budget filled early, reserve a
-    # minimal representation for it before truncating. This prevents prompt-favoured
-    # non-Ni families from silently disappearing from the retrieval plan.
-    for family in ordered_families:
-        seeds = FAMILY_SEED_CHEMSYS.get(family, [])
-        if seeds and not any(item in chemsys for item in seeds):
-            chemsys.extend(seeds[:2])
+    if "Ni-based superalloy" in families:
+        chemsys.extend(
+            [
+                "Ni-Cr-Al",
+                "Ni-Cr-Co",
+                "Ni-Co-Al",
+                "Ni-Cr-Ti",
+                "Ni-Cr-Co-Al",
+                "Ni-Cr-Co-Ti",
+                "Ni-Cr-Co-Al-Ti",
+                "Ni-Cr-Co-Mo",
+            ]
+        )
+    if "Co-based alloy" in families:
+        chemsys.extend(
+            [
+                "Co-Cr-W",
+                "Co-Cr-Ni",
+                "Co-Ni-W",
+                "Co-Cr-Mo",
+                "Co-Cr-Ni-W",
+                "Co-Cr-W-Ni",
+            ]
+        )
+    if "Fe-Ni alloy" in families:
+        chemsys.extend(
+            [
+                "Fe-Ni-Cr",
+                "Fe-Ni-Cr-Al",
+                "Fe-Ni-Cr-Co",
+                "Fe-Ni-Cr-Co-Al",
+            ]
+        )
+    if "Ti alloy" in families:
+        chemsys.extend(
+            [
+                "Ti-Al-V",
+                "Ti-Al-Mo",
+                "Ti-Al-Nb",
+                "Ti-V-Nb",
+                "Ti-Al-V-Mo",
+            ]
+        )
+    if "Refractory alloy concept" in families:
+        chemsys.extend(
+            [
+                "Mo-Nb-Ti",
+                "Mo-Nb-Ta",
+                "Nb-Ti-Zr",
+                "Mo-Nb-Ti-Zr",
+                "Mo-Nb-Ta-Ti",
+            ]
+        )
 
     return list(dict.fromkeys(chemsys))[:16]
 
@@ -368,74 +291,31 @@ def _fallback_chemsys_map() -> Dict[str, List[str]]:
         ],
     }
 
-def _infer_family_from_chemsys_pattern(requested_chemsys: str) -> str | None:
-    """Infer intended family from the requested chemistry itself.
-
-    This intentionally runs before any allowed-family fallback. A broad prompt may keep
-    Ni, Co, Ti, and refractory families in scope, but a request for Ti-Al-V must still be
-    treated as a Ti request; it must not be overwritten by the mere presence of Ni in the
-    allowed-family list.
-    """
-    elements = _parse_elements(requested_chemsys)
-    if not elements:
-        return None
-
-    element_set = set(elements)
-    first = elements[0]
-
-    if first == "Fe" and "Ni" in element_set:
-        return FAMILY_LABEL_BY_KEY["fe_ni"]
-    if first == "Ni":
-        return FAMILY_LABEL_BY_KEY["ni"]
-    if first == "Co":
-        return FAMILY_LABEL_BY_KEY["co"]
-    if first == "Ti":
-        return FAMILY_LABEL_BY_KEY["ti"]
-
-    refractory_bases = {"Mo", "Nb", "Ta", "W"}
-    refractory_additions = {"Ti", "Zr", "Hf"}
-    if (
-        len(element_set.intersection(refractory_bases)) >= 2
-        or (
-            len(element_set.intersection(refractory_bases)) >= 1
-            and len(element_set.intersection(refractory_additions)) >= 2
-        )
-    ):
-        return FAMILY_LABEL_BY_KEY["refractory"]
-
-    if "Co" in element_set and "Cr" in element_set and len(element_set.intersection({"W", "Mo", "Ni", "Ta"})) >= 1:
-        return FAMILY_LABEL_BY_KEY["co"]
-    if "Ni" in element_set and len(element_set.intersection(NI_FAMILY_HINTS)) >= 1:
-        return FAMILY_LABEL_BY_KEY["ni"]
-    if "Ti" in element_set and len(element_set.intersection(TI_FAMILY_HINTS)) >= 1:
-        return FAMILY_LABEL_BY_KEY["ti"]
-
-    return None
-
-
-def _family_label_to_scope_key(candidate_label: str | None) -> str | None:
-    if not candidate_label:
-        return None
-    return CANDIDATE_LABEL_TO_SCOPE_FAMILY.get(str(candidate_label))
-
-
 def _family_aware_fallbacks(requested_chemsys: str, allowed_families: List[str]) -> List[str]:
     explicit = _fallback_chemsys_map().get(requested_chemsys, [])
     if explicit:
         return list(dict.fromkeys(explicit))
 
-    requested_family = _infer_family_from_chemsys_pattern(requested_chemsys)
-    requested_scope_family = _family_label_to_scope_key(requested_family)
     family_set = set(allowed_families or [])
 
-    # Only use fallbacks from the same requested family. This prevents a Ti or Co
-    # request from falling back into Ni just because Ni is also in the broad scope.
-    if requested_scope_family and requested_scope_family in FAMILY_SEED_CHEMSYS:
-        return [item for item in FAMILY_SEED_CHEMSYS[requested_scope_family] if item != requested_chemsys]
+    if "Ni-based superalloy" in family_set:
+        return [
+            "Ni-Cr-Co-Al",
+            "Ni-Cr-Co-Ti",
+            "Ni-Cr-Co-Al-Ti",
+            "Ni-Cr-Co-Mo",
+            "Ni-Co-Al",
+            "Ni-Cr-Ti",
+        ]
 
-    if len(family_set) == 1:
-        only_family = next(iter(family_set))
-        return [item for item in FAMILY_SEED_CHEMSYS.get(only_family, []) if item != requested_chemsys]
+    if "Refractory alloy concept" in family_set:
+        return [
+            "Mo-Nb-Ti",
+            "Mo-Nb-Ta",
+            "Nb-Ti-Zr",
+            "Mo-Nb-Ti-Zr",
+            "Mo-Nb-Ta-Ti",
+        ]
 
     return []
 
@@ -625,17 +505,21 @@ def _classify_family(elements: List[str]) -> Tuple[str, str, bool]:
     )
 
 def _infer_requested_family(requested_chemsys: str, requirements: Dict[str, Any]) -> str | None:
-    chemistry_family = _infer_family_from_chemsys_pattern(requested_chemsys)
-    if chemistry_family is not None:
-        return chemistry_family
-
     allowed_families = set(requirements.get("allowed_material_families", []) or [])
-    if len(allowed_families) == 1:
-        only_family = next(iter(allowed_families))
-        key = SCOPE_FAMILY_TO_LABEL_KEY.get(only_family)
-        if key:
-            return FAMILY_LABEL_BY_KEY[key]
+    element_set = set(_parse_elements(requested_chemsys))
 
+    if requested_chemsys.startswith("Ni-") or "Ni-based superalloy" in allowed_families:
+        return FAMILY_LABEL_BY_KEY["ni"]
+    if requested_chemsys.startswith("Co-") or "Co-based alloy" in allowed_families:
+        return FAMILY_LABEL_BY_KEY["co"]
+    if requested_chemsys.startswith("Ti-") or "Ti alloy" in allowed_families:
+        return FAMILY_LABEL_BY_KEY["ti"]
+    if requested_chemsys.startswith("Fe-") or "Fe-Ni alloy" in allowed_families:
+        return FAMILY_LABEL_BY_KEY["fe_ni"]
+    if element_set.intersection({"Mo", "Nb", "Ta", "W"}) and "Refractory alloy concept" in allowed_families:
+        return FAMILY_LABEL_BY_KEY["refractory"]
+    if element_set.intersection({"Mo", "Nb", "Ta", "W"}) and len(element_set) >= 3:
+        return FAMILY_LABEL_BY_KEY["refractory"]
     return None
 
 def _requested_overlap_score(
@@ -1228,30 +1112,6 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
 
     diagnostics: Dict[str, Any] = {
         "queried_chemsys": chemsys_list,
-        "query_family_plan": [
-            {
-                "requested_chemsys": chemsys,
-                "inferred_requested_family": _infer_requested_family(chemsys, requirements),
-                "scope_family": _family_label_to_scope_key(_infer_requested_family(chemsys, requirements)),
-                "family_prior": _family_priors(requirements).get(
-                    _family_label_to_scope_key(_infer_requested_family(chemsys, requirements)) or "",
-                    None,
-                ),
-            }
-            for chemsys in chemsys_list
-        ],
-        "family_priors_used": _family_priors(requirements),
-        "surviving_family_mix": {},
-        "candidate_source_mix": {},
-        "mp_candidate_count_before_supplementation": 0,
-        "engineering_analogue_candidate_count": 0,
-        "candidate_count_after_supplementation": 0,
-        "engineering_analogue_supplementation_plan": [],
-        "engineering_analogue_supplementation": [],
-        "engineering_analogue_family_mix": {},
-        "engineering_analogue_table_path": None,
-        "top_prompt_family": None,
-        "prompt_family_alignment_warning": None,
         "retrieval_attempts": [],
         "exact_zero_retrieval_cases": [],
         "fallback_queries_used": [],
@@ -1408,36 +1268,14 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
             diagnostics["warnings"].append(
                 "Returned records existed, but all were rejected by request-aware acceptance before baseline family/complexity filtering."
             )
-        else:
-            diagnostics["warnings"].append(
-                "No Materials Project records were returned for the current search scope."
+            return _empty_result(
+                status="empty",
+                message="Materials Project returned records, but none survived request-aware acceptance.",
+                diagnostics=diagnostics,
             )
-
-        supplemented = add_engineering_analogue_candidates(
-            _empty_candidates_df(),
-            requirements,
-            diagnostics=diagnostics,
-        )
-        if supplemented is not None and len(supplemented) > 0:
-            diagnostics["final_candidate_count"] = len(supplemented)
-            diagnostics["candidate_names_after_final_filtering"] = supplemented["candidate_id"].astype(str).tolist()
-            scope_family_series = supplemented["material_family"].astype(str).map(CANDIDATE_LABEL_TO_SCOPE_FAMILY).fillna(supplemented["material_family"].astype(str))
-            diagnostics["surviving_family_mix"] = scope_family_series.value_counts().to_dict()
-            if "candidate_source" in supplemented.columns:
-                diagnostics["candidate_source_mix"] = supplemented["candidate_source"].fillna("materials_project").astype(str).value_counts().to_dict()
-            survivor_logs = _build_candidate_log_rows(supplemented)
-            diagnostics["surviving_candidate_logs_sample"] = survivor_logs[:5]
-            diagnostics["candidate_logs"] = survivor_logs + diagnostics.get("candidate_logs", [])
-            return {
-                "status": "success",
-                "message": "No usable Materials Project candidates survived, so curated engineering analogue candidates were added for the interpreted prompt scope.",
-                "candidates": supplemented.reset_index(drop=True),
-                "diagnostics": diagnostics,
-            }
-
         return _empty_result(
             status="empty",
-            message="No candidates survived retrieval/acceptance, and no engineering analogue supplements were available.",
+            message="No Materials Project records were returned for the current search scope.",
             diagnostics=diagnostics,
         )
 
@@ -1639,12 +1477,6 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
         rows.append(
             {
                 "candidate_id": mpid,
-                "candidate_source": "materials_project",
-                "candidate_role": "exploratory_database_candidate",
-                "source_alloy_id": None,
-                "source_alloy_name": None,
-                "source_family": CANDIDATE_LABEL_TO_SCOPE_FAMILY.get(family, family),
-                "source_selection_reason": "Materials Project retrieval and baseline request-aware acceptance.",
                 "material_family": family,
                 "composition_concept": formula,
                 "base_process_route": process_route,
@@ -1693,24 +1525,6 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
     diagnostics["unique_docs_after_request_acceptance"] = len(seen_ids)
 
     df = pd.DataFrame(rows)
-    if len(df) > 0 and "candidate_source" not in df.columns:
-        df["candidate_source"] = "materials_project"
-
-    # Build 2/3: add explicitly labelled curated engineering analogue candidates when
-    # the prompt strongly favours a family or MP survivors are sparse/simplified.
-    # This does not relax Materials Project acceptance; it adds a transparent second
-    # candidate source for engineering-relevant alloy concepts.
-    df = add_engineering_analogue_candidates(df, requirements, diagnostics=diagnostics)
-    if len(df) > 0:
-        if "candidate_source" in df.columns:
-            diagnostics["candidate_source_mix_before_final_filtering"] = (
-                df["candidate_source"].fillna("materials_project").astype(str).value_counts().to_dict()
-            )
-        if "candidate_role" in df.columns:
-            diagnostics["candidate_role_mix_before_final_filtering"] = (
-                df["candidate_role"].fillna("exploratory_database_candidate").astype(str).value_counts().to_dict()
-            )
-
     if df.empty:
         if diagnostics["raw_docs_retrieved"] > 0:
             diagnostics["warnings"].append(
@@ -1734,36 +1548,11 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
     diagnostics["removed_by_prefer_4plus_filter"] = 0
 
     before_am_filter = len(df)
-    before_am_source_counts = (
-        df["candidate_source"].fillna("materials_project").astype(str).value_counts().to_dict()
-        if "candidate_source" in df.columns and len(df) > 0 else {}
-    )
-    before_am_role_counts = (
-        df["candidate_role"].fillna("exploratory_database_candidate").astype(str).value_counts().to_dict()
-        if "candidate_role" in df.columns and len(df) > 0 else {}
-    )
     if requirements.get("am_preferred", False):
         preferred = df["am_capable"].astype(str).str.lower() == "yes"
         if preferred.any():
             df = df[preferred].copy()
             diagnostics["removed_by_am_filter"] = before_am_filter - len(df)
-            after_am_source_counts = (
-                df["candidate_source"].fillna("materials_project").astype(str).value_counts().to_dict()
-                if "candidate_source" in df.columns and len(df) > 0 else {}
-            )
-            after_am_role_counts = (
-                df["candidate_role"].fillna("exploratory_database_candidate").astype(str).value_counts().to_dict()
-                if "candidate_role" in df.columns and len(df) > 0 else {}
-            )
-            diagnostics["candidate_source_mix_before_am_filter"] = before_am_source_counts
-            diagnostics["candidate_source_mix_after_am_filter"] = after_am_source_counts
-            diagnostics["candidate_role_mix_before_am_filter"] = before_am_role_counts
-            diagnostics["candidate_role_mix_after_am_filter"] = after_am_role_counts
-            diagnostics["engineering_analogue_removed_by_am_filter"] = max(
-                0,
-                int(before_am_source_counts.get("engineering_analogue", 0))
-                - int(after_am_source_counts.get("engineering_analogue", 0)),
-            )
 
     if df.empty:
         diagnostics["warnings"].append(
@@ -1799,24 +1588,6 @@ def generate_candidates(requirements: Dict[str, Any]) -> Dict[str, Any]:
 
     df = df.reset_index(drop=True)
     diagnostics["final_candidate_count"] = len(df)
-    if "candidate_source" in df.columns:
-        diagnostics["candidate_source_mix"] = df["candidate_source"].fillna("materials_project").astype(str).value_counts().to_dict()
-    if "candidate_role" in df.columns:
-        diagnostics["candidate_role_mix"] = df["candidate_role"].fillna("exploratory_database_candidate").astype(str).value_counts().to_dict()
-    scope_family_series = df["material_family"].astype(str).map(CANDIDATE_LABEL_TO_SCOPE_FAMILY).fillna(df["material_family"].astype(str))
-    diagnostics["surviving_family_mix"] = scope_family_series.value_counts().to_dict()
-    priors = _family_priors(requirements)
-    if priors:
-        top_prompt_family = max(priors.items(), key=lambda item: item[1])[0]
-        diagnostics["top_prompt_family"] = top_prompt_family
-        top_prompt_prior = float(priors.get(top_prompt_family, 0.0) or 0.0)
-        if top_prompt_prior >= 0.50 and diagnostics["surviving_family_mix"].get(top_prompt_family, 0) == 0:
-            warning = (
-                f"Prompt scope favoured {top_prompt_family}, but no candidates from that family survived baseline retrieval/acceptance. "
-                "The displayed results may therefore be dominated by fallback families rather than the intended design direction."
-            )
-            diagnostics["prompt_family_alignment_warning"] = warning
-            diagnostics["warnings"].append(warning)
     diagnostics["candidate_names_after_final_filtering"] = df["candidate_id"].astype(str).tolist()
     survivor_logs = _build_candidate_log_rows(df)
     rejected_logs = [

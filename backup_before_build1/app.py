@@ -14,7 +14,7 @@ from src.scoring import score_candidates
 from src.reranking import scientific_rerank
 from src.ranking import rank_candidates
 from src.provenance import add_provenance
-from src.requirement_schema import CANDIDATE_FAMILY_TO_SCOPE_KEY, FACTOR_LABELS, FACTOR_REASON_COLUMNS, FACTOR_SCORE_COLUMNS
+from src.requirement_schema import FACTOR_LABELS, FACTOR_REASON_COLUMNS, FACTOR_SCORE_COLUMNS
 
 st.set_page_config(
     page_title="Aviation Materials Design Assistant",
@@ -144,23 +144,6 @@ st.markdown(
         .compact-list {
             margin-top: 0.2rem;
             padding-left: 1.1rem;
-        }
-        .source-explainer {
-            padding: 0.95rem 1.05rem;
-            border-radius: 0.9rem;
-            border: 1px solid rgba(120,120,120,0.18);
-            background: rgba(255,255,255,0.025);
-            min-height: 6.2rem;
-        }
-        .role-pill {
-            display: inline-block;
-            padding: 0.25rem 0.55rem;
-            border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 750;
-            background: rgba(2, 132, 199, 0.10);
-            border: 1px solid rgba(2, 132, 199, 0.18);
-            color: #075985;
         }
 
     </style>
@@ -487,70 +470,6 @@ def _render_family_cards(family_df: pd.DataFrame) -> None:
             unsafe_allow_html=True,
         )
 
-def _top_prompt_family(requirements: dict) -> tuple[str | None, float]:
-    priors = (requirements.get("scope_plan", {}) or {}).get("family_priors") or requirements.get("family_priors", {}) or {}
-    if not priors:
-        return None, 0.0
-    items = []
-    for family, value in priors.items():
-        try:
-            items.append((str(family), float(value)))
-        except Exception:
-            continue
-    if not items:
-        return None, 0.0
-    return max(items, key=lambda item: item[1])
-
-
-def _normalise_candidate_family(value: object) -> str:
-    text = str(value or "").strip()
-    return CANDIDATE_FAMILY_TO_SCOPE_KEY.get(text, text)
-
-
-def _top_family_mix_from_df(df: pd.DataFrame | None) -> dict[str, int]:
-    if df is None or len(df) == 0 or "material_family" not in df.columns:
-        return {}
-    values = df["material_family"].apply(_normalise_candidate_family)
-    return values.value_counts().to_dict()
-
-
-def render_family_alignment_notice(requirements: dict, result_df: pd.DataFrame | None, diagnostics: dict | None = None) -> None:
-    """Warn when prompt-favoured families did not survive into the displayed result set."""
-    diagnostics = diagnostics or {}
-    explicit_warning = str(diagnostics.get("prompt_family_alignment_warning") or "").strip()
-    if explicit_warning:
-        st.warning(explicit_warning)
-        return
-
-    top_family, top_prior = _top_prompt_family(requirements)
-    if not top_family or top_prior < 0.50:
-        return
-
-    survivor_mix = diagnostics.get("surviving_family_mix") if isinstance(diagnostics.get("surviving_family_mix"), dict) else None
-    if not survivor_mix:
-        survivor_mix = _top_family_mix_from_df(result_df)
-
-    if not survivor_mix:
-        st.warning(
-            f"The prompt interpretation favoured {top_family}, but no surviving family mix is available. "
-            "Check retrieval diagnostics before treating the result as a full design-space comparison."
-        )
-        return
-
-    if int(survivor_mix.get(top_family, 0) or 0) == 0:
-        shown = ", ".join(f"{family}: {count}" for family, count in survivor_mix.items())
-        st.warning(
-            f"The prompt interpretation favoured **{top_family}**, but no candidates from that family survived baseline retrieval/acceptance. "
-            f"Current surviving family mix: {shown}. This is a generation/coverage signal, not a downstream ranking preference."
-        )
-    elif len(survivor_mix) == 1:
-        only_family = next(iter(survivor_mix))
-        if only_family != top_family:
-            st.warning(
-                f"The displayed result set is dominated by {only_family}, while the prompt interpretation favoured {top_family}. "
-                "Review retrieval diagnostics before relying on the ranking as a complete family trade-off."
-            )
-
 
 def render_interpretation_review(requirements: dict):
     """Professional pre-retrieval review for engineering users."""
@@ -745,50 +664,14 @@ def format_requirements(requirements: dict) -> dict:
     }
 
 
-
-def _friendly_candidate_source(value: object) -> str:
-    text = str(value or "materials_project").strip()
-    if text == "engineering_analogue":
-        return "Curated engineering analogue"
-    if text == "materials_project":
-        return "Materials Project"
-    return text.replace("_", " ").title()
-
-
-def _friendly_candidate_role(value: object, source: object = None) -> str:
-    role = str(value or "").strip()
-    source_text = str(source or "").strip()
-    if role == "known_engineering_reference" or source_text == "engineering_analogue":
-        return "Known engineering reference"
-    if role == "exploratory_database_candidate" or source_text == "materials_project":
-        return "Exploratory database concept"
-    return role.replace("_", " ").title() if role else "Exploratory database concept"
-
-
-def _with_candidate_role_columns(df: pd.DataFrame | None) -> pd.DataFrame | None:
-    if df is None or len(df) == 0:
-        return df
-    out = df.copy()
-    if "candidate_role" not in out.columns:
-        out["candidate_role"] = out.get("candidate_source", pd.Series(["materials_project"] * len(out), index=out.index))
-    out["candidate_role_display"] = out.apply(
-        lambda row: _friendly_candidate_role(row.get("candidate_role"), row.get("candidate_source")), axis=1
-    )
-    return out
-
-
 def make_display_table(df: pd.DataFrame | None) -> pd.DataFrame | None:
     if df is None or len(df) == 0:
         return df
 
-    out = _with_candidate_role_columns(df)
-    if "candidate_source" in out.columns:
-        out["candidate_source"] = out["candidate_source"].apply(_friendly_candidate_source)
+    out = df.copy()
     out = out.rename(
         columns={
             "candidate_id": "Candidate",
-            "candidate_source": "Source",
-            "candidate_role_display": "Candidate role",
             "material_family": "Material family",
             "composition_concept": "Composition",
             "performance_summary_score": "Performance summary",
@@ -804,8 +687,6 @@ def make_display_table(df: pd.DataFrame | None) -> pd.DataFrame | None:
     )
     keep_cols = [
         "Candidate",
-        "Candidate role",
-        "Source",
         "Material family",
         "Composition",
         "Performance summary",
@@ -884,7 +765,7 @@ def _json_to_df(value, *, empty_columns=None) -> pd.DataFrame:
 def render_run_debug_summary(top: pd.DataFrame, requirements: dict, diagnostics: dict | None = None):
     with st.expander("Debug / sensitivity diagnostics"):
         scope_plan = requirements.get("scope_plan", {}) or {}
-        req_cols = st.columns(6)
+        req_cols = st.columns(5)
         req_cols[0].metric("Allowed families", len(requirements.get("allowed_material_families", [])))
         req_cols[1].metric("Active factors", len(scope_plan.get("active_factor_set", requirements.get("active_factor_set", []))))
         req_cols[2].metric("Profile", requirements.get("downstream_profile_name", "Balanced"))
@@ -892,10 +773,6 @@ def render_run_debug_summary(top: pd.DataFrame, requirements: dict, diagnostics:
         req_cols[4].metric(
             "Unique top recipe modes",
             len(set(top["recipe_mode"].astype(str).tolist())) if top is not None and "recipe_mode" in top.columns else 0,
-        )
-        req_cols[5].metric(
-            "Candidate sources",
-            len(set(top["candidate_source"].fillna("materials_project").astype(str).tolist())) if top is not None and "candidate_source" in top.columns else 1,
         )
 
         if top is not None and len(top) > 0:
@@ -931,19 +808,6 @@ def render_run_debug_summary(top: pd.DataFrame, requirements: dict, diagnostics:
                 st.success("No immediate flattening flags were detected in the top set.")
 
         if diagnostics:
-            source_mix = diagnostics.get("candidate_source_mix") or {}
-            if source_mix:
-                st.write("**Candidate source mix after generation**")
-                st.dataframe(
-                    pd.DataFrame([{"Source": _friendly_candidate_source(k), "Count": v} for k, v in source_mix.items()]),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-            supplementation = diagnostics.get("engineering_analogue_supplementation") or []
-            if supplementation:
-                st.write("**Engineering analogue supplementation**")
-                st.dataframe(pd.DataFrame(supplementation), use_container_width=True, hide_index=True)
-
             warnings = diagnostics.get("warnings", [])
             if warnings:
                 st.write("**Baseline / retrieval warnings**")
@@ -1031,7 +895,6 @@ def render_design_frame(requirements: dict):
 
 def render_empty_state(requirements: dict, candidates, scored, near_miss, diagnostics=None):
     render_design_frame(requirements)
-    render_family_alignment_notice(requirements, scored, diagnostics)
 
     raw_count = len(candidates) if candidates is not None else 0
     scored_count = len(scored) if scored is not None else 0
@@ -1178,13 +1041,6 @@ def render_candidate_detail_cards(top: pd.DataFrame):
             summary_col4.metric("Recipe support", f"{row.get('recipe_support_score', 0):.1f}")
             summary_col5.metric("Final rank", f"{row.get('final_rank_score', 0):.1f}")
 
-            st.write(f"**Candidate role:** {_friendly_candidate_role(row.get('candidate_role'), row.get('candidate_source'))}")
-            st.write(f"**Source:** {_friendly_candidate_source(row.get('candidate_source', 'materials_project'))}")
-            if str(row.get('candidate_source', '')) == 'engineering_analogue':
-                st.write(f"**Source analogue:** {row.get('source_alloy_name', row.get('matched_alloy_name', 'Curated analogue'))}")
-                reason = str(row.get('source_selection_reason', '') or '').strip()
-                if reason:
-                    st.write(f"**Why this analogue was added:** {reason}")
             st.write(f"**Strengths:** {row.get('strengths', 'None surfaced')}")
             st.write(f"**Watch-outs:** {row.get('watch_outs', 'None surfaced')}")
 
@@ -1283,105 +1139,10 @@ def render_multidimensional_charts(top: pd.DataFrame):
         st.info("Radar chart unavailable for the current result set.")
 
 
-
-def _candidate_brief_table(df: pd.DataFrame | None, max_rows: int = 8) -> pd.DataFrame:
-    if df is None or len(df) == 0:
-        return pd.DataFrame()
-    out = _with_candidate_role_columns(df).copy()
-    if "candidate_source" in out.columns:
-        out["candidate_source"] = out["candidate_source"].apply(_friendly_candidate_source)
-    cols = [
-        "candidate_id",
-        "candidate_role_display",
-        "candidate_source",
-        "material_family",
-        "composition_concept",
-        "recipe_mode",
-        "matched_alloy_name",
-        "final_rank_score",
-        "confidence",
-    ]
-    existing = [c for c in cols if c in out.columns]
-    renamed = out[existing].head(max_rows).rename(columns={
-        "candidate_id": "Candidate",
-        "candidate_role_display": "Candidate role",
-        "candidate_source": "Source",
-        "material_family": "Material family",
-        "composition_concept": "Composition / reference",
-        "recipe_mode": "Recipe mode",
-        "matched_alloy_name": "Analogue",
-        "final_rank_score": "Final rank",
-        "confidence": "Confidence",
-    })
-    return renamed
-
-
-def render_candidate_source_overview(ranked: pd.DataFrame | None, diagnostics: dict | None = None):
-    if ranked is None or len(ranked) == 0:
-        return
-    ranked = ranked.sort_values("final_rank_score", ascending=False).reset_index(drop=True) if "final_rank_score" in ranked.columns else ranked.copy()
-    with_roles = _with_candidate_role_columns(ranked)
-    known = with_roles[with_roles["candidate_role_display"] == "Known engineering reference"].copy()
-    exploratory = with_roles[with_roles["candidate_role_display"] == "Exploratory database concept"].copy()
-
-    st.markdown("## Candidate source view")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown(
-            """
-            <div class="source-explainer">
-            <span class="role-pill">Known engineering reference</span><br><br>
-            Curated alloy examples from the project knowledge table. These are useful reference anchors with stronger recipe support.
-            They are not new generated materials and still need engineering review for the exact component.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with col_b:
-        st.markdown(
-            """
-            <div class="source-explainer">
-            <span class="role-pill">Exploratory database concept</span><br><br>
-            Materials Project records that survived baseline family and chemistry checks. These are useful discovery concepts, but may be simplified compounds rather than production-like alloys.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    tab1, tab2 = st.tabs(["Known engineering references", "Exploratory database concepts"])
-    with tab1:
-        if len(known) > 0:
-            st.dataframe(_candidate_brief_table(known, max_rows=10), use_container_width=True, hide_index=True)
-        else:
-            st.info("No known engineering references were added for this prompt.")
-    with tab2:
-        if len(exploratory) > 0:
-            st.dataframe(_candidate_brief_table(exploratory, max_rows=10), use_container_width=True, hide_index=True)
-        else:
-            st.info("No exploratory Materials Project concepts survived the current baseline checks.")
-
-    if diagnostics:
-        before = diagnostics.get("candidate_source_mix_before_final_filtering") or {}
-        after = diagnostics.get("candidate_source_mix") or {}
-        removed = diagnostics.get("engineering_analogue_removed_by_am_filter")
-        if before or after or removed:
-            with st.expander("Candidate-source diagnostics"):
-                rows = []
-                for label, mix in [("Before final filters", before), ("Visible after final filters", after)]:
-                    for source, count in mix.items():
-                        rows.append({"Stage": label, "Source": _friendly_candidate_source(source), "Count": count})
-                if rows:
-                    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-                if removed is not None:
-                    st.write(f"Engineering analogue candidates removed by AM preference filter: **{removed}**")
-
-
-def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.DataFrame | None, diagnostics=None, ranked: pd.DataFrame | None = None):
+def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.DataFrame | None, diagnostics=None):
     render_design_frame(requirements)
-    render_family_alignment_notice(requirements, top, diagnostics)
-    render_candidate_source_overview(ranked if ranked is not None else top, diagnostics)
 
-    st.markdown("## Recommended shortlist")
+    st.markdown("## Ranked candidate concepts")
     display_table = make_display_table(top)
     st.dataframe(display_table, use_container_width=True, hide_index=True)
     render_run_debug_summary(top, requirements, diagnostics)
@@ -1395,9 +1156,6 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
             ### {best['candidate_id']} — {best['material_family']}
 
             **Composition concept:** {best['composition_concept']}
-
-            **Candidate role:** {_friendly_candidate_role(best.get('candidate_role'), best.get('candidate_source'))}  
-            **Source:** {_friendly_candidate_source(best.get('candidate_source', 'materials_project'))}
 
             **Recipe mode:** {best.get('recipe_mode', 'family_envelope')}
 
@@ -1462,7 +1220,6 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
             near_cols = [
                 c for c in [
                     "candidate_id",
-                    "candidate_source",
                     "material_family",
                     "overall_score",
                     "recipe_mode",
@@ -1476,7 +1233,6 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
             near_display = near_miss[near_cols].rename(
                 columns={
                     "candidate_id": "Candidate",
-                    "candidate_source": "Source",
                     "material_family": "Material family",
                     "overall_score": "Overall fit",
                     "recipe_mode": "Recipe mode",
@@ -1486,8 +1242,6 @@ def render_success_state(requirements: dict, top: pd.DataFrame, near_miss: pd.Da
                     "watch_outs": "Watch-outs",
                 }
             )
-            if "Source" in near_display.columns:
-                near_display["Source"] = near_display["Source"].apply(_friendly_candidate_source)
             st.dataframe(near_display, use_container_width=True, hide_index=True)
             st.caption("These concepts do not rank highest overall, but remain interesting trade-off options.")
         else:
@@ -1710,7 +1464,6 @@ if result is not None:
             top=result["top"],
             near_miss=result["near_miss"],
             diagnostics=result.get("diagnostics", {}),
-            ranked=result.get("scored"),
         )
     elif result["status"] == "empty":
         st.warning(result["message"])

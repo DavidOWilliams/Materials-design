@@ -1,0 +1,10 @@
+check_type,status,detail,family,count
+knowledge_table,loaded,/workspaces/Materials-design/data/starter_alloy_knowledge_table_seed_rows.csv,,21
+rows_by_family,ok,Knowledge-table family coverage.,Ni-based,9
+rows_by_family,ok,Knowledge-table family coverage.,Ti-based,6
+rows_by_family,ok,Knowledge-table family coverage.,Refractory,4
+rows_by_family,ok,Knowledge-table family coverage.,Co-based,2
+template_keys,ok,All referenced template keys exist.,,0
+am_supported_distribution,info,AM support distribution in knowledge table.,limited,11
+am_supported_distribution,info,AM support distribution in knowledge table.,yes,6
+am_supported_distribution,info,AM support distribution in knowledge table.,no,4

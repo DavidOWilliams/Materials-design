@@ -203,6 +203,21 @@ ROUTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "Chemistry cleanliness and oxygen control can dominate process suitability.",
         ],
     },
+    "fe_ni_family_envelope": {
+        "template_title": "Fe-Ni family envelope route",
+        "primary_route": "Mature wrought / formed Fe-Ni route -> anneal or solution condition -> inspect",
+        "secondary_route": "Family-envelope fallback",
+        "steps": [
+            "Define an Fe-Ni high-temperature alloy envelope from the candidate element set.",
+            "Prefer mature wrought, formed, or fabricated feedstock routes unless geometry requires otherwise.",
+            "Apply anneal / solution-condition logic only at family level until a named analogue is confirmed.",
+            "Inspect weldability, dimensional stability, and service-temperature margin.",
+        ],
+        "watch_outs": [
+            "This is a family-envelope Fe-Ni recipe, not a named alloy route.",
+            "High-temperature capability must be checked against the specific alloy and service exposure.",
+        ],
+    },
 }
 
 def _elements_from_chemsys(value: Any) -> List[str]:
@@ -274,6 +289,43 @@ def _split_source_refs(value: Any) -> List[str]:
         return []
     return [part.strip() for part in str(value).split(";") if part.strip()]
 
+def _schema_recipe_focus(requirements: Optional[Dict[str, Any]] = None) -> Dict[str, List[str]]:
+    requirements = requirements or {}
+    active_factors = set(requirements.get("active_factor_set") or requirements.get("scope_plan", {}).get("active_factor_set", []) or [])
+    steps: List[str] = []
+    watch_outs: List[str] = []
+    why: List[str] = []
+
+    if "lightweight" in active_factors:
+        steps.append("Verify density-sensitive strength-to-weight assumptions before committing to the family route.")
+        watch_outs.append("Lightweight intent is schema-derived; density and section-size effects still need engineering validation.")
+        why.append("Prompt activated lightweight / strength-to-weight recipe checks.")
+    if "hot_corrosion" in active_factors:
+        steps.append("Add hot-corrosion / contaminant exposure coupons to the early validation plan.")
+        watch_outs.append("Hot-corrosion behaviour is environment-specific; do not infer qualification from chemistry alone.")
+        why.append("Prompt activated hot-corrosion recipe checks.")
+    if "oxidation" in active_factors:
+        steps.append("Include oxidation-scale and environmental-exposure checks in the route concept.")
+        watch_outs.append("Oxidation proxy is composition/family based and needs temperature/environment validation.")
+        why.append("Prompt activated oxidation recipe checks.")
+    if "wear" in active_factors or "erosion" in active_factors:
+        steps.append("Add wear/erosion coupon testing and surface-condition review to the process plan.")
+        watch_outs.append("Wear/erosion performance can be dominated by surface finish, coatings, and contact conditions.")
+        why.append("Prompt activated wear/erosion recipe checks.")
+    if "fatigue" in active_factors or "thermal_fatigue" in active_factors:
+        steps.append("Plan fatigue-relevant coupons and inspect process defects before design allowables are assumed.")
+        watch_outs.append("Fatigue response is highly defect-sensitive; recipe output is not a qualification route.")
+        why.append("Prompt activated fatigue-sensitive recipe checks.")
+    if "repairability" in active_factors:
+        steps.append("Review inspectability, repair access, and compatible repair processes as part of route down-selection.")
+        why.append("Prompt activated repairability / maintainability recipe checks.")
+    if "certification_maturity" in active_factors:
+        steps.append("Identify certification evidence gaps and compare against known aerospace alloy/process precedents.")
+        watch_outs.append("Certification maturity is a screening proxy only; it does not imply airworthiness approval.")
+        why.append("Prompt activated certification-maturity recipe checks.")
+
+    return {"steps": steps, "watch_outs": watch_outs, "why": why}
+
 def render_manufacturing_recipe(
     candidate_row: pd.Series,
     analogue_match_row: pd.Series,
@@ -292,7 +344,8 @@ def render_manufacturing_recipe(
     else:
         ingredient_rows = _family_envelope_ingredient_rows(candidate_row)
 
-    recipe_watch_outs = list(template.get("watch_outs", []))
+    focus = _schema_recipe_focus(requirements)
+    recipe_watch_outs = list(template.get("watch_outs", [])) + list(focus.get("watch_outs", []))
     source_refs: List[str] = []
 
     if knowledge_match_row is not None and analogue_match_row.get("recipe_mode") != "family_envelope":
@@ -313,7 +366,7 @@ def render_manufacturing_recipe(
         f"Analogue confidence: {analogue_match_row.get('analogue_confidence')}.",
         f"AM preferred by user: {'yes' if am_preferred else 'no'}.",
         str(analogue_match_row.get("analogue_explanation", "")),
-    ]
+    ] + list(focus.get("why", []))
     if knowledge_match_row is not None and analogue_match_row.get("recipe_mode") != "family_envelope":
         nominal = str(knowledge_match_row.get("nominal_composition_text", "") or "").strip()
         if nominal:
@@ -331,7 +384,7 @@ def render_manufacturing_recipe(
         "primary_route": template.get("primary_route"),
         "secondary_route": template.get("secondary_route"),
         "ingredient_rows": ingredient_rows,
-        "process_steps": list(template.get("steps", [])),
+        "process_steps": list(template.get("steps", [])) + list(focus.get("steps", [])),
         "watch_outs": recipe_watch_outs,
         "why_this_route": why_route,
         "provenance_refs": source_refs,

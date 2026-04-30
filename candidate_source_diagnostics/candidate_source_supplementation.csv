@@ -1,0 +1,12 @@
+case_id,scope_family,normalized_family,prior,mp_survivor_count,mp_family_looks_weak,limit,reason,rows_added,selected_analogues,status
+hot_section_creep_am,Ni-based superalloy,Ni-based,1.0,9,True,3,high family prior and MP survivors are sparse/simplified,3,"['HAYNES 282 alloy', 'INCONEL alloy 706', 'INCONEL alloy 718']",added
+hot_section_creep_am,Co-based alloy,Co-based,0.64,0,True,3,high family prior and MP survivors are sparse/simplified,2,"['HAYNES 25 alloy', 'HAYNES 188 alloy']",added
+lightweight_strength_to_weight,Ti alloy,Ti-based,1.0,9,True,3,high family prior and MP survivors are sparse/simplified,3,"['ATI 15Mo titanium alloy', 'ATI 6-2-4-2 titanium alloy', 'Ti-6-2-4-6 titanium alloy']",added
+wear_hot_corrosion,Co-based alloy,Co-based,1.0,0,True,3,high family prior and MP survivors are sparse/simplified,2,"['HAYNES 25 alloy', 'HAYNES 188 alloy']",added
+am_complex_geometry_creep,Ni-based superalloy,Ni-based,0.73,9,True,3,high family prior and MP survivors are sparse/simplified,3,"['HAYNES 282 alloy', 'INCONEL alloy 706', 'INCONEL alloy 718']",added
+am_complex_geometry_creep,Co-based alloy,Co-based,0.44,0,True,2,active family has fewer than two MP survivors,2,"['HAYNES 25 alloy', 'HAYNES 188 alloy']",added
+certification_mature_conventional,Ti alloy,Ti-based,0.54,9,True,3,top prompt family under-represented or weak in MP survivors,3,"['ATI 15Mo titanium alloy', 'ATI 6-2-4-2 titanium alloy', 'Ti-6-2-4-6 titanium alloy']",added
+certification_mature_conventional,Fe-Ni alloy,Fe-Ni,0.37,0,True,2,active family has fewer than two MP survivors,0,,no_seed_rows_for_family
+extreme_temperature_refractory,Refractory alloy concept,Refractory,1.0,7,True,3,high family prior and MP survivors are sparse/simplified,3,"['C-103 niobium alloy', 'FS-85 niobium alloy', 'TZM alloy']",added
+extreme_temperature_refractory,Ni-based superalloy,Ni-based,0.7,9,True,3,high family prior and MP survivors are sparse/simplified,3,"['HAYNES 282 alloy', 'INCONEL alloy 706', 'HAYNES 230 alloy']",added
+extreme_temperature_refractory,Co-based alloy,Co-based,0.56,0,True,2,active family has fewer than two MP survivors,2,"['HAYNES 25 alloy', 'HAYNES 188 alloy']",added

@@ -1,0 +1,201 @@
+import json
+from pathlib import Path
+
+from src.recommendation_builder import build_recommendation_package
+import src.ui_view_models as ui_view_models
+from src.ui_view_models import (
+    build_candidate_card_view_model,
+    build_package_summary_view_model,
+    build_recommendation_package_view_model,
+    package_to_json_safe_dict,
+    render_markdown_report,
+)
+
+
+def _schema():
+    return {
+        "schema_version": "2.0",
+        "prompt_raw": "Build 4 view model test",
+        "coating_allowed": True,
+        "composite_allowed": True,
+        "graded_architecture_allowed": True,
+        "research_generated_allowed": False,
+        "ambiguities": [],
+        "interpreter_trace": [],
+    }
+
+
+def _design_space():
+    return {
+        "design_space_version": "test",
+        "allowed_candidate_classes": [
+            "ceramic_matrix_composite",
+            "coating_enabled",
+            "spatially_graded_am",
+        ],
+        "system_architectures": [
+            "composite_architecture",
+            "substrate_plus_coating",
+            "spatial_gradient",
+        ],
+        "architecture_flags": {
+            "allow_substrate_plus_coating": True,
+            "allow_spatial_gradients": True,
+            "allow_composite_architecture": True,
+            "allow_research_mode_candidates": False,
+        },
+        "research_mode_enabled": False,
+    }
+
+
+def _candidate_systems():
+    return [
+        {
+            "candidate_id": "cmc-1",
+            "candidate_class": "ceramic_matrix_composite",
+            "system_architecture_type": "composite_architecture",
+            "name": "SiC/SiC CMC with EBC",
+            "constituents": [
+                {"name": "SiC matrix", "role": "matrix"},
+                {"name": "SiC fiber", "role": "fiber"},
+                {"name": "BN interphase", "role": "interphase"},
+            ],
+            "environmental_barrier_coating": {"name": "rare-earth silicate EBC"},
+            "source_type": "curated_engineering_reference",
+            "evidence_maturity": "C",
+        },
+        {
+            "candidate_id": "coating-1",
+            "candidate_class": "coating_enabled",
+            "system_architecture_type": "substrate_plus_coating",
+            "name": "Ni superalloy with TBC",
+            "coating_or_surface_system": {
+                "coating_type": "thermal barrier coating",
+                "failure_modes": ["spallation", "CTE mismatch"],
+            },
+            "source_type": "curated_coating_reference",
+            "evidence_maturity": "B",
+        },
+        {
+            "candidate_id": "graded-1",
+            "candidate_class": "spatially_graded_am",
+            "system_architecture_type": "spatial_gradient",
+            "name": "Exploratory surface gradient",
+            "gradient_architecture": {
+                "gradient_types": ["composition"],
+                "manufacturing_route": "directed energy deposition",
+                "transition_risks": ["cracking"],
+            },
+            "source_type": "curated_graded_template",
+            "evidence_maturity": "E",
+        },
+    ]
+
+
+def _package():
+    return build_recommendation_package(_schema(), _design_space(), _candidate_systems(), run_id="view-model-test")
+
+
+def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
+    package = _package()
+    card = build_candidate_card_view_model(package["candidate_systems"][0])
+
+    assert card["candidate_class"] == "ceramic_matrix_composite"
+    assert card["system_architecture_type"] == "composite_architecture"
+    assert card["candidate_id"] == "cmc-1"
+
+
+def test_coating_enabled_candidate_card_includes_coating_surface_summary():
+    package = _package()
+    coating = next(candidate for candidate in package["candidate_systems"] if candidate["candidate_id"] == "coating-1")
+    card = build_candidate_card_view_model(coating)
+
+    assert card["candidate_class"] == "coating_enabled"
+    assert card["coating_or_surface_summary"]["present"] is True
+    assert "thermal barrier" in card["coating_or_surface_summary"]["summary"].lower()
+
+
+def test_spatially_graded_am_candidate_card_includes_gradient_summary():
+    package = _package()
+    graded = next(candidate for candidate in package["candidate_systems"] if candidate["candidate_id"] == "graded-1")
+    card = build_candidate_card_view_model(graded)
+
+    assert card["candidate_class"] == "spatially_graded_am"
+    assert card["gradient_summary"]["present"] is True
+    assert card["gradient_summary"]["gradient_types"] == ["composition"]
+
+
+def test_cmc_ebc_candidate_remains_distinct_from_coating_and_graded_am():
+    package = _package()
+    cards = [build_candidate_card_view_model(candidate) for candidate in package["candidate_systems"]]
+    by_id = {card["candidate_id"]: card for card in cards}
+
+    assert by_id["cmc-1"]["candidate_class"] == "ceramic_matrix_composite"
+    assert by_id["cmc-1"]["interface_summary"]["count"] >= 1
+    assert by_id["coating-1"]["candidate_class"] == "coating_enabled"
+    assert by_id["graded-1"]["candidate_class"] == "spatially_graded_am"
+    assert by_id["cmc-1"]["system_architecture_type"] != by_id["coating-1"]["system_architecture_type"]
+    assert by_id["cmc-1"]["system_architecture_type"] != by_id["graded-1"]["system_architecture_type"]
+
+
+def test_package_summary_returns_candidate_count_and_mix_fields():
+    summary = build_package_summary_view_model(_package())
+
+    assert summary["candidate_count"] == 3
+    assert summary["candidate_class_mix"]["coating_enabled"] == 1
+    assert summary["system_architecture_mix"]["spatial_gradient"] == 1
+    assert summary["evidence_maturity_mix"]["E"] == 1
+    assert summary["factor_namespace_mix"]["graded_am"] == 6
+    assert summary["live_model_calls_made"] is False
+
+
+def test_markdown_report_includes_not_final_recommendation():
+    report = render_markdown_report(_package())
+
+    assert "not a final recommendation" in report.lower()
+
+
+def test_markdown_report_mentions_ranking_and_optimisation_not_implemented():
+    report = render_markdown_report(_package()).lower()
+
+    assert "ranking is not implemented" in report
+    assert "optimisation is not implemented" in report
+
+
+def test_markdown_report_mentions_research_adapters_disabled():
+    report = render_markdown_report(_package()).lower()
+
+    assert "research adapters are disabled" in report
+
+
+def test_package_to_json_safe_dict_can_be_serialized_with_json_dumps():
+    package = _package()
+    package["non_json_tuple"] = ("a", "b")
+    package["non_json_set"] = {"x", "y"}
+    package["non_json_object"] = object()
+
+    safe = package_to_json_safe_dict(package)
+
+    json.dumps(safe)
+    assert safe["non_json_tuple"] == ["a", "b"]
+    assert sorted(safe["non_json_set"]) == ["x", "y"]
+    assert isinstance(safe["non_json_object"], str)
+
+
+def test_no_candidates_are_filtered_out_by_view_model_creation():
+    package = _package()
+    view_model = build_recommendation_package_view_model(package)
+
+    assert len(view_model["candidate_cards"]) == len(package["candidate_systems"])
+    assert [card["candidate_id"] for card in view_model["candidate_cards"]] == [
+        "cmc-1",
+        "coating-1",
+        "graded-1",
+    ]
+
+
+def test_view_models_do_not_import_streamlit():
+    source = Path(ui_view_models.__file__).read_text(encoding="utf-8")
+    assert "import streamlit" not in source.lower()
+    assert "from streamlit" not in source.lower()
+    assert "streamlit" not in ui_view_models.__dict__

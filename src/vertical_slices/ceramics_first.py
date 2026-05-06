@@ -346,6 +346,107 @@ def build_demo_build31_metallic_rows() -> pd.DataFrame:
     )
 
 
+def _as_coating_enabled_ni_tbc_comparison(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """Represent the demo Ni/TBC comparison as a coating-enabled material system."""
+    updated = dict(candidate)
+    evidence_package = dict(updated.get("evidence_package") or updated.get("evidence") or {})
+    evidence_package.update(
+        {
+            "maturity": "B",
+            "evidence_maturity": "B",
+            "source_reference": "handcrafted Build 4 vertical-slice Ni/TBC comparison",
+            "assumptions": _as_list(evidence_package.get("assumptions"))
+            + [
+                "Demo comparison is represented as substrate plus bond coat plus ceramic top coat.",
+            ],
+        }
+    )
+    coating_name = "MCrAlY bond coat + yttria-stabilized zirconia TBC"
+    process_route = {
+        "route_name": "cast or wrought Ni-based superalloy substrate plus MCrAlY bond coat plus YSZ TBC",
+        "route_family": "conventional metallic substrate with coating deposition",
+        "deposition_steps": [
+            "cast or wrought Ni-based superalloy substrate preparation",
+            "MCrAlY bond coat deposition",
+            "yttria-stabilized zirconia ceramic top coat deposition",
+        ],
+        "qualification_notes": "Mature turbine coating-family comparison; not a Build 4 final recommendation.",
+    }
+    constituents = [
+        {
+            "name": "Ni-based superalloy substrate",
+            "role": "substrate",
+            "material_family": "Ni-based superalloy",
+        },
+        {
+            "name": "MCrAlY bond coat",
+            "role": "bond_coat",
+            "material_family": "metallic bond coat",
+            "composition": {"description": "MCrAlY"},
+        },
+        {
+            "name": "yttria-stabilized zirconia TBC",
+            "role": "coating",
+            "material_family": "ceramic top coat",
+            "composition": {"description": "YSZ"},
+        },
+    ]
+    updated.update(
+        {
+            "candidate_class": "coating_enabled",
+            "system_class": "coating_enabled",
+            "system_classes": ["coating_enabled"],
+            "system_architecture_type": "substrate_plus_coating",
+            "system_name": "Ni-based superalloy with MCrAlY bond coat + YSZ TBC",
+            "name": "Ni-based superalloy with MCrAlY bond coat + YSZ TBC",
+            "base_material_family": "Ni-based superalloy",
+            "material_family": "Ni-based superalloy substrate with thermal barrier coating",
+            "constituents": constituents,
+            "coating_or_surface_system": {
+                "coating_family": "thermal_barrier_coating",
+                "coating_type": "thermal_barrier_coating",
+                "coating_name": coating_name,
+                "coating_role": "thermal protection",
+                "substrate_family": "Ni-based superalloy",
+                "substrate_compatibility": "Ni-based superalloy",
+                "layers": constituents[1:],
+                "deposition_routes": [process_route["route_name"]],
+                "failure_modes": [
+                    "spallation",
+                    "bond coat oxidation",
+                    "thermal cycling durability",
+                    "CMAS attack",
+                ],
+            },
+            "coating_role": "thermal protection",
+            "substrate_family": "Ni-based superalloy",
+            "process_route": process_route,
+            "processing_routes": [process_route],
+            "evidence_package": evidence_package,
+            "evidence": evidence_package,
+            "evidence_maturity": "B",
+            "source_label": "build4_coating_enabled_demo_comparison",
+            "provenance": {
+                **dict(updated.get("provenance") or {}),
+                "vertical_slice_representation": "coating_enabled_substrate_plus_coating",
+            },
+        }
+    )
+    return updated
+
+
+def _represent_demo_ni_tbc_as_coating_system(
+    candidates: list[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    represented: list[dict[str, Any]] = []
+    for candidate in candidates:
+        if candidate.get("candidate_id") == "demo_ni_superalloy_bondcoat_tbc_comparison":
+            represented.append(_as_coating_enabled_ni_tbc_comparison(candidate))
+        else:
+            represented.append(dict(candidate))
+    return represented
+
+
 def build_ceramics_first_candidate_package() -> dict[str, Any]:
     """Assemble a deterministic candidate/evidence/interface package for the anchor prompt."""
     schema = build_ceramics_first_anchor_schema()
@@ -357,7 +458,9 @@ def build_ceramics_first_candidate_package() -> dict[str, Any]:
         design_space=design_space,
         build31_candidates_df=demo_df,
     )
-    source_candidates = list(source_result.get("candidate_systems") or [])
+    source_candidates = _represent_demo_ni_tbc_as_coating_system(
+        list(source_result.get("candidate_systems") or [])
+    )
     normalized_candidates = normalize_system_candidates(source_candidates)
     evidence_candidates = evaluate_candidates_evidence(normalized_candidates)
     assembled_candidates = assemble_material_systems(evidence_candidates)

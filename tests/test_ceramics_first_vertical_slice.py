@@ -89,6 +89,34 @@ def test_package_contains_coating_enabled_system():
     )
 
 
+def test_demo_ni_tbc_comparison_is_coating_enabled_substrate_plus_coating_system():
+    package = build_ceramics_first_candidate_package()
+    candidate = next(
+        candidate
+        for candidate in package["candidate_systems"]
+        if candidate["candidate_id"] == "demo_ni_superalloy_bondcoat_tbc_comparison"
+    )
+
+    assert candidate["candidate_class"] == "coating_enabled"
+    assert candidate["system_architecture_type"] == "substrate_plus_coating"
+    assert candidate["evidence_package"]["maturity"] == "B"
+    assert candidate["evidence_maturity"] == "B"
+
+    coating = candidate["coating_or_surface_system"]
+    assert coating["coating_family"] == "thermal_barrier_coating"
+    assert "MCrAlY bond coat" in coating["coating_name"]
+    assert "yttria-stabilized zirconia" in coating["coating_name"]
+    assert coating["coating_role"] == "thermal protection"
+    assert coating["substrate_family"] == "Ni-based superalloy"
+
+    constituent_roles = {constituent["role"] for constituent in candidate["constituents"]}
+    assert {"substrate", "bond_coat", "coating"} <= constituent_roles
+    assert any(
+        interface["interface_type"] == "substrate_coating"
+        for interface in candidate["interfaces"]
+    )
+
+
 def test_package_contains_spatially_graded_am_candidate_when_gradients_are_allowed():
     package = build_ceramics_first_candidate_package()
 

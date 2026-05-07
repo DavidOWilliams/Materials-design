@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.recommendation_builder import build_recommendation_package
 from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic
+from src.decision_readiness import attach_decision_readiness
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 from src.process_route_enrichment import attach_process_route_enrichment
 from src.surface_function_model import attach_surface_function_profiles
@@ -103,9 +104,9 @@ def _package():
 
 
 def _optimised_package():
-    return attach_coating_vs_gradient_diagnostic(
+    return attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
         attach_deterministic_optimisation(attach_surface_function_profiles(attach_process_route_enrichment(_package())))
-    )
+    ))
 
 
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
@@ -189,6 +190,8 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "coating vs gradient diagnostic" in report
     assert "no winner selected" in report
     assert "surface function coverage" in report
+    assert "decision readiness" in report
+    assert "certification approval" in report
     assert "process route, inspection and repairability" in report
 
 
@@ -245,6 +248,8 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["coating_vs_gradient_diagnostic_view"]["pairwise_comparisons"]
     assert view_model["surface_function_coverage_view"]["required_surface_functions"]
     assert view_model["surface_function_coverage_view"]["shared_coating_gradient_functions"]
+    assert view_model["decision_readiness_summary_view"]["readiness_category_counts"]
+    assert view_model["decision_readiness_summary_view"]["readiness_status_counts"]
 
 
 def test_candidate_cards_include_process_route_fields():
@@ -262,6 +267,13 @@ def test_candidate_cards_include_process_route_fields():
     assert isinstance(by_id["cmc-1"]["route_validation_gaps"], list)
     assert by_id["cmc-1"]["primary_surface_functions"]
     assert by_id["cmc-1"]["unknown_surface_function_flag"] is False
+    assert by_id["cmc-1"]["readiness_category"]
+    assert by_id["cmc-1"]["readiness_label"]
+    assert by_id["cmc-1"]["readiness_status"]
+    assert by_id["cmc-1"]["allowed_use"]
+    assert by_id["cmc-1"]["disallowed_use"]
+    assert by_id["cmc-1"]["required_next_evidence"]
+    assert isinstance(by_id["cmc-1"]["top_readiness_constraints"], list)
 
 
 def test_optimisation_summary_view_model_preserves_empty_ranking_and_pareto_boundary():

@@ -22,6 +22,9 @@ from src.optimisation.deterministic_optimizer import (  # noqa: E402
 from src.coating_vs_gradient_diagnostics import (  # noqa: E402
     attach_coating_vs_gradient_diagnostic,
 )
+from src.decision_readiness import (  # noqa: E402
+    attach_decision_readiness,
+)
 from src.process_route_enrichment import (  # noqa: E402
     attach_process_route_enrichment,
 )
@@ -65,6 +68,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     recommendation_package = attach_surface_function_profiles(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
+    recommendation_package = attach_decision_readiness(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
 
@@ -85,6 +89,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     comparison = recommendation_package.get("coating_vs_gradient_comparison") or {}
     coating_gradient_diagnostic = recommendation_package.get("coating_vs_gradient_diagnostic") or {}
     surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
+    readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
@@ -121,6 +126,13 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
             surface_summary.get("unknown_surface_function_candidate_ids", [])
         ),
         "shared_coating_gradient_function_count": len(surface_summary.get("shared_coating_gradient_functions", [])),
+        "decision_readiness_category_counts": readiness_summary.get("readiness_category_counts", {}),
+        "decision_readiness_status_counts": readiness_summary.get("readiness_status_counts", {}),
+        "research_only_candidate_count": len(readiness_summary.get("research_only_candidate_ids", [])),
+        "exploratory_only_candidate_count": len(readiness_summary.get("exploratory_only_candidate_ids", [])),
+        "usable_with_caveats_count": len(readiness_summary.get("usable_with_caveats_candidate_ids", [])),
+        "usable_as_reference_count": len(readiness_summary.get("usable_as_reference_candidate_ids", [])),
+        "not_decision_ready_count": len(readiness_summary.get("not_decision_ready_candidate_ids", [])),
     }
 
 
@@ -158,6 +170,19 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Covered required surface-function count: {summary['covered_required_surface_function_count']}")
     print(f"Unknown surface-function candidate count: {summary['unknown_surface_function_candidate_count']}")
     print(f"Shared coating/gradient function count: {summary['shared_coating_gradient_function_count']}")
+    print(
+        "Decision-readiness category counts: "
+        f"{json.dumps(summary['decision_readiness_category_counts'], sort_keys=True)}"
+    )
+    print(
+        "Decision-readiness status counts: "
+        f"{json.dumps(summary['decision_readiness_status_counts'], sort_keys=True)}"
+    )
+    print(f"Research-only candidate count: {summary['research_only_candidate_count']}")
+    print(f"Exploratory-only candidate count: {summary['exploratory_only_candidate_count']}")
+    print(f"Usable-with-caveats count: {summary['usable_with_caveats_count']}")
+    print(f"Usable-as-reference count: {summary['usable_as_reference_count']}")
+    print(f"Not-decision-ready count: {summary['not_decision_ready_count']}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

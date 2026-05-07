@@ -189,6 +189,10 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     evidence = _evidence(candidate)
     process_route = _summarize_process_route(candidate)
     surface_profile = _mapping(candidate.get("surface_function_profile"))
+    readiness = _mapping(candidate.get("decision_readiness"))
+    constraints = [
+        _mapping(item) for item in _as_list(readiness.get("constraints")) if _mapping(item)
+    ]
     return {
         "candidate_id": _text(candidate.get("candidate_id"), "unknown_candidate"),
         "system_name": _system_name(candidate),
@@ -226,6 +230,25 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
             _text(item) for item in _as_list(surface_profile.get("secondary_surface_functions")) if _text(item)
         ],
         "unknown_surface_function_flag": surface_profile.get("unknown_surface_function_flag") is True,
+        "readiness_category": _text(readiness.get("readiness_category"), "unknown_readiness"),
+        "readiness_label": _text(readiness.get("readiness_label"), "Unknown decision readiness"),
+        "readiness_status": _text(readiness.get("readiness_status"), "unknown"),
+        "readiness_confidence": _text(readiness.get("readiness_confidence"), "low"),
+        "allowed_use": _text(readiness.get("allowed_use"), "not specified"),
+        "disallowed_use": _text(readiness.get("disallowed_use"), "not specified"),
+        "required_next_evidence": [
+            _text(item) for item in _as_list(readiness.get("required_next_evidence")) if _text(item)
+        ],
+        "top_readiness_constraints": [
+            {
+                "constraint_id": _text(item.get("constraint_id")),
+                "category": _text(item.get("category"), "unknown"),
+                "severity": _text(item.get("severity"), "unknown"),
+                "reason": _text(item.get("reason")),
+                "source_field": _text(item.get("source_field")),
+            }
+            for item in constraints[:4]
+        ],
         "top_factor_signals": _top_factor_signals(candidate),
         "warnings": _candidate_warnings(candidate),
         "certification_risk_flags": [_text(item) for item in _as_list(candidate.get("certification_risk_flags")) if _text(item)],
@@ -255,6 +278,7 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         "process_route_summary": dict(_mapping(package.get("process_route_summary"))),
         "surface_function_coverage_summary": dict(_mapping(package.get("surface_function_coverage_summary"))),
         "surface_function_required_coverage": dict(_mapping(package.get("surface_function_required_coverage"))),
+        "decision_readiness_summary": dict(_mapping(package.get("decision_readiness_summary"))),
         "evidence_maturity_summary": dict(_mapping(package.get("evidence_maturity_summary"))),
         "factor_summary": dict(_mapping(package.get("factor_summary"))),
         "interface_risk_summary": dict(
@@ -398,6 +422,37 @@ def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> di
     }
 
 
+def build_decision_readiness_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    summary = _mapping(package.get("decision_readiness_summary"))
+    return {
+        "candidate_count": summary.get("candidate_count", 0),
+        "readiness_category_counts": dict(_mapping(summary.get("readiness_category_counts"))),
+        "readiness_status_counts": dict(_mapping(summary.get("readiness_status_counts"))),
+        "evidence_maturity_counts": dict(_mapping(summary.get("evidence_maturity_counts"))),
+        "candidates_by_readiness_category": dict(_mapping(summary.get("candidates_by_readiness_category"))),
+        "candidates_by_readiness_status": dict(_mapping(summary.get("candidates_by_readiness_status"))),
+        "not_decision_ready_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("not_decision_ready_candidate_ids")) if _text(item)
+        ],
+        "research_only_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("research_only_candidate_ids")) if _text(item)
+        ],
+        "exploratory_only_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("exploratory_only_candidate_ids")) if _text(item)
+        ],
+        "usable_as_reference_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("usable_as_reference_candidate_ids")) if _text(item)
+        ],
+        "usable_with_caveats_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("usable_with_caveats_candidate_ids")) if _text(item)
+        ],
+        "blocking_constraint_count": summary.get("blocking_constraint_count", 0),
+        "high_constraint_count": summary.get("high_constraint_count", 0),
+        "common_constraint_categories": dict(_mapping(summary.get("common_constraint_categories"))),
+        "warnings": [_text(item) for item in _as_list(summary.get("warnings")) if _text(item)],
+    }
+
+
 def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
     limiting_factors = [_mapping(item) for item in _as_list(trace.get("limiting_factors")) if _mapping(item)]
     refinement_options = [_mapping(item) for item in _as_list(trace.get("refinement_options")) if _mapping(item)]
@@ -456,6 +511,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
         "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
+        "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
         "optimisation_trace_cards": [build_optimisation_trace_card(trace) for trace in traces],
         "candidate_cards": [build_candidate_card_view_model(candidate) for candidate in candidates],
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
@@ -502,6 +558,57 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(_markdown_table_from_mix("System architectures", summary.get("system_architecture_mix", {})))
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
+    readiness_view = view_model["decision_readiness_summary_view"]
+    lines.extend(
+        [
+            "",
+            "## Decision Readiness",
+            "- Decision readiness is not final recommendation logic.",
+            "- Decision readiness is not qualification/certification approval.",
+            "- Low maturity D/E/F candidates are exploratory or research-only.",
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Readiness categories", readiness_view.get("readiness_category_counts", {})))
+    lines.extend(_markdown_table_from_mix("Readiness statuses", readiness_view.get("readiness_status_counts", {})))
+    lines.extend(
+        [
+            "- Mature/reference candidates: "
+            + (", ".join(readiness_view.get("usable_as_reference_candidate_ids", [])) or "none"),
+            "- Caveated engineering candidates: "
+            + (", ".join(readiness_view.get("usable_with_caveats_candidate_ids", [])) or "none"),
+            "- Exploratory-only candidates: "
+            + (", ".join(readiness_view.get("exploratory_only_candidate_ids", [])) or "none"),
+            "- Research-only candidates: "
+            + (", ".join(readiness_view.get("research_only_candidate_ids", [])) or "none"),
+            "- Not-decision-ready candidates: "
+            + (", ".join(readiness_view.get("not_decision_ready_candidate_ids", [])) or "none"),
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Common readiness constraint categories",
+            readiness_view.get("common_constraint_categories", {}),
+        )
+    )
+    for card in view_model["candidate_cards"]:
+        lines.extend(
+            [
+                f"### Readiness: {card['candidate_id']}",
+                f"- Class: {card['candidate_class']}",
+                f"- Evidence maturity: {card['evidence_maturity']}",
+                f"- Readiness: {card['readiness_label']}",
+                f"- Readiness status: {card['readiness_status']}",
+                f"- Allowed use: {card['allowed_use']}",
+                f"- Disallowed use: {card['disallowed_use']}",
+                "- Required next evidence: "
+                + (", ".join(card["required_next_evidence"]) or "not specified"),
+            ]
+        )
+        for constraint in card["top_readiness_constraints"]:
+            lines.append(
+                "- Top constraint: "
+                f"{constraint['category']} ({constraint['severity']}) - {constraint['reason']}"
+            )
     surface_view = view_model["surface_function_coverage_view"]
     required_labels = [
         _text(item.get("function_id"))
@@ -696,6 +803,7 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Gradient: {card['gradient_summary'].get('summary', '') or 'not specified'}",
                 f"- Primary surface functions: {', '.join(card['primary_surface_functions']) or 'unknown'}",
                 f"- Secondary surface functions: {', '.join(card['secondary_surface_functions']) or 'none visible'}",
+                f"- Decision readiness: {card['readiness_label']} ({card['readiness_status']})",
                 f"- Interfaces: {', '.join(card['interface_summary'].get('interface_types', [])) or 'none visible'}",
             ]
         )

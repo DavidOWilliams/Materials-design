@@ -35,7 +35,7 @@ def test_build_review_pack_summary_includes_review_metrics():
     view_model = build_recommendation_package_view_model(package)
     summary = build_review_pack_summary(package, view_model)
 
-    assert summary["candidate_count"] > 0
+    assert summary["candidate_count"] >= 30
     assert summary["exporter_status"] == "review_pack_created"
     assert summary["recommendation_narrative_status"] == "controlled_narrative_no_final_recommendation"
     assert summary["optimisation_status"] == "skeleton_no_variants_generated"
@@ -104,9 +104,10 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     with (tmp_path / VIEW_MODEL_FILENAME).open(encoding="utf-8") as handle:
         view_model = json.load(handle)
 
-    assert summary["candidate_count"] > 0
+    assert summary["candidate_count"] >= 30
     assert package["candidate_systems"]
     assert view_model["candidate_cards"]
+    assert result["candidate_count"] >= 30
     assert result["generated_candidate_count"] == 0
     assert result["live_model_calls_made"] is False
     assert result["ranked_recommendations_count"] == 0

@@ -17,9 +17,11 @@ def _source_candidates():
 def test_process_route_templates_json_loads_and_contains_required_templates():
     templates = load_process_route_templates()
 
-    assert len(templates) >= 14
+    assert len(templates) >= 22
     assert templates["ni_superalloy_tbc"]["display_name"]
     assert templates["sic_sic_cmc_ebc"]["inspection_plan"]["inspection_burden"] == "high"
+    assert templates["generic_sic_sic_cmc_ebc"]["display_name"]
+    assert templates["generic_ebc_stack"]["qualification"]["qualification_burden"] == "very_high"
     json.dumps(templates)
 
 
@@ -49,6 +51,26 @@ def test_specific_ceramics_first_route_inference_examples():
     assert infer_process_route_template_id(by_id["demo_ni_superalloy_bondcoat_tbc_comparison"]) == "ni_superalloy_tbc"
     assert infer_process_route_template_id(by_id["sic_sic_cmc_ebc_anchor"]) == "sic_sic_cmc_ebc"
     assert infer_process_route_template_id(by_id["surface_oxidation_gradient"]) == "surface_oxidation_gradient"
+    assert infer_process_route_template_id(by_id["sic_sic_cmc_rare_earth_ebc_variant"]) == "generic_sic_sic_cmc_ebc"
+    assert infer_process_route_template_id(by_id["c_sic_cmc_oxidation_protected_concept"]) == (
+        "generic_carbon_containing_cmc_with_oxidation_protection"
+    )
+    assert infer_process_route_template_id(by_id["rare_earth_silicate_ebc_stack"]) == "generic_ebc_stack"
+    assert infer_process_route_template_id(by_id["metal_ceramic_transition_gradient_concept"]) == (
+        "generic_metal_ceramic_transition_gradient"
+    )
+
+
+def test_expanded_ceramics_first_candidates_map_to_known_process_routes():
+    enriched = enrich_candidates_with_process_routes(_source_candidates())
+    unknown = [
+        candidate["candidate_id"]
+        for candidate in enriched
+        if candidate["process_route_template_id"] == "unknown_route"
+    ]
+
+    assert unknown == []
+    assert len(enriched) >= 30
 
 
 def test_gradient_candidates_expose_high_or_unknown_inspection_and_qualification_concerns():

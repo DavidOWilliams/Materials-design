@@ -432,5 +432,284 @@
     "evidence_maturity_floor": "E",
     "assumptions": ["Concept remains exploratory; no exact temperature benefit is claimed."],
     "validation_gaps": ["thermal cycling evidence", "nondestructive verification method", "repair or rebuild route"]
+  },
+  {
+    "route_id": "generic_sic_sic_cmc_ebc",
+    "display_name": "Generic SiC/SiC CMC route with EBC dependency",
+    "applicable_candidate_classes": ["ceramic_matrix_composite"],
+    "applicable_architecture_types": ["composite_architecture"],
+    "process_family": "cmc_with_environmental_barrier",
+    "process_chain": ["fiber preform preparation", "matrix infiltration or conversion", "interphase control", "EBC-compatible surface preparation", "environmental barrier coating deposition", "acceptance inspection"],
+    "key_process_controls": ["fiber architecture", "interphase condition", "matrix porosity", "EBC adhesion", "thermal expansion compatibility"],
+    "inspection_plan": {
+      "inspection_burden": "high",
+      "inspection_methods": ["visual inspection", "non-destructive inspection where geometry permits", "coating thickness checks", "sectioned coupon validation"],
+      "inspection_targets": ["matrix cracking", "fiber/interphase condition", "EBC defects", "recession indicators"],
+      "inspection_challenges": ["subsurface CMC damage can be difficult to resolve", "EBC damage and CMC damage are coupled"]
+    },
+    "repairability": {
+      "repairability_level": "limited",
+      "repair_concept": "Local EBC repair may be possible only where substrate CMC condition remains acceptable.",
+      "repair_constraints": ["interphase or fiber damage may not be locally recoverable", "strip/recoat assumptions require validation"],
+      "likely_maintenance_actions": ["inspect coating recession", "evaluate matrix cracking", "repair or replace depending on substrate condition"]
+    },
+    "qualification": {
+      "qualification_burden": "very_high",
+      "qualification_notes": ["CMC processing route, EBC stack and environment must be qualified as a coupled system."]
+    },
+    "route_risks": ["EBC dependency", "interphase control", "steam recession", "inspection burden", "limited repairability"],
+    "route_benefits": ["low-density CMC architecture", "explicit environmental-barrier protection route"],
+    "sustainability_or_cost_notes": ["Inspection and coating repair logistics may dominate through-life burden."],
+    "evidence_maturity_floor": "C",
+    "assumptions": ["No exact service temperature or certified use is implied.", "EBC compatibility is treated as an open validation item."],
+    "validation_gaps": ["environment-specific EBC durability", "interphase recession evidence", "repair acceptance criteria"]
+  },
+  {
+    "route_id": "generic_oxide_oxide_cmc",
+    "display_name": "Generic oxide/oxide CMC route",
+    "applicable_candidate_classes": ["ceramic_matrix_composite"],
+    "applicable_architecture_types": ["composite_architecture"],
+    "process_family": "oxide_oxide_cmc",
+    "process_chain": ["oxide fiber architecture preparation", "slurry or sol-gel matrix infiltration", "porous matrix consolidation", "finishing", "damage and porosity inspection"],
+    "key_process_controls": ["fiber architecture", "matrix porosity", "shrinkage and cracking", "oxide-compatible finishing"],
+    "inspection_plan": {
+      "inspection_burden": "medium",
+      "inspection_methods": ["visual inspection", "porosity and crack screening", "coupon mechanical checks"],
+      "inspection_targets": ["distributed matrix cracking", "fiber architecture", "porosity state"],
+      "inspection_challenges": ["distributed damage may require application-specific acceptance criteria"]
+    },
+    "repairability": {
+      "repairability_level": "limited",
+      "repair_concept": "Repair is generally conservative and may rely on replacement or limited surface restoration.",
+      "repair_constraints": ["porous matrix damage may be difficult to restore", "thermal exposure history affects disposition"],
+      "likely_maintenance_actions": ["inspect cracks and surface condition", "evaluate replacement if matrix damage is uncertain"]
+    },
+    "qualification": {
+      "qualification_burden": "high",
+      "qualification_notes": ["Oxide/oxide architecture and damage tolerance need application-specific evidence."]
+    },
+    "route_risks": ["matrix cracking", "creep limitations", "inspection acceptance criteria", "limited repairability"],
+    "route_benefits": ["oxidation-tolerant architecture", "avoids carbon interphase dependency"],
+    "sustainability_or_cost_notes": ["Processing and inspection burden depend on fiber architecture and geometry."],
+    "evidence_maturity_floor": "C",
+    "assumptions": ["Oxidation tolerance does not imply qualification for a target component."],
+    "validation_gaps": ["creep and thermal-cycle evidence", "distributed damage acceptance criteria", "repair route evidence"]
+  },
+  {
+    "route_id": "generic_carbon_containing_cmc_with_oxidation_protection",
+    "display_name": "Carbon-containing CMC with oxidation-protection dependency",
+    "applicable_candidate_classes": ["ceramic_matrix_composite"],
+    "applicable_architecture_types": ["composite_architecture"],
+    "process_family": "carbon_containing_cmc_protection",
+    "process_chain": ["carbon-containing preform preparation", "matrix infiltration or conversion", "protective coating deposition", "oxidation screening", "inspection review"],
+    "key_process_controls": ["carbon exposure control", "protective coating continuity", "matrix conversion state", "inspection access"],
+    "inspection_plan": {
+      "inspection_burden": "high",
+      "inspection_methods": ["coating continuity inspection", "oxidation exposure coupons", "non-destructive inspection where accessible"],
+      "inspection_targets": ["coating breach", "carbon oxidation indicators", "matrix cracks"],
+      "inspection_challenges": ["coating breach can create hidden oxidation risk", "repair disposition may be conservative"]
+    },
+    "repairability": {
+      "repairability_level": "poor",
+      "repair_concept": "Repair is not assumed mature; replacement is conservative when oxidation damage is suspected.",
+      "repair_constraints": ["carbon oxidation damage may be irreversible", "coating repair cannot recover hidden fiber damage"],
+      "likely_maintenance_actions": ["inspect coating breach", "evaluate oxidation exposure", "replace when substrate damage is uncertain"]
+    },
+    "qualification": {
+      "qualification_burden": "very_high",
+      "qualification_notes": ["Oxidation protection, inspection and failure tolerance are major constraints."]
+    },
+    "route_risks": ["carbon oxidation", "coating breach sensitivity", "poor repairability", "high qualification burden"],
+    "route_benefits": ["damage-tolerant concept visibility", "explicit oxidation-protection dependency"],
+    "sustainability_or_cost_notes": ["Replacement assumptions may dominate through-life cost."],
+    "evidence_maturity_floor": "D",
+    "assumptions": ["Exploratory comparison only; no qualified use is implied."],
+    "validation_gaps": ["oxidation protection evidence", "coating breach tolerance", "inspection and repair criteria"]
+  },
+  {
+    "route_id": "generic_tbc_stack",
+    "display_name": "Generic TBC coating stack",
+    "applicable_candidate_classes": ["coating_enabled"],
+    "applicable_architecture_types": ["substrate_plus_coating"],
+    "process_family": "thermal_barrier_coating_stack",
+    "process_chain": ["substrate surface preparation", "bond coat or interface layer deposition", "ceramic top coat deposition", "heat treatment where applicable", "coating acceptance inspection"],
+    "key_process_controls": ["surface preparation", "bond coat chemistry", "top coat microstructure", "thermal-cycle exposure history"],
+    "inspection_plan": {
+      "inspection_burden": "medium",
+      "inspection_methods": ["visual inspection", "coating thickness measurement", "adhesion screening", "thermal exposure coupons"],
+      "inspection_targets": ["top coat defects", "interface condition", "spallation indicators"],
+      "inspection_challenges": ["subsurface interface damage can be difficult to verify directly"]
+    },
+    "repairability": {
+      "repairability_level": "moderate",
+      "repair_concept": "Strip/recoat or local refurbishment may be considered only with substrate condition verification.",
+      "repair_constraints": ["substrate condition after coating removal must be verified", "qualified repair route depends on coating stack"],
+      "likely_maintenance_actions": ["inspect spallation", "evaluate strip/recoat", "accept/reject after thermal exposure"]
+    },
+    "qualification": {
+      "qualification_burden": "high",
+      "qualification_notes": ["Coating stack, substrate and environment must be qualified together."]
+    },
+    "route_risks": ["spallation", "CTE mismatch", "bond coat oxidation", "inspection access sensitivity"],
+    "route_benefits": ["thermal-barrier function", "separates substrate and surface thermal roles"],
+    "sustainability_or_cost_notes": ["Repair and recoat logistics affect through-life cost."],
+    "evidence_maturity_floor": "B",
+    "assumptions": ["No exact thermal margin or lifetime claim is implied."],
+    "validation_gaps": ["thermal-cycle durability", "adhesion evidence", "environmental compatibility"]
+  },
+  {
+    "route_id": "generic_ebc_stack",
+    "display_name": "Generic EBC coating stack",
+    "applicable_candidate_classes": ["coating_enabled"],
+    "applicable_architecture_types": ["substrate_plus_coating"],
+    "process_family": "environmental_barrier_coating_stack",
+    "process_chain": ["ceramic or CMC surface preparation", "bond layer where applicable", "EBC deposition", "environmental exposure screening", "acceptance inspection"],
+    "key_process_controls": ["substrate compatibility", "coating chemistry", "defect population", "thermal expansion match"],
+    "inspection_plan": {
+      "inspection_burden": "high",
+      "inspection_methods": ["coating thickness checks", "defect inspection", "environmental exposure coupons", "surface recession monitoring"],
+      "inspection_targets": ["EBC cracks", "recession", "delamination", "coating defects"],
+      "inspection_challenges": ["steam exposure damage can be coupled to substrate condition"]
+    },
+    "repairability": {
+      "repairability_level": "limited",
+      "repair_concept": "EBC repair depends on substrate condition and validated strip/recoat or local repair route.",
+      "repair_constraints": ["substrate recession or cracking may limit repair", "local repair compatibility must be shown"],
+      "likely_maintenance_actions": ["inspect recession", "assess coating defects", "repair or replace based on substrate condition"]
+    },
+    "qualification": {
+      "qualification_burden": "very_high",
+      "qualification_notes": ["EBC durability is environment-specific and must be validated with the substrate."]
+    },
+    "route_risks": ["water vapor durability", "thermal expansion mismatch", "coating defects", "limited repairability"],
+    "route_benefits": ["environmental-barrier function", "steam/recession protection cue"],
+    "sustainability_or_cost_notes": ["Rare-earth content and repair assumptions may affect cost and supply risk."],
+    "evidence_maturity_floor": "C",
+    "assumptions": ["No certified EBC applicability is implied."],
+    "validation_gaps": ["steam recession evidence", "adhesion and defect tolerance", "repair route validation"]
+  },
+  {
+    "route_id": "generic_oxidation_hot_corrosion_coating",
+    "display_name": "Generic oxidation and hot-corrosion coating",
+    "applicable_candidate_classes": ["coating_enabled"],
+    "applicable_architecture_types": ["substrate_plus_coating"],
+    "process_family": "environmental_protection_coating",
+    "process_chain": ["substrate surface preparation", "diffusion or overlay coating", "heat treatment", "oxidation or corrosion screening", "inspection review"],
+    "key_process_controls": ["coating chemistry", "substrate compatibility", "coating continuity", "exposure environment"],
+    "inspection_plan": {
+      "inspection_burden": "medium",
+      "inspection_methods": ["visual inspection", "coating thickness measurement", "surface chemistry checks", "exposure coupon review"],
+      "inspection_targets": ["coating continuity", "cracking", "depletion", "corrosion attack"],
+      "inspection_challenges": ["environmental attack can be localized and exposure-specific"]
+    },
+    "repairability": {
+      "repairability_level": "moderate",
+      "repair_concept": "Repair may involve local disposition or strip/recoat when substrate condition remains acceptable.",
+      "repair_constraints": ["substrate depletion or attack must be assessed", "recoat compatibility depends on prior exposure"],
+      "likely_maintenance_actions": ["inspect corrosion indicators", "assess coating depletion", "repair or recoat where validated"]
+    },
+    "qualification": {
+      "qualification_burden": "high",
+      "qualification_notes": ["Environmental compatibility depends on substrate, coating and exposure chemistry."]
+    },
+    "route_risks": ["environmental specificity", "coating cracking", "substrate depletion", "repair uncertainty"],
+    "route_benefits": ["oxidation and hot-corrosion protection visibility", "localized surface protection"],
+    "sustainability_or_cost_notes": ["Recoat interval and process chemistry affect cost."],
+    "evidence_maturity_floor": "C",
+    "assumptions": ["No exact oxidation or corrosion life is claimed."],
+    "validation_gaps": ["target-environment exposure evidence", "adhesion and depletion criteria", "repair route evidence"]
+  },
+  {
+    "route_id": "generic_erosion_wear_coating",
+    "display_name": "Generic erosion or wear coating",
+    "applicable_candidate_classes": ["coating_enabled"],
+    "applicable_architecture_types": ["substrate_plus_coating"],
+    "process_family": "tribological_surface_coating",
+    "process_chain": ["substrate preparation", "wear or erosion coating deposition", "finishing", "adhesion and thickness inspection", "wear or erosion screening"],
+    "key_process_controls": ["coating thickness", "residual stress", "adhesion", "edge condition", "substrate fatigue interaction"],
+    "inspection_plan": {
+      "inspection_burden": "medium",
+      "inspection_methods": ["thickness measurement", "adhesion screening", "surface defect inspection", "wear scar review"],
+      "inspection_targets": ["coating defects", "edge durability", "adhesion", "wear progression"],
+      "inspection_challenges": ["local damage may concentrate near edges or contact features"]
+    },
+    "repairability": {
+      "repairability_level": "moderate",
+      "repair_concept": "Local repair or strip/recoat may be possible where substrate damage is acceptable.",
+      "repair_constraints": ["fatigue debit and residual stress must be checked", "edge repair may need qualified finishing"],
+      "likely_maintenance_actions": ["inspect wear", "measure coating loss", "repair or recoat if substrate remains acceptable"]
+    },
+    "qualification": {
+      "qualification_burden": "high",
+      "qualification_notes": ["Wear/erosion protection must be validated against substrate fatigue and local damage modes."]
+    },
+    "route_risks": ["adhesion", "residual stress", "fatigue debit", "edge durability", "inspection access"],
+    "route_benefits": ["localized wear or erosion protection", "substrate role preserved"],
+    "sustainability_or_cost_notes": ["Repair intervals and coating route affect through-life burden."],
+    "evidence_maturity_floor": "C",
+    "assumptions": ["Specific wear or erosion mechanism must be validated separately."],
+    "validation_gaps": ["wear or erosion test evidence", "substrate fatigue debit", "repair acceptance criteria"]
+  },
+  {
+    "route_id": "generic_metal_ceramic_transition_gradient",
+    "display_name": "Generic metal-to-ceramic transition gradient",
+    "applicable_candidate_classes": ["spatially_graded_am"],
+    "applicable_architecture_types": ["spatial_gradient"],
+    "process_family": "spatial_gradient_additive",
+    "process_chain": ["multi-material feedstock setup", "graded deposition", "stress relief or post-processing", "through-depth verification", "sectioned coupon validation"],
+    "key_process_controls": ["composition transition", "chemical compatibility", "residual stress", "defect population", "through-depth properties"],
+    "inspection_plan": {
+      "inspection_burden": "high",
+      "inspection_methods": ["through-depth microscopy on coupons", "non-destructive inspection development", "residual stress screening", "composition mapping"],
+      "inspection_targets": ["transition-zone cracking", "porosity", "composition continuity", "interface-like defects"],
+      "inspection_challenges": ["metal-to-ceramic gradients may need destructive coupon validation"]
+    },
+    "repairability": {
+      "repairability_level": "poor",
+      "repair_concept": "Repair route is not assumed mature; rebuild or replacement is conservative.",
+      "repair_constraints": ["graded transition must be recreated", "local repair can introduce new residual stress"],
+      "likely_maintenance_actions": ["inspect transition region", "evaluate cracks", "replace if gradient integrity is uncertain"]
+    },
+    "qualification": {
+      "qualification_burden": "very_high",
+      "qualification_notes": ["Material compatibility, inspection and repeatability require extensive evidence."]
+    },
+    "route_risks": ["transition-zone cracking", "chemical compatibility", "residual stress", "inspection method immaturity"],
+    "route_benefits": ["explicit transition-zone management", "explores coating-alternative architecture"],
+    "sustainability_or_cost_notes": ["Development and inspection burden may dominate cost."],
+    "evidence_maturity_floor": "F",
+    "assumptions": ["Concept only; no winner or qualification claim is implied."],
+    "validation_gaps": ["composition transition evidence", "thermal cycling evidence", "inspection method", "repair route"]
+  },
+  {
+    "route_id": "generic_repair_gradient",
+    "display_name": "Generic repair-oriented graded buildup",
+    "applicable_candidate_classes": ["spatially_graded_am"],
+    "applicable_architecture_types": ["spatial_gradient"],
+    "process_family": "graded_additive_repair",
+    "process_chain": ["substrate damage assessment", "graded additive buildup", "post-process heat treatment or stress relief", "bond-line inspection", "repair acceptance review"],
+    "key_process_controls": ["substrate condition", "powder feed transition", "dilution", "residual stress", "bond-line defects"],
+    "inspection_plan": {
+      "inspection_burden": "high",
+      "inspection_methods": ["bond-line inspection", "surface and volumetric NDI where possible", "residual stress review", "repair coupon validation"],
+      "inspection_targets": ["bond-line defects", "cracking", "dilution zone", "through-depth property transition"],
+      "inspection_challenges": ["repair geometry and prior exposure complicate acceptance criteria"]
+    },
+    "repairability": {
+      "repairability_level": "limited",
+      "repair_concept": "The route is itself a repair concept, but repeat repair and acceptance criteria remain immature.",
+      "repair_constraints": ["prior damage state must be known", "repeat repair can accumulate residual stress"],
+      "likely_maintenance_actions": ["inspect bond line", "verify repair geometry", "accept/reject against validated criteria"]
+    },
+    "qualification": {
+      "qualification_burden": "very_high",
+      "qualification_notes": ["Repair qualification depends on substrate history, geometry and acceptance criteria."]
+    },
+    "route_risks": ["repair repeatability", "bond-line defects", "residual stress", "high inspection burden"],
+    "route_benefits": ["repair-oriented gradient concept", "transition-zone management made explicit"],
+    "sustainability_or_cost_notes": ["Repair could reduce replacement burden only if validation succeeds."],
+    "evidence_maturity_floor": "E",
+    "assumptions": ["Repair benefit is not assumed; it requires validation."],
+    "validation_gaps": ["repair acceptance criteria", "bond-line evidence", "repeat repair evidence"]
   }
 ]

@@ -72,6 +72,11 @@ def test_representative_candidates_get_expected_surface_functions():
     assert {"thermal_barrier", "transition_zone_management"} <= _function_ids(
         candidates["thermal_barrier_gradient"]
     )
+    assert "environmental_barrier" in _function_ids(candidates["rare_earth_silicate_ebc_stack"])
+    assert "oxidation_resistance" in _function_ids(candidates["oxidation_hot_corrosion_coating"])
+    assert "erosion_resistance" in _function_ids(candidates["erosion_resistant_coating_system"])
+    assert {"wear_resistance", "hard_surface"} & _function_ids(candidates["wear_hard_surface_gradient_variant"])
+    assert "transition_zone_management" in _function_ids(candidates["metal_ceramic_transition_gradient_concept"])
 
 
 def test_candidate_surface_profiles_include_function_kind_groups():
@@ -83,6 +88,8 @@ def test_candidate_surface_profiles_include_function_kind_groups():
     assert coating_profile["support_or_lifecycle_considerations"]
     assert "transition_zone_management" in gradient_profile["secondary_service_functions"]
     assert all("function_kind" in item for item in coating_profile["surface_functions"])
+    assert candidates["rare_earth_silicate_ebc_stack"]["surface_function_profile"]["primary_service_functions"]
+    assert candidates["thermal_porosity_gradient_variant"]["surface_function_profile"]["primary_service_functions"]
 
 
 def test_attach_surface_function_profiles_preserves_candidate_count_and_order():

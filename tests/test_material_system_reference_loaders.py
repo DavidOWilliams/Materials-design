@@ -30,6 +30,12 @@ def test_every_material_system_loader_returns_records():
     assert all(all_records[source_table] for source_table in all_records)
 
 
+def test_expanded_material_system_csvs_have_unique_reference_ids():
+    for records in (load_cmc_systems(), load_coating_systems(), load_graded_am_systems()):
+        reference_ids = [record["reference_id"] for record in records]
+        assert len(reference_ids) == len(set(reference_ids))
+
+
 def test_required_columns_are_enforced(tmp_path: Path):
     csv_path = tmp_path / "bad_ceramic.csv"
     csv_path.write_text(
@@ -50,6 +56,9 @@ def test_sic_sic_cmc_with_ebc_anchor_is_present():
         and record["environmental_barrier_coating"]
         for record in cmc_systems
     )
+    assert len(cmc_systems) >= 6
+    assert any(record["reference_id"] == "melt_infiltrated_sic_sic_cmc_ebc" for record in cmc_systems)
+    assert any(record["reference_id"] == "c_sic_cmc_oxidation_protected_concept" for record in cmc_systems)
 
 
 def test_graded_am_records_have_conservative_maturity():
@@ -58,6 +67,8 @@ def test_graded_am_records_have_conservative_maturity():
 
     assert maturities & {"D", "E", "F"}
     assert "A" not in maturities
+    assert len(graded_records) >= 9
+    assert any(record["reference_id"] == "metal_ceramic_transition_gradient_concept" for record in graded_records)
 
 
 def test_coating_records_preserve_role_and_substrate_family():
@@ -66,6 +77,9 @@ def test_coating_records_preserve_role_and_substrate_family():
     assert all(record["coating_role"] for record in coating_records)
     assert all(record["substrate_family"] for record in coating_records)
     assert any(record["coating_role"] == "thermal insulation" for record in coating_records)
+    assert len(coating_records) >= 10
+    assert any(record["reference_id"] == "rare_earth_silicate_ebc_stack" for record in coating_records)
+    assert any(record["reference_id"] == "erosion_resistant_coating_system" for record in coating_records)
 
 
 def test_reference_record_can_convert_to_material_system_candidate_dictionary():

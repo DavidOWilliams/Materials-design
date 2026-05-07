@@ -208,31 +208,53 @@ def infer_process_route_template_id(candidate: Mapping[str, Any]) -> str | None:
         return "ni_superalloy_tbc"
     if "refractory" in text and ("oxidation" in text or "silicide" in text or "aluminide" in text):
         return "refractory_oxidation_protection"
-    if ("sic/sic" in text or "sic sic" in text) and ("ebc" in text or "environmental barrier" in text):
-        return "sic_sic_cmc_ebc"
+    if (
+        candidate_class == "ceramic_matrix_composite"
+        and ("sic/sic" in text or "sic sic" in text)
+        and ("ebc" in text or "environmental barrier" in text)
+    ):
+        if candidate_id == "sic_sic_cmc_ebc_anchor":
+            return "sic_sic_cmc_ebc"
+        return "generic_sic_sic_cmc_ebc"
     if "oxide/oxide" in text or "oxide oxide" in text:
-        return "oxide_oxide_cmc"
+        if candidate_id == "oxide_oxide_cmc_comparison":
+            return "oxide_oxide_cmc"
+        return "generic_oxide_oxide_cmc"
+    if candidate_class == "ceramic_matrix_composite" and ("carbon" in text or "c/sic" in text or "c sic" in text):
+        return "generic_carbon_containing_cmc_with_oxidation_protection"
     if "silicon nitride" in text:
         return "silicon_nitride"
     if "alumina" in text:
         return "alumina"
     if "silicon carbide" in text or "monolithic sic" in text:
         return "monolithic_sic"
-    if "wear" in text and candidate_class == "coating_enabled":
-        return "wear_resistant_coating_system"
+    if ("wear" in text or "erosion" in text or "abradable" in text or "clearance" in text) and candidate_class == "coating_enabled":
+        if candidate_id == "wear_coating_reference":
+            return "wear_resistant_coating_system"
+        return "generic_erosion_wear_coating"
     if ("ebc" in text or "environmental barrier" in text) and candidate_class == "coating_enabled":
-        return "environmental_barrier_coating_system"
+        if candidate_id == "ebc_reference":
+            return "environmental_barrier_coating_system"
+        return "generic_ebc_stack"
+    if ("oxidation" in text or "hot-corrosion" in text or "hot corrosion" in text) and candidate_class == "coating_enabled":
+        return "generic_oxidation_hot_corrosion_coating"
     if ("tbc" in text or "thermal barrier" in text) and candidate_class == "coating_enabled":
-        return "thermal_barrier_coating_system"
+        if candidate_id == "tbc_reference":
+            return "thermal_barrier_coating_system"
+        return "generic_tbc_stack"
     if architecture == "spatial_gradient" or candidate_class == "spatially_graded_am":
+        if "metal-to-ceramic" in text or "metal ceramic" in text or "ceramic-rich" in text:
+            return "generic_metal_ceramic_transition_gradient"
+        if "repair" in text or "buildup" in text:
+            return "generic_repair_gradient"
         if "oxidation" in text:
-            return "surface_oxidation_gradient"
-        if "wear" in text:
-            return "surface_wear_gradient"
+            return "surface_oxidation_gradient" if candidate_id == "surface_oxidation_gradient" else "surface_oxidation_gradient"
+        if "wear" in text or "hard surface" in text or "hard-surface" in text:
+            return "surface_wear_gradient" if candidate_id == "surface_wear_gradient" else "surface_wear_gradient"
         if "tough" in text and "hard" in text:
             return "tough_core_hard_surface_gradient"
         if "thermal" in text or "barrier" in text:
-            return "thermal_barrier_gradient"
+            return "thermal_barrier_gradient" if candidate_id == "thermal_barrier_gradient" else "thermal_barrier_gradient"
     return None
 
 

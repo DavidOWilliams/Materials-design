@@ -118,8 +118,8 @@ def test_build_coating_vs_gradient_diagnostic_finds_both_sides_and_caps_pairwise
 
     assert diagnostic["diagnostic_status"] == "comparison_only_no_winner"
     assert diagnostic["comparison_required"] is True
-    assert len(diagnostic["coating_enabled_candidate_ids"]) == 4
-    assert len(diagnostic["spatial_gradient_candidate_ids"]) == 4
+    assert len(diagnostic["coating_enabled_candidate_ids"]) >= 10
+    assert len(diagnostic["spatial_gradient_candidate_ids"]) >= 9
     assert 0 < len(diagnostic["pairwise_comparisons"]) <= 12
     assert all("functional_overlap_status" in item for item in diagnostic["pairwise_comparisons"])
     assert all(

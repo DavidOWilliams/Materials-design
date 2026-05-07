@@ -149,7 +149,7 @@ def _top_factor_signals(candidate: Mapping[str, Any], limit: int = 5) -> list[di
 
 def _candidate_warnings(candidate: Mapping[str, Any]) -> list[str]:
     warnings: list[str] = []
-    for field in ("assembly_warnings", "factor_model_warnings", "normalization_warnings"):
+    for field in ("assembly_warnings", "factor_model_warnings", "normalization_warnings", "process_route_warnings"):
         for warning in _as_list(candidate.get(field)):
             text = _text(warning)
             if text and text not in warnings:
@@ -157,9 +157,37 @@ def _candidate_warnings(candidate: Mapping[str, Any]) -> list[str]:
     return warnings
 
 
+def _summarize_process_route(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    details = _mapping(candidate.get("process_route_details"))
+    inspection = _mapping(candidate.get("inspection_plan"))
+    repairability = _mapping(candidate.get("repairability"))
+    qualification = _mapping(candidate.get("qualification_route"))
+    process_chain = [_text(item) for item in _as_list(details.get("process_chain")) if _text(item)]
+    return {
+        "process_route_template_id": _text(candidate.get("process_route_template_id"), "unknown_route"),
+        "process_route_display_name": _text(details.get("display_name"), "Unknown process route"),
+        "process_family": _text(details.get("process_family"), "unknown"),
+        "process_chain": process_chain,
+        "process_chain_summary": " -> ".join(process_chain[:4]),
+        "inspection_burden": _text(inspection.get("inspection_burden"), "unknown"),
+        "inspection_methods": [_text(item) for item in _as_list(inspection.get("inspection_methods")) if _text(item)],
+        "inspection_challenges": [
+            _text(item) for item in _as_list(inspection.get("inspection_challenges")) if _text(item)
+        ],
+        "repairability_level": _text(repairability.get("repairability_level"), "unknown"),
+        "repair_concept": _text(repairability.get("repair_concept"), "not specified"),
+        "qualification_burden": _text(qualification.get("qualification_burden"), "unknown"),
+        "route_risks": [_text(item) for item in _as_list(candidate.get("route_risks")) if _text(item)],
+        "route_validation_gaps": [
+            _text(item) for item in _as_list(candidate.get("route_validation_gaps")) if _text(item)
+        ],
+    }
+
+
 def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, Any]:
     maturity = _evidence_maturity(candidate)
     evidence = _evidence(candidate)
+    process_route = _summarize_process_route(candidate)
     return {
         "candidate_id": _text(candidate.get("candidate_id"), "unknown_candidate"),
         "system_name": _system_name(candidate),
@@ -178,6 +206,18 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
         "coating_or_surface_summary": _summarize_coating(candidate),
         "gradient_summary": _summarize_gradient(candidate),
         "interface_summary": _summarize_interfaces(candidate),
+        "process_route_summary": process_route,
+        "process_route_display_name": process_route["process_route_display_name"],
+        "process_family": process_route["process_family"],
+        "process_chain_summary": process_route["process_chain_summary"],
+        "inspection_burden": process_route["inspection_burden"],
+        "inspection_methods": process_route["inspection_methods"],
+        "inspection_challenges": process_route["inspection_challenges"],
+        "repairability_level": process_route["repairability_level"],
+        "repair_concept": process_route["repair_concept"],
+        "qualification_burden": process_route["qualification_burden"],
+        "route_risks": process_route["route_risks"],
+        "route_validation_gaps": process_route["route_validation_gaps"],
         "top_factor_signals": _top_factor_signals(candidate),
         "warnings": _candidate_warnings(candidate),
         "certification_risk_flags": [_text(item) for item in _as_list(candidate.get("certification_risk_flags")) if _text(item)],
@@ -204,6 +244,7 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
+        "process_route_summary": dict(_mapping(package.get("process_route_summary"))),
         "evidence_maturity_summary": dict(_mapping(package.get("evidence_maturity_summary"))),
         "factor_summary": dict(_mapping(package.get("factor_summary"))),
         "interface_risk_summary": dict(
@@ -345,6 +386,36 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(_markdown_table_from_mix("System architectures", summary.get("system_architecture_mix", {})))
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
+    process_route_summary = _mapping(summary.get("process_route_summary"))
+    lines.extend(["", "## Process Route, Inspection and Repairability"])
+    lines.extend(_markdown_table_from_mix("Process families", process_route_summary.get("process_family_counts", {})))
+    lines.extend(_markdown_table_from_mix("Inspection burden", process_route_summary.get("inspection_burden_counts", {})))
+    lines.extend(_markdown_table_from_mix("Repairability", process_route_summary.get("repairability_level_counts", {})))
+    lines.extend(_markdown_table_from_mix("Qualification burden", process_route_summary.get("qualification_burden_counts", {})))
+    high_inspection = process_route_summary.get("high_inspection_burden_candidate_ids", [])
+    limited_repair = process_route_summary.get("limited_or_poor_repairability_candidate_ids", [])
+    high_qualification = process_route_summary.get("high_or_very_high_qualification_burden_candidate_ids", [])
+    if high_inspection:
+        lines.append("- High inspection burden visible for: " + ", ".join(high_inspection))
+    if limited_repair:
+        lines.append("- Limited or poor repairability visible for: " + ", ".join(limited_repair))
+    if high_qualification:
+        lines.append("- High or very high qualification burden visible for: " + ", ".join(high_qualification))
+    for card in view_model["candidate_cards"]:
+        lines.extend(
+            [
+                f"### Route: {card['candidate_id']}",
+                f"- Route: {card['process_route_display_name']}",
+                f"- Process family: {card['process_family']}",
+                f"- Process chain: {card['process_chain_summary'] or 'not specified'}",
+                f"- Inspection burden: {card['inspection_burden']}",
+                f"- Inspection methods: {', '.join(card['inspection_methods']) or 'not specified'}",
+                f"- Repairability: {card['repairability_level']} - {card['repair_concept']}",
+                f"- Qualification burden: {card['qualification_burden']}",
+                f"- Route risks: {', '.join(card['route_risks'][:3]) or 'none visible'}",
+                f"- Validation gaps: {', '.join(card['route_validation_gaps'][:3]) or 'none visible'}",
+            ]
+        )
     optimisation = view_model["optimisation_summary_view"]
     comparison = view_model["coating_vs_gradient_comparison_view"]
     lines.extend(

@@ -211,6 +211,27 @@ def test_generated_candidate_count_zero_and_live_model_calls_false():
     assert optimised["diagnostics"]["live_model_calls_made"] is False
 
 
+def test_enriched_route_fields_create_limiting_factors_without_generating_variants():
+    candidate = _candidate(
+        "route-limited",
+        "spatially_graded_am",
+        system_architecture_type="spatial_gradient",
+        inspection_plan={"inspection_burden": "high", "inspection_challenges": ["through-depth inspection"]},
+        repairability={"repairability_level": "limited", "repair_constraints": ["gradient repair route unclear"]},
+        qualification_route={"qualification_burden": "very_high", "qualification_notes": ["route evidence needed"]},
+        route_risks=["transition-zone cracking"],
+        route_validation_gaps=["through-depth inspection method"],
+    )
+
+    trace = build_candidate_optimisation_trace(candidate)
+    factors = {factor["factor"] for factor in trace["limiting_factors"]}
+
+    assert "inspection.high_route_inspection_burden" in factors
+    assert "repairability.limited_or_poor_route_repairability" in factors
+    assert "certification.high_route_qualification_burden" in factors
+    assert trace["variants_generated"] == []
+
+
 def test_no_candidates_are_filtered_out():
     candidates = [
         _candidate("ceramic-1", "monolithic_ceramic"),

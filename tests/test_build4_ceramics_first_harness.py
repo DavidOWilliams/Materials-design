@@ -33,8 +33,10 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert view_model["candidate_cards"]
     assert package["optimisation_summary"]["status"] == "skeleton_no_variants_generated"
     assert package["optimisation_trace"]
+    assert package["process_route_summary"]
     assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
     assert view_model["optimisation_trace_cards"]
+    assert view_model["summary"]["process_route_summary"]
 
 
 def test_markdown_report_contains_not_final_recommendation(tmp_path):
@@ -50,6 +52,7 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "research adapters are disabled" in report
     assert "not qualification-ready" in report
     assert "coating vs gradient comparison" in report
+    assert "process route, inspection and repairability" in report
 
 
 def test_returned_summary_includes_candidate_count_greater_than_zero(tmp_path):
@@ -95,6 +98,15 @@ def test_returned_summary_includes_required_optimisation_console_fields(tmp_path
     assert summary["generated_candidate_count"] == 0
     assert summary["live_model_calls_made"] is False
     assert summary["coating_vs_gradient_comparison_required"] is True
+
+
+def test_returned_summary_includes_process_route_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["process_route_enriched_candidate_count"] == summary["candidate_count"]
+    assert summary["high_inspection_burden_count"] > 0
+    assert summary["limited_or_poor_repairability_count"] > 0
+    assert summary["high_or_very_high_qualification_burden_count"] > 0
 
 
 def test_main_quiet_returns_zero(tmp_path):

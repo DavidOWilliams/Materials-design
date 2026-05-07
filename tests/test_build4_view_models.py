@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.recommendation_builder import build_recommendation_package
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
+from src.process_route_enrichment import attach_process_route_enrichment
 import src.ui_view_models as ui_view_models
 from src.ui_view_models import (
     build_candidate_card_view_model,
@@ -100,7 +101,7 @@ def _package():
 
 
 def _optimised_package():
-    return attach_deterministic_optimisation(_package())
+    return attach_deterministic_optimisation(attach_process_route_enrichment(_package()))
 
 
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
@@ -159,6 +160,7 @@ def test_package_summary_returns_candidate_count_and_mix_fields():
     assert summary["total_refinement_option_count"] > 0
     assert summary["generated_candidate_count"] == 0
     assert summary["coating_vs_gradient_comparison_required"] is True
+    assert summary["process_route_summary"]["enriched_candidate_count"] == 3
 
 
 def test_markdown_report_includes_not_final_recommendation():
@@ -177,6 +179,7 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "no live model calls were made" in report
     assert "refinement operators are suggestions, not applied design changes" in report
     assert "coating vs gradient comparison" in report
+    assert "process route, inspection and repairability" in report
 
 
 def test_markdown_report_mentions_research_adapters_disabled():
@@ -221,6 +224,21 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert len(view_model["optimisation_trace_cards"]) == len(package["candidate_systems"])
     assert view_model["optimisation_trace_cards"][0]["top_limiting_factors"]
     assert view_model["optimisation_trace_cards"][0]["top_refinement_options"]
+
+
+def test_candidate_cards_include_process_route_fields():
+    package = _optimised_package()
+    view_model = build_recommendation_package_view_model(package)
+    by_id = {card["candidate_id"]: card for card in view_model["candidate_cards"]}
+
+    assert by_id["cmc-1"]["process_route_display_name"]
+    assert by_id["cmc-1"]["process_family"]
+    assert by_id["cmc-1"]["inspection_burden"] in {"high", "medium", "unknown"}
+    assert isinstance(by_id["cmc-1"]["inspection_methods"], list)
+    assert by_id["cmc-1"]["repairability_level"] in {"limited", "poor", "moderate", "unknown"}
+    assert by_id["cmc-1"]["qualification_burden"] in {"high", "very_high", "unknown"}
+    assert isinstance(by_id["cmc-1"]["route_risks"], list)
+    assert isinstance(by_id["cmc-1"]["route_validation_gaps"], list)
 
 
 def test_optimisation_summary_view_model_preserves_empty_ranking_and_pareto_boundary():

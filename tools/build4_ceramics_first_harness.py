@@ -19,6 +19,9 @@ from src.recommendation_builder import (  # noqa: E402
 from src.optimisation.deterministic_optimizer import (  # noqa: E402
     attach_deterministic_optimisation,
 )
+from src.process_route_enrichment import (  # noqa: E402
+    attach_process_route_enrichment,
+)
 from src.ui_view_models import (  # noqa: E402
     build_recommendation_package_view_model,
     package_to_json_safe_dict,
@@ -51,6 +54,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         source_package,
         run_id="build4_ceramics_first_harness",
     )
+    recommendation_package = attach_process_route_enrichment(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
@@ -68,6 +72,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
 
     summary = summarize_recommendation_package(recommendation_package)
     optimisation_summary = recommendation_package.get("optimisation_summary") or {}
+    process_route_summary = recommendation_package.get("process_route_summary") or {}
     comparison = recommendation_package.get("coating_vs_gradient_comparison") or {}
     return {
         "report_path": str(report_path),
@@ -82,6 +87,14 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "total_limiting_factor_count": optimisation_summary.get("total_limiting_factor_count", 0),
         "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
+        "process_route_enriched_candidate_count": process_route_summary.get("enriched_candidate_count", 0),
+        "high_inspection_burden_count": len(process_route_summary.get("high_inspection_burden_candidate_ids", [])),
+        "limited_or_poor_repairability_count": len(
+            process_route_summary.get("limited_or_poor_repairability_candidate_ids", [])
+        ),
+        "high_or_very_high_qualification_burden_count": len(
+            process_route_summary.get("high_or_very_high_qualification_burden_candidate_ids", [])
+        ),
         "research_mode_enabled": summary["research_mode_enabled"],
         "live_model_calls_made": view_model["summary"]["live_model_calls_made"],
         "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
@@ -100,6 +113,13 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Total limiting factor count: {summary['total_limiting_factor_count']}")
     print(f"Total refinement option count: {summary['total_refinement_option_count']}")
     print(f"Generated candidate count: {summary['generated_candidate_count']}")
+    print(f"Process-route enriched candidate count: {summary['process_route_enriched_candidate_count']}")
+    print(f"High inspection burden count: {summary['high_inspection_burden_count']}")
+    print(f"Limited or poor repairability count: {summary['limited_or_poor_repairability_count']}")
+    print(
+        "High or very high qualification burden count: "
+        f"{summary['high_or_very_high_qualification_burden_count']}"
+    )
     print(f"Research mode enabled: {summary['research_mode_enabled']}")
     print(f"Live model calls made: {summary['live_model_calls_made']}")
     print(

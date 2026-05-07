@@ -327,6 +327,93 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
     return records
 
 
+def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    inspection = _mapping(candidate.get("inspection_plan"))
+    repairability = _mapping(candidate.get("repairability"))
+    qualification = _mapping(candidate.get("qualification_route"))
+    route_id = _text(candidate.get("process_route_template_id"), "unknown_route")
+
+    inspection_burden = _text(inspection.get("inspection_burden"), "unknown")
+    if inspection_burden == "high":
+        records.append(
+            _record(
+                candidate=candidate,
+                factor="inspection.high_route_inspection_burden",
+                namespace="inspection",
+                severity="high",
+                reason=f"Process route {route_id} has high inspection burden.",
+                related_warnings=inspection.get("inspection_challenges"),
+            )
+        )
+    elif inspection_burden == "unknown":
+        records.append(
+            _record(
+                candidate=candidate,
+                factor="inspection.unknown_route_inspection_burden",
+                namespace="inspection",
+                severity="unknown",
+                reason=f"Process route {route_id} has unknown inspection burden.",
+                related_warnings=inspection.get("inspection_challenges"),
+            )
+        )
+
+    repairability_level = _text(repairability.get("repairability_level"), "unknown")
+    if repairability_level in {"limited", "poor"}:
+        records.append(
+            _record(
+                candidate=candidate,
+                factor="repairability.limited_or_poor_route_repairability",
+                namespace="repairability",
+                severity="high" if repairability_level == "poor" else "medium",
+                reason=f"Process route {route_id} has {repairability_level} repairability.",
+                related_warnings=repairability.get("repair_constraints"),
+            )
+        )
+
+    qualification_burden = _text(qualification.get("qualification_burden"), "unknown")
+    if qualification_burden in {"high", "very_high"}:
+        records.append(
+            _record(
+                candidate=candidate,
+                factor="certification.high_route_qualification_burden",
+                namespace="certification",
+                severity="high" if qualification_burden == "very_high" else "medium",
+                reason=f"Process route {route_id} has {qualification_burden} qualification burden.",
+                related_warnings=qualification.get("qualification_notes"),
+            )
+        )
+
+    for index, risk in enumerate(_as_list(candidate.get("route_risks"))[:3]):
+        text = _text(risk)
+        if text:
+            records.append(
+                _record(
+                    candidate=candidate,
+                    factor=f"process_route.route_risk_{index + 1}",
+                    namespace="process_route",
+                    severity=_severity_from_text(text, default="medium"),
+                    reason=text,
+                    related_warnings=[text],
+                )
+            )
+
+    for index, gap in enumerate(_as_list(candidate.get("route_validation_gaps"))[:3]):
+        text = _text(gap)
+        if text:
+            records.append(
+                _record(
+                    candidate=candidate,
+                    factor=f"process.route_validation_gap_{index + 1}",
+                    namespace="process",
+                    severity="medium",
+                    reason=text,
+                    related_warnings=[text],
+                )
+            )
+    return records
+
+
 def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Identify deterministic, transparent limiting factors for one existing candidate."""
     records: list[dict[str, Any]] = []
@@ -334,6 +421,7 @@ def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, An
     records.extend(_flag_limits(candidate))
     records.extend(_interface_limits(candidate))
     records.extend(_class_specific_limits(candidate))
+    records.extend(_process_route_limits(candidate))
     return _dedupe(records)
 
 

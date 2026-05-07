@@ -25,6 +25,10 @@ from src.coating_vs_gradient_diagnostics import (  # noqa: E402
 from src.process_route_enrichment import (  # noqa: E402
     attach_process_route_enrichment,
 )
+from src.surface_function_model import (  # noqa: E402
+    attach_surface_function_profiles,
+    compare_required_surface_functions_to_candidates,
+)
 from src.ui_view_models import (  # noqa: E402
     build_recommendation_package_view_model,
     package_to_json_safe_dict,
@@ -58,6 +62,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         run_id="build4_ceramics_first_harness",
     )
     recommendation_package = attach_process_route_enrichment(recommendation_package)
+    recommendation_package = attach_surface_function_profiles(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
@@ -79,6 +84,8 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     process_route_summary = recommendation_package.get("process_route_summary") or {}
     comparison = recommendation_package.get("coating_vs_gradient_comparison") or {}
     coating_gradient_diagnostic = recommendation_package.get("coating_vs_gradient_diagnostic") or {}
+    surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
+    required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
         "package_json_path": str(package_json_path),
@@ -108,6 +115,12 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "coating_profile_count": len(coating_gradient_diagnostic.get("coating_profiles", [])),
         "gradient_profile_count": len(coating_gradient_diagnostic.get("gradient_profiles", [])),
         "shared_surface_function_themes": coating_gradient_diagnostic.get("shared_surface_function_themes", []),
+        "required_surface_function_count": len(recommendation_package.get("required_surface_functions", [])),
+        "covered_required_surface_function_count": len(required_coverage.get("covered_required_function_ids", [])),
+        "unknown_surface_function_candidate_count": len(
+            surface_summary.get("unknown_surface_function_candidate_ids", [])
+        ),
+        "shared_coating_gradient_function_count": len(surface_summary.get("shared_coating_gradient_functions", [])),
     }
 
 
@@ -141,6 +154,10 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Coating profile count: {summary['coating_profile_count']}")
     print(f"Gradient profile count: {summary['gradient_profile_count']}")
     print(f"Shared surface-function themes: {json.dumps(summary['shared_surface_function_themes'])}")
+    print(f"Required surface-function count: {summary['required_surface_function_count']}")
+    print(f"Covered required surface-function count: {summary['covered_required_surface_function_count']}")
+    print(f"Unknown surface-function candidate count: {summary['unknown_surface_function_candidate_count']}")
+    print(f"Shared coating/gradient function count: {summary['shared_coating_gradient_function_count']}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

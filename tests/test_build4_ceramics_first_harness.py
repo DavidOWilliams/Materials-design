@@ -34,6 +34,8 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert package["optimisation_summary"]["status"] == "skeleton_no_variants_generated"
     assert package["optimisation_trace"]
     assert package["process_route_summary"]
+    assert package["required_surface_functions"]
+    assert package["surface_function_coverage_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
     assert view_model["optimisation_trace_cards"]
@@ -57,6 +59,7 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "coating vs gradient comparison" in report
     assert "coating vs gradient diagnostic" in report
     assert "no winner selected" in report
+    assert "surface function coverage" in report
     assert "process route, inspection and repairability" in report
 
 
@@ -122,6 +125,15 @@ def test_returned_summary_includes_coating_vs_gradient_diagnostic_counts(tmp_pat
     assert summary["coating_profile_count"] > 0
     assert summary["gradient_profile_count"] > 0
     assert summary["shared_surface_function_themes"]
+
+
+def test_returned_summary_includes_surface_function_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["required_surface_function_count"] > 0
+    assert summary["covered_required_surface_function_count"] > 0
+    assert summary["unknown_surface_function_candidate_count"] == 0
+    assert summary["shared_coating_gradient_function_count"] > 0
 
 
 def test_main_quiet_returns_zero(tmp_path):

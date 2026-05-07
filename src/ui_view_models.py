@@ -188,6 +188,7 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     maturity = _evidence_maturity(candidate)
     evidence = _evidence(candidate)
     process_route = _summarize_process_route(candidate)
+    surface_profile = _mapping(candidate.get("surface_function_profile"))
     return {
         "candidate_id": _text(candidate.get("candidate_id"), "unknown_candidate"),
         "system_name": _system_name(candidate),
@@ -218,6 +219,13 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
         "qualification_burden": process_route["qualification_burden"],
         "route_risks": process_route["route_risks"],
         "route_validation_gaps": process_route["route_validation_gaps"],
+        "primary_surface_functions": [
+            _text(item) for item in _as_list(surface_profile.get("primary_surface_functions")) if _text(item)
+        ],
+        "secondary_surface_functions": [
+            _text(item) for item in _as_list(surface_profile.get("secondary_surface_functions")) if _text(item)
+        ],
+        "unknown_surface_function_flag": surface_profile.get("unknown_surface_function_flag") is True,
         "top_factor_signals": _top_factor_signals(candidate),
         "warnings": _candidate_warnings(candidate),
         "certification_risk_flags": [_text(item) for item in _as_list(candidate.get("certification_risk_flags")) if _text(item)],
@@ -245,6 +253,8 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
         "process_route_summary": dict(_mapping(package.get("process_route_summary"))),
+        "surface_function_coverage_summary": dict(_mapping(package.get("surface_function_coverage_summary"))),
+        "surface_function_required_coverage": dict(_mapping(package.get("surface_function_required_coverage"))),
         "evidence_maturity_summary": dict(_mapping(package.get("evidence_maturity_summary"))),
         "factor_summary": dict(_mapping(package.get("factor_summary"))),
         "interface_risk_summary": dict(
@@ -349,6 +359,45 @@ def build_coating_vs_gradient_diagnostic_view_model(package: Mapping[str, Any]) 
     }
 
 
+def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    summary = _mapping(package.get("surface_function_coverage_summary"))
+    required_coverage = _mapping(package.get("surface_function_required_coverage"))
+    required_functions = [
+        dict(item) for item in _as_list(package.get("required_surface_functions")) if isinstance(item, Mapping)
+    ]
+    return {
+        "required_surface_functions": required_functions,
+        "function_to_candidate_ids": dict(_mapping(summary.get("function_to_candidate_ids"))),
+        "candidate_to_function_ids": dict(_mapping(summary.get("candidate_to_function_ids"))),
+        "coating_enabled_function_counts": dict(_mapping(summary.get("coating_enabled_function_counts"))),
+        "spatial_gradient_function_counts": dict(_mapping(summary.get("spatial_gradient_function_counts"))),
+        "shared_coating_gradient_functions": [
+            _text(item) for item in _as_list(summary.get("shared_coating_gradient_functions")) if _text(item)
+        ],
+        "functions_only_seen_in_coatings": [
+            _text(item) for item in _as_list(summary.get("functions_only_seen_in_coatings")) if _text(item)
+        ],
+        "functions_only_seen_in_gradients": [
+            _text(item) for item in _as_list(summary.get("functions_only_seen_in_gradients")) if _text(item)
+        ],
+        "unknown_surface_function_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("unknown_surface_function_candidate_ids")) if _text(item)
+        ],
+        "coverage_notes": [_text(item) for item in _as_list(required_coverage.get("coverage_notes")) if _text(item)],
+        "warnings": [
+            _text(item)
+            for item in _as_list(summary.get("warnings")) + _as_list(required_coverage.get("warnings"))
+            if _text(item)
+        ],
+        "covered_required_function_ids": [
+            _text(item) for item in _as_list(required_coverage.get("covered_required_function_ids")) if _text(item)
+        ],
+        "uncovered_required_function_ids": [
+            _text(item) for item in _as_list(required_coverage.get("uncovered_required_function_ids")) if _text(item)
+        ],
+    }
+
+
 def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
     limiting_factors = [_mapping(item) for item in _as_list(trace.get("limiting_factors")) if _mapping(item)]
     refinement_options = [_mapping(item) for item in _as_list(trace.get("refinement_options")) if _mapping(item)]
@@ -406,6 +455,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "optimisation_summary_view": build_optimisation_summary_view_model(package),
         "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
         "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
+        "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "optimisation_trace_cards": [build_optimisation_trace_card(trace) for trace in traces],
         "candidate_cards": [build_candidate_card_view_model(candidate) for candidate in candidates],
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
@@ -452,6 +502,40 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(_markdown_table_from_mix("System architectures", summary.get("system_architecture_mix", {})))
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
+    surface_view = view_model["surface_function_coverage_view"]
+    required_labels = [
+        _text(item.get("function_id"))
+        for item in surface_view.get("required_surface_functions", [])
+        if isinstance(item, Mapping)
+    ]
+    lines.extend(
+        [
+            "",
+            "## Surface Function Coverage",
+            "- Required surface functions: " + (", ".join(required_labels) or "none inferred"),
+            "- Covered required functions: "
+            + (", ".join(surface_view.get("covered_required_function_ids", [])) or "none visible"),
+            "- Uncovered required functions: "
+            + (", ".join(surface_view.get("uncovered_required_function_ids", [])) or "none"),
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Function-to-candidate coverage", surface_view.get("function_to_candidate_ids", {})))
+    lines.extend(_markdown_table_from_mix("Coating-enabled function coverage", surface_view.get("coating_enabled_function_counts", {})))
+    lines.extend(_markdown_table_from_mix("Spatial-gradient function coverage", surface_view.get("spatial_gradient_function_counts", {})))
+    lines.extend(
+        [
+            "- Shared coating/gradient functions: "
+            + (", ".join(surface_view.get("shared_coating_gradient_functions", [])) or "none visible"),
+            "- Functions only seen in coatings: "
+            + (", ".join(surface_view.get("functions_only_seen_in_coatings", [])) or "none visible"),
+            "- Functions only seen in gradients: "
+            + (", ".join(surface_view.get("functions_only_seen_in_gradients", [])) or "none visible"),
+            "- Candidates with unknown surface function: "
+            + (", ".join(surface_view.get("unknown_surface_function_candidate_ids", [])) or "none"),
+        ]
+    )
+    for note in surface_view.get("coverage_notes", [])[:4]:
+        lines.append(f"- {note}")
     process_route_summary = _mapping(summary.get("process_route_summary"))
     lines.extend(["", "## Process Route, Inspection and Repairability"])
     lines.extend(_markdown_table_from_mix("Process families", process_route_summary.get("process_family_counts", {})))
@@ -553,6 +637,11 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"### Diagnostic Pair: {pairwise.get('coating_candidate_id')} vs {pairwise.get('gradient_candidate_id')}",
                 "- Shared surface functions: "
                 + (", ".join(_as_list(pairwise.get("shared_surface_functions"))) or "none visible"),
+                "- Coating-only surface functions: "
+                + (", ".join(_as_list(pairwise.get("coating_only_surface_functions"))) or "none visible"),
+                "- Gradient-only surface functions: "
+                + (", ".join(_as_list(pairwise.get("gradient_only_surface_functions"))) or "none visible"),
+                f"- Functional overlap: {pairwise.get('functional_overlap_status')}",
                 f"- {pairwise.get('evidence_maturity_contrast')}",
                 f"- {pairwise.get('inspection_contrast')}",
                 f"- {pairwise.get('repairability_contrast')}",
@@ -605,6 +694,8 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Evidence: {card['evidence_maturity']} ({card['evidence_label']})",
                 f"- Coating/surface: {card['coating_or_surface_summary'].get('summary', '') or 'not specified'}",
                 f"- Gradient: {card['gradient_summary'].get('summary', '') or 'not specified'}",
+                f"- Primary surface functions: {', '.join(card['primary_surface_functions']) or 'unknown'}",
+                f"- Secondary surface functions: {', '.join(card['secondary_surface_functions']) or 'none visible'}",
                 f"- Interfaces: {', '.join(card['interface_summary'].get('interface_types', [])) or 'none visible'}",
             ]
         )

@@ -11,6 +11,7 @@ from src.coating_vs_gradient_diagnostics import (
 )
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 from src.process_route_enrichment import attach_process_route_enrichment
+from src.surface_function_model import attach_surface_function_profiles
 from src.ui_view_models import package_to_json_safe_dict
 from src.vertical_slices.ceramics_first import build_ceramics_first_candidate_package
 
@@ -18,6 +19,7 @@ from src.vertical_slices.ceramics_first import build_ceramics_first_candidate_pa
 def _package():
     package = build_ceramics_first_candidate_package()
     package = attach_process_route_enrichment(package)
+    package = attach_surface_function_profiles(package)
     package = attach_deterministic_optimisation(package)
     return package
 
@@ -68,6 +70,7 @@ def test_compare_surface_profiles_never_selects_winner():
     assert comparison["winner"] is None
     assert comparison["decision_status"] == "comparison_only_no_winner"
     assert "No winner selected." in comparison["diagnostic_notes"]
+    assert "functional_overlap_status" in comparison
 
 
 def test_build_coating_vs_gradient_diagnostic_finds_both_sides_and_caps_pairwise():
@@ -78,6 +81,7 @@ def test_build_coating_vs_gradient_diagnostic_finds_both_sides_and_caps_pairwise
     assert len(diagnostic["coating_enabled_candidate_ids"]) == 4
     assert len(diagnostic["spatial_gradient_candidate_ids"]) == 4
     assert 0 < len(diagnostic["pairwise_comparisons"]) <= 12
+    assert all("functional_overlap_status" in item for item in diagnostic["pairwise_comparisons"])
     first_ids = [
         (item["coating_candidate_id"], item["gradient_candidate_id"])
         for item in diagnostic["pairwise_comparisons"]
@@ -103,3 +107,12 @@ def test_attach_coating_vs_gradient_diagnostic_preserves_package_boundaries():
     assert attached["pareto_front"] == []
     assert attached["coating_vs_gradient_comparison"] == package["coating_vs_gradient_comparison"]
     json.dumps(package_to_json_safe_dict(attached))
+
+
+def test_coating_vs_gradient_diagnostic_uses_surface_function_profile_when_available():
+    package = _package()
+    candidate = next(candidate for candidate in package["candidate_systems"] if candidate["candidate_id"] == "tbc_reference")
+    profile = build_surface_protection_profile(candidate)
+
+    assert "thermal_barrier" in profile["surface_functions"]
+    assert profile["primary_surface_functions"]

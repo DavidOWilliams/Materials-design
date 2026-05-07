@@ -93,6 +93,15 @@ def is_spatial_gradient_candidate(candidate: Mapping[str, Any]) -> bool:
 
 
 def classify_surface_function(candidate: Mapping[str, Any]) -> list[str]:
+    profile = _mapping(candidate.get("surface_function_profile"))
+    if profile:
+        function_ids = [
+            _text(item.get("function_id"))
+            for item in _as_list(profile.get("surface_functions"))
+            if isinstance(item, Mapping) and _text(item.get("function_id"))
+        ]
+        if function_ids:
+            return function_ids
     text = _blob(
         {
             "candidate_id": candidate.get("candidate_id"),
@@ -160,6 +169,8 @@ def build_surface_protection_profile(candidate: Mapping[str, Any]) -> dict[str, 
     inspection = _mapping(candidate.get("inspection_plan"))
     repairability = _mapping(candidate.get("repairability"))
     qualification = _mapping(candidate.get("qualification_route"))
+    surface_function_profile = _mapping(candidate.get("surface_function_profile"))
+    surface_functions = classify_surface_function(candidate)
     return {
         "candidate_id": _candidate_id(candidate),
         "system_name": _system_name(candidate),
@@ -168,7 +179,9 @@ def build_surface_protection_profile(candidate: Mapping[str, Any]) -> dict[str, 
         "evidence_maturity": maturity,
         "evidence_label": _text(evidence.get("maturity_label"), evidence_maturity_label(maturity)),
         "source_type": _source_type(candidate),
-        "surface_functions": classify_surface_function(candidate),
+        "surface_functions": surface_functions,
+        "primary_surface_functions": list(_as_list(surface_function_profile.get("primary_surface_functions"))),
+        "secondary_surface_functions": list(_as_list(surface_function_profile.get("secondary_surface_functions"))),
         "coating_or_surface_summary": _coating_summary(candidate),
         "gradient_summary": _gradient_summary(candidate),
         "interface_types": _interface_types(candidate),
@@ -238,6 +251,16 @@ def compare_surface_profiles(
     coating_functions = set(_as_list(coating_profile.get("surface_functions")))
     gradient_functions = set(_as_list(gradient_profile.get("surface_functions")))
     shared = sorted(coating_functions & gradient_functions)
+    coating_only = sorted(coating_functions - gradient_functions)
+    gradient_only = sorted(gradient_functions - coating_functions)
+    if not coating_functions or not gradient_functions or coating_functions == {"unknown_surface_function"} or gradient_functions == {"unknown_surface_function"}:
+        overlap_status = "unknown_overlap"
+    elif len(shared) >= 2:
+        overlap_status = "strong_overlap"
+    elif shared:
+        overlap_status = "partial_overlap"
+    else:
+        overlap_status = "limited_overlap"
     coating_risks = _profile_risks(coating_profile, gradient=False)
     gradient_risks = _profile_risks(gradient_profile, gradient=True)
     shared_risks = sorted(set(coating_risks) & set(gradient_risks))
@@ -256,6 +279,9 @@ def compare_surface_profiles(
         "coating_candidate_id": _text(coating_profile.get("candidate_id"), "unknown_coating"),
         "gradient_candidate_id": _text(gradient_profile.get("candidate_id"), "unknown_gradient"),
         "shared_surface_functions": shared,
+        "coating_only_surface_functions": coating_only,
+        "gradient_only_surface_functions": gradient_only,
+        "functional_overlap_status": overlap_status,
         "coating_strengths": _profile_strengths(coating_profile, gradient=False),
         "gradient_strengths": _profile_strengths(gradient_profile, gradient=True),
         "coating_risks": coating_risks,

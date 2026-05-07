@@ -4,6 +4,7 @@ from src.process_route_enrichment import attach_process_route_enrichment
 from src.surface_function_model import (
     attach_surface_function_profiles,
     build_surface_function_coverage_summary,
+    classify_function_kind,
     compare_required_surface_functions_to_candidates,
     infer_candidate_surface_functions,
     infer_required_surface_functions,
@@ -33,6 +34,12 @@ def test_surface_function_taxonomy_json_loads():
     assert "thermal_barrier" in taxonomy
     assert "unknown_surface_function" in taxonomy
     json.dumps(taxonomy)
+
+
+def test_classify_function_kind_separates_service_and_support_functions():
+    assert classify_function_kind("thermal_barrier") == "primary_service_function"
+    assert classify_function_kind("inspection_access_or_monitoring") == "support_or_lifecycle_consideration"
+    assert classify_function_kind("coating_interface_management") == "risk_or_interface_consideration"
 
 
 def test_infer_required_surface_functions_detects_ceramics_first_surface_needs():
@@ -67,6 +74,17 @@ def test_representative_candidates_get_expected_surface_functions():
     )
 
 
+def test_candidate_surface_profiles_include_function_kind_groups():
+    candidates = _by_id(_package())
+    coating_profile = candidates["demo_ni_superalloy_bondcoat_tbc_comparison"]["surface_function_profile"]
+    gradient_profile = candidates["thermal_barrier_gradient"]["surface_function_profile"]
+
+    assert "thermal_barrier" in coating_profile["primary_service_functions"]
+    assert coating_profile["support_or_lifecycle_considerations"]
+    assert "transition_zone_management" in gradient_profile["secondary_service_functions"]
+    assert all("function_kind" in item for item in coating_profile["surface_functions"])
+
+
 def test_attach_surface_function_profiles_preserves_candidate_count_and_order():
     source = attach_process_route_enrichment(build_ceramics_first_candidate_package())
     enriched = attach_surface_function_profiles(source)
@@ -86,8 +104,53 @@ def test_build_surface_function_coverage_summary_returns_shared_coating_gradient
     assert summary["candidate_count"] == len(package["candidate_systems"])
     assert summary["shared_coating_gradient_functions"]
     assert summary["function_to_candidate_ids"]
+    assert summary["primary_service_function_to_candidate_ids"]
+    assert summary["support_consideration_to_candidate_ids"]
+    assert summary["shared_coating_gradient_primary_service_functions"]
+    assert summary["shared_coating_gradient_support_considerations"]
     assert summary["coating_enabled_function_counts"]
     assert summary["spatial_gradient_function_counts"]
+
+
+def test_support_only_required_coverage_is_not_primary_service_coverage():
+    package = {
+        "requirement_schema": {},
+        "design_space": {},
+        "required_surface_functions": [
+            {
+                "function_id": "inspection_access_or_monitoring",
+                "display_name": "Inspection access or monitoring",
+                "function_kind": "support_or_lifecycle_consideration",
+            }
+        ],
+        "candidate_systems": [
+            {
+                "candidate_id": "inspection-only",
+                "candidate_class": "coating_enabled",
+                "system_architecture_type": "substrate_plus_coating",
+                "surface_function_profile": {
+                    "surface_functions": [
+                        {
+                            "function_id": "inspection_access_or_monitoring",
+                            "function_kind": "support_or_lifecycle_consideration",
+                        }
+                    ],
+                    "primary_service_functions": [],
+                    "secondary_service_functions": [],
+                    "support_or_lifecycle_considerations": ["inspection_access_or_monitoring"],
+                    "risk_or_interface_considerations": [],
+                },
+            }
+        ],
+    }
+
+    summary = build_surface_function_coverage_summary(package)
+    comparison = compare_required_surface_functions_to_candidates(package)
+
+    assert summary["covered_required_primary_service_functions"] == []
+    assert summary["uncovered_required_primary_service_functions"] == []
+    assert comparison["covered_required_primary_service_function_ids"] == []
+    assert comparison["covered_required_support_consideration_ids"] == ["inspection_access_or_monitoring"]
 
 
 def test_compare_required_surface_functions_to_candidates_is_descriptive_not_ranking():
@@ -95,6 +158,8 @@ def test_compare_required_surface_functions_to_candidates_is_descriptive_not_ran
 
     assert comparison["required_function_ids"]
     assert comparison["covered_required_function_ids"]
+    assert comparison["covered_required_primary_service_function_ids"]
+    assert "covered_required_support_consideration_ids" in comparison
     assert "rank" not in comparison
     assert "winner" not in comparison
     assert any("descriptive" in note for note in comparison["coverage_notes"])

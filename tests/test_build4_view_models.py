@@ -202,6 +202,15 @@ def test_markdown_report_mentions_research_adapters_disabled():
     assert "research adapters are disabled" in report
 
 
+def test_markdown_report_separates_primary_surface_functions_from_support_tags():
+    report = render_markdown_report(_optimised_package()).lower()
+
+    assert "required primary service functions" in report
+    assert "support / lifecycle considerations" in report
+    assert "shared coating/gradient primary service functions" in report
+    assert "shared support considerations" in report
+
+
 def test_package_to_json_safe_dict_can_be_serialized_with_json_dumps():
     package = _package()
     package["non_json_tuple"] = ("a", "b")
@@ -249,6 +258,10 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["coating_vs_gradient_diagnostic_view"]["pairwise_comparisons"]
     assert view_model["surface_function_coverage_view"]["required_surface_functions"]
     assert view_model["surface_function_coverage_view"]["shared_coating_gradient_functions"]
+    assert view_model["surface_function_coverage_view"]["primary_service_function_to_candidate_ids"]
+    assert view_model["surface_function_coverage_view"]["support_consideration_to_candidate_ids"]
+    assert "shared_coating_gradient_primary_service_functions" in view_model["surface_function_coverage_view"]
+    assert "shared_coating_gradient_support_considerations" in view_model["surface_function_coverage_view"]
     assert view_model["decision_readiness_summary_view"]["readiness_category_counts"]
     assert view_model["decision_readiness_summary_view"]["readiness_status_counts"]
     assert view_model["recommendation_narrative_view"]["narrative_status"] == (
@@ -273,6 +286,9 @@ def test_candidate_cards_include_process_route_fields():
     assert isinstance(by_id["cmc-1"]["route_risks"], list)
     assert isinstance(by_id["cmc-1"]["route_validation_gaps"], list)
     assert by_id["cmc-1"]["primary_surface_functions"]
+    assert by_id["cmc-1"]["primary_service_functions"]
+    assert isinstance(by_id["cmc-1"]["support_or_lifecycle_considerations"], list)
+    assert isinstance(by_id["cmc-1"]["risk_or_interface_considerations"], list)
     assert by_id["cmc-1"]["unknown_surface_function_flag"] is False
     assert by_id["cmc-1"]["readiness_category"]
     assert by_id["cmc-1"]["readiness_label"]

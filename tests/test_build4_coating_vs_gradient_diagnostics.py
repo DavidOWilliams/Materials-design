@@ -58,6 +58,8 @@ def test_build_surface_protection_profile_includes_route_burden_fields():
     assert profile["repairability_level"] in {"limited", "poor"}
     assert profile["qualification_burden"] in {"high", "very_high"}
     assert profile["process_route_template_id"] == "surface_oxidation_gradient"
+    assert profile["primary_service_functions"]
+    assert profile["support_or_lifecycle_considerations"] or profile["risk_or_interface_considerations"]
 
 
 def test_compare_surface_profiles_never_selects_winner():
@@ -71,6 +73,44 @@ def test_compare_surface_profiles_never_selects_winner():
     assert comparison["decision_status"] == "comparison_only_no_winner"
     assert "No winner selected." in comparison["diagnostic_notes"]
     assert "functional_overlap_status" in comparison
+    assert comparison["shared_primary_service_functions"]
+    assert comparison["functional_overlap_status"] in {"strong_primary_overlap", "partial_primary_overlap"}
+
+
+def test_support_only_overlap_is_not_strong_primary_overlap():
+    coating = {
+        "candidate_id": "coating-support-only",
+        "candidate_class": "coating_enabled",
+        "system_architecture_type": "substrate_plus_coating",
+        "surface_functions": ["inspection_access_or_monitoring", "repairability_support"],
+        "primary_service_functions": [],
+        "secondary_service_functions": [],
+        "support_or_lifecycle_considerations": [
+            "inspection_access_or_monitoring",
+            "repairability_support",
+        ],
+        "risk_or_interface_considerations": [],
+    }
+    gradient = {
+        "candidate_id": "gradient-support-only",
+        "candidate_class": "spatially_graded_am",
+        "system_architecture_type": "spatial_gradient",
+        "surface_functions": ["inspection_access_or_monitoring", "repairability_support"],
+        "primary_service_functions": [],
+        "secondary_service_functions": [],
+        "support_or_lifecycle_considerations": [
+            "inspection_access_or_monitoring",
+            "repairability_support",
+        ],
+        "risk_or_interface_considerations": [],
+    }
+
+    comparison = compare_surface_profiles(coating, gradient)
+
+    assert comparison["functional_overlap_status"] in {"support_only_overlap", "limited_overlap"}
+    assert comparison["functional_overlap_status"] != "strong_primary_overlap"
+    assert comparison["shared_support_considerations"]
+    assert comparison["shared_primary_service_functions"] == []
 
 
 def test_build_coating_vs_gradient_diagnostic_finds_both_sides_and_caps_pairwise():
@@ -82,6 +122,17 @@ def test_build_coating_vs_gradient_diagnostic_finds_both_sides_and_caps_pairwise
     assert len(diagnostic["spatial_gradient_candidate_ids"]) == 4
     assert 0 < len(diagnostic["pairwise_comparisons"]) <= 12
     assert all("functional_overlap_status" in item for item in diagnostic["pairwise_comparisons"])
+    assert all(
+        item["functional_overlap_status"]
+        in {
+            "strong_primary_overlap",
+            "partial_primary_overlap",
+            "support_only_overlap",
+            "limited_overlap",
+            "unknown_overlap",
+        }
+        for item in diagnostic["pairwise_comparisons"]
+    )
     first_ids = [
         (item["coating_candidate_id"], item["gradient_candidate_id"])
         for item in diagnostic["pairwise_comparisons"]
@@ -116,3 +167,4 @@ def test_coating_vs_gradient_diagnostic_uses_surface_function_profile_when_avail
 
     assert "thermal_barrier" in profile["surface_functions"]
     assert profile["primary_surface_functions"]
+    assert "thermal_barrier" in profile["primary_service_functions"]

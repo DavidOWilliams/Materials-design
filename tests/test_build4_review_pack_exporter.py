@@ -117,8 +117,12 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     write_review_pack(tmp_path)
 
     index = (tmp_path / INDEX_FILENAME).read_text(encoding="utf-8").lower()
+    full_report = (tmp_path / FULL_REPORT_FILENAME).read_text(encoding="utf-8").lower()
     assert "not a final recommendation" in index
     assert "not qualification or certification approval" in index
+    assert "required primary service functions" in full_report
+    assert "support / lifecycle considerations" in full_report
+    assert "shared coating/gradient primary service functions" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename
         assert section.is_file()

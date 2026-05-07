@@ -17,6 +17,27 @@ DEFAULT_TAXONOMY_PATH = (
 )
 UNKNOWN_FUNCTION_ID = "unknown_surface_function"
 
+PRIMARY_SERVICE_FUNCTIONS = {
+    "thermal_barrier",
+    "environmental_barrier",
+    "oxidation_resistance",
+    "steam_recession_resistance",
+    "wear_resistance",
+    "erosion_resistance",
+    "hard_surface",
+}
+SECONDARY_SERVICE_FUNCTIONS = {
+    "thermal_cycling_tolerance",
+    "transition_zone_management",
+}
+SUPPORT_OR_LIFECYCLE_CONSIDERATIONS = {
+    "inspection_access_or_monitoring",
+    "repairability_support",
+}
+RISK_OR_INTERFACE_CONSIDERATIONS = {
+    "coating_interface_management",
+}
+
 _REQUIRED_FIELDS = {
     "function_id",
     "display_name",
@@ -143,6 +164,21 @@ def _taxonomy_record(function_id: str, taxonomy: Mapping[str, Mapping[str, Any]]
     return _mapping(taxonomy.get(function_id))
 
 
+def classify_function_kind(function_id: str) -> str:
+    function = _text(function_id)
+    if function in PRIMARY_SERVICE_FUNCTIONS:
+        return "primary_service_function"
+    if function in SECONDARY_SERVICE_FUNCTIONS:
+        return "secondary_service_function"
+    if function in SUPPORT_OR_LIFECYCLE_CONSIDERATIONS:
+        return "support_or_lifecycle_consideration"
+    if function in RISK_OR_INTERFACE_CONSIDERATIONS:
+        return "risk_or_interface_consideration"
+    if function == UNKNOWN_FUNCTION_ID:
+        return "unknown_function_kind"
+    return "unknown_function_kind"
+
+
 def _field_blob(candidate: Mapping[str, Any]) -> tuple[str, dict[str, str]]:
     fields = {
         "candidate_id": _text(candidate.get("candidate_id")),
@@ -177,6 +213,7 @@ def _function_record(
     confidence = "high" if len(set(evidence_terms)) >= 2 else "medium"
     return {
         "function_id": function_id,
+        "function_kind": classify_function_kind(function_id),
         "display_name": _text(record.get("display_name"), function_id),
         "evidence_terms": list(dict.fromkeys(evidence_terms)),
         "inferred_from_fields": list(dict.fromkeys(inferred_from_fields)),
@@ -215,6 +252,7 @@ def infer_required_surface_functions(
         output.append(
             {
                 "function_id": function_id,
+                "function_kind": classify_function_kind(function_id),
                 "display_name": _text(record.get("display_name"), function_id),
                 "inferred_from": matched,
                 "confidence": "high" if len(matched) >= 2 else "medium",
@@ -275,6 +313,7 @@ def infer_candidate_surface_functions(
         output.append(
             {
                 "function_id": UNKNOWN_FUNCTION_ID,
+                "function_kind": classify_function_kind(UNKNOWN_FUNCTION_ID),
                 "display_name": _text(record.get("display_name"), UNKNOWN_FUNCTION_ID),
                 "evidence_terms": [],
                 "inferred_from_fields": [],
@@ -292,6 +331,16 @@ def build_candidate_surface_function_profile(
     function_taxonomy = taxonomy or load_surface_function_taxonomy()
     functions = infer_candidate_surface_functions(candidate, function_taxonomy)
     function_ids = [item["function_id"] for item in functions]
+    by_kind = {
+        "primary_service_function": [],
+        "secondary_service_function": [],
+        "support_or_lifecycle_consideration": [],
+        "risk_or_interface_consideration": [],
+    }
+    for function_id in function_ids:
+        kind = classify_function_kind(function_id)
+        if kind in by_kind:
+            by_kind[kind].append(function_id)
     unknown = function_ids == [UNKNOWN_FUNCTION_ID]
     supporting_fields = sorted(
         {
@@ -313,6 +362,10 @@ def build_candidate_surface_function_profile(
         "surface_functions": functions,
         "primary_surface_functions": function_ids[:3],
         "secondary_surface_functions": function_ids[3:],
+        "primary_service_functions": by_kind["primary_service_function"],
+        "secondary_service_functions": by_kind["secondary_service_function"],
+        "support_or_lifecycle_considerations": by_kind["support_or_lifecycle_consideration"],
+        "risk_or_interface_considerations": by_kind["risk_or_interface_consideration"],
         "unknown_surface_function_flag": unknown,
         "evidence_maturity": _evidence_maturity(candidate),
         "evidence_label": evidence_maturity_label(_evidence_maturity(candidate)),
@@ -341,6 +394,31 @@ def _function_ids_from_candidate(candidate: Mapping[str, Any]) -> list[str]:
     ]
 
 
+def _profile_ids_by_kind(candidate: Mapping[str, Any], kind: str) -> list[str]:
+    profile = _mapping(candidate.get("surface_function_profile"))
+    field_by_kind = {
+        "primary_service_function": "primary_service_functions",
+        "secondary_service_function": "secondary_service_functions",
+        "support_or_lifecycle_consideration": "support_or_lifecycle_considerations",
+        "risk_or_interface_consideration": "risk_or_interface_considerations",
+    }
+    field = field_by_kind.get(kind)
+    if profile and field:
+        return [_text(item) for item in _as_list(profile.get(field)) if _text(item)]
+    return [function_id for function_id in _function_ids_from_candidate(candidate) if classify_function_kind(function_id) == kind]
+
+
+def _function_to_candidate_ids(candidate_to_functions: Mapping[str, Sequence[str]]) -> dict[str, list[str]]:
+    output: dict[str, list[str]] = {}
+    for candidate_id, function_ids in candidate_to_functions.items():
+        for function_id in function_ids:
+            output.setdefault(function_id, []).append(candidate_id)
+    return {
+        function_id: sorted(candidate_ids)
+        for function_id, candidate_ids in sorted(output.items())
+    }
+
+
 def _is_coating(candidate: Mapping[str, Any]) -> bool:
     return _candidate_class(candidate) == "coating_enabled" or _architecture(candidate) == "substrate_plus_coating"
 
@@ -360,10 +438,27 @@ def build_surface_function_coverage_summary(package: Mapping[str, Any]) -> dict[
         _candidate_id(candidate): _function_ids_from_candidate(candidate)
         for candidate in candidates
     }
-    function_to_candidate_ids: dict[str, list[str]] = {}
-    for candidate_id, function_ids in candidate_to_functions.items():
-        for function_id in function_ids:
-            function_to_candidate_ids.setdefault(function_id, []).append(candidate_id)
+    candidate_to_primary = {
+        _candidate_id(candidate): _profile_ids_by_kind(candidate, "primary_service_function")
+        for candidate in candidates
+    }
+    candidate_to_secondary = {
+        _candidate_id(candidate): _profile_ids_by_kind(candidate, "secondary_service_function")
+        for candidate in candidates
+    }
+    candidate_to_support = {
+        _candidate_id(candidate): _profile_ids_by_kind(candidate, "support_or_lifecycle_consideration")
+        for candidate in candidates
+    }
+    candidate_to_risk = {
+        _candidate_id(candidate): _profile_ids_by_kind(candidate, "risk_or_interface_consideration")
+        for candidate in candidates
+    }
+    function_to_candidate_ids = _function_to_candidate_ids(candidate_to_functions)
+    primary_function_to_candidate_ids = _function_to_candidate_ids(candidate_to_primary)
+    secondary_function_to_candidate_ids = _function_to_candidate_ids(candidate_to_secondary)
+    support_function_to_candidate_ids = _function_to_candidate_ids(candidate_to_support)
+    risk_function_to_candidate_ids = _function_to_candidate_ids(candidate_to_risk)
     coating_counter: Counter[str] = Counter()
     gradient_counter: Counter[str] = Counter()
     for candidate in candidates:
@@ -374,14 +469,61 @@ def build_surface_function_coverage_summary(package: Mapping[str, Any]) -> dict[
             gradient_counter.update(function_ids)
     coating_functions = set(coating_counter)
     gradient_functions = set(gradient_counter)
+    coating_primary = {
+        function_id
+        for candidate in candidates
+        if _is_coating(candidate)
+        for function_id in candidate_to_primary[_candidate_id(candidate)]
+    }
+    gradient_primary = {
+        function_id
+        for candidate in candidates
+        if _is_gradient(candidate)
+        for function_id in candidate_to_primary[_candidate_id(candidate)]
+    }
+    coating_support = {
+        function_id
+        for candidate in candidates
+        if _is_coating(candidate)
+        for function_id in candidate_to_support[_candidate_id(candidate)] + candidate_to_risk[_candidate_id(candidate)]
+    }
+    gradient_support = {
+        function_id
+        for candidate in candidates
+        if _is_gradient(candidate)
+        for function_id in candidate_to_support[_candidate_id(candidate)] + candidate_to_risk[_candidate_id(candidate)]
+    }
+    required_ids = [
+        _text(item.get("function_id"))
+        for item in required
+        if isinstance(item, Mapping) and _text(item.get("function_id"))
+    ]
+    required_primary_ids = [
+        function_id
+        for function_id in required_ids
+        if classify_function_kind(function_id) == "primary_service_function"
+    ]
+    covered_primary = sorted(
+        function_id for function_id in required_primary_ids if function_id in primary_function_to_candidate_ids
+    )
+    uncovered_primary = sorted(
+        function_id for function_id in required_primary_ids if function_id not in primary_function_to_candidate_ids
+    )
     unknown_ids = [
         candidate_id
         for candidate_id, function_ids in candidate_to_functions.items()
         if function_ids == [UNKNOWN_FUNCTION_ID] or UNKNOWN_FUNCTION_ID in function_ids
     ]
     warnings = []
+    caveats = []
     if unknown_ids:
         warnings.append("Some candidates have unknown surface-function classification.")
+    if required_primary_ids and not covered_primary:
+        caveats.append("Required primary service functions are not visibly covered by candidate primary-service classifications.")
+    if not (coating_primary & gradient_primary) and (coating_support & gradient_support):
+        caveats.append(
+            "Shared coating/gradient coverage is mainly support, lifecycle or interface considerations rather than primary service functions."
+        )
     return {
         "candidate_count": len(candidates),
         "required_surface_functions": required,
@@ -389,10 +531,11 @@ def build_surface_function_coverage_summary(package: Mapping[str, Any]) -> dict[
             candidate_id: len(function_ids)
             for candidate_id, function_ids in sorted(candidate_to_functions.items())
         },
-        "function_to_candidate_ids": {
-            function_id: sorted(candidate_ids)
-            for function_id, candidate_ids in sorted(function_to_candidate_ids.items())
-        },
+        "function_to_candidate_ids": function_to_candidate_ids,
+        "primary_service_function_to_candidate_ids": primary_function_to_candidate_ids,
+        "secondary_service_function_to_candidate_ids": secondary_function_to_candidate_ids,
+        "support_consideration_to_candidate_ids": support_function_to_candidate_ids,
+        "risk_consideration_to_candidate_ids": risk_function_to_candidate_ids,
         "candidate_to_function_ids": {
             candidate_id: list(function_ids)
             for candidate_id, function_ids in sorted(candidate_to_functions.items())
@@ -401,8 +544,15 @@ def build_surface_function_coverage_summary(package: Mapping[str, Any]) -> dict[
         "coating_enabled_function_counts": dict(sorted(coating_counter.items())),
         "spatial_gradient_function_counts": dict(sorted(gradient_counter.items())),
         "shared_coating_gradient_functions": sorted(coating_functions & gradient_functions),
+        "covered_required_primary_service_functions": covered_primary,
+        "uncovered_required_primary_service_functions": uncovered_primary,
+        "shared_coating_gradient_primary_service_functions": sorted(coating_primary & gradient_primary),
+        "shared_coating_gradient_support_considerations": sorted(coating_support & gradient_support),
         "functions_only_seen_in_coatings": sorted(coating_functions - gradient_functions),
         "functions_only_seen_in_gradients": sorted(gradient_functions - coating_functions),
+        "functions_only_seen_in_coatings_primary": sorted(coating_primary - gradient_primary),
+        "functions_only_seen_in_gradients_primary": sorted(gradient_primary - coating_primary),
+        "coverage_caveats": caveats,
         "warnings": warnings,
     }
 
@@ -415,13 +565,34 @@ def compare_required_surface_functions_to_candidates(package: Mapping[str, Any])
         if isinstance(item, Mapping) and _text(item.get("function_id"))
     ]
     available = set(summary["function_to_candidate_ids"])
+    primary_available = set(summary.get("primary_service_function_to_candidate_ids", {}))
     covered = sorted(function_id for function_id in required_ids if function_id in available)
     uncovered = sorted(function_id for function_id in required_ids if function_id not in available)
+    primary_required = [
+        function_id
+        for function_id in required_ids
+        if classify_function_kind(function_id) == "primary_service_function"
+    ]
+    support_required = [
+        function_id
+        for function_id in required_ids
+        if classify_function_kind(function_id)
+        in {"support_or_lifecycle_consideration", "risk_or_interface_consideration"}
+    ]
+    covered_primary = sorted(function_id for function_id in primary_required if function_id in primary_available)
+    uncovered_primary = sorted(function_id for function_id in primary_required if function_id not in primary_available)
+    covered_support = sorted(function_id for function_id in support_required if function_id in available)
     records = [
         {
             "required_function_id": function_id,
+            "function_kind": classify_function_kind(function_id),
             "candidate_ids": summary["function_to_candidate_ids"].get(function_id, []),
             "coverage_status": "covered" if function_id in available else "not_visible",
+            "primary_service_coverage_status": (
+                "covered_as_primary_service_function"
+                if function_id in primary_available
+                else "not_primary_service_coverage"
+            ),
         }
         for function_id in required_ids
     ]
@@ -432,10 +603,15 @@ def compare_required_surface_functions_to_candidates(package: Mapping[str, Any])
     warnings = []
     if uncovered:
         warnings.append("Some required surface functions are not visible in candidate classifications.")
+    if uncovered_primary:
+        warnings.append("Some required primary service functions are not visible as primary-service candidate coverage.")
     return {
         "required_function_ids": required_ids,
         "covered_required_function_ids": covered,
         "uncovered_required_function_ids": uncovered,
+        "covered_required_primary_service_function_ids": covered_primary,
+        "uncovered_required_primary_service_function_ids": uncovered_primary,
+        "covered_required_support_consideration_ids": covered_support,
         "candidate_coverage_records": records,
         "coverage_notes": notes,
         "warnings": warnings,

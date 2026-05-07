@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from src.contracts import evidence_maturity_label
+from src.surface_function_model import classify_function_kind
 
 
 PAIRWISE_COMPARISON_LIMIT = 12
@@ -132,7 +133,7 @@ def classify_surface_function(candidate: Mapping[str, Any]) -> list[str]:
     if "hard surface" in text or ("hard" in text and "surface" in text):
         add("hard_surface")
     if any(term in text for term in ("transition", "gradient", "cte", "mismatch", "interface")):
-        add("transition_management")
+        add("transition_zone_management")
     if not tags:
         add("unknown_surface_function")
     return tags
@@ -171,6 +172,42 @@ def build_surface_protection_profile(candidate: Mapping[str, Any]) -> dict[str, 
     qualification = _mapping(candidate.get("qualification_route"))
     surface_function_profile = _mapping(candidate.get("surface_function_profile"))
     surface_functions = classify_surface_function(candidate)
+    primary_service_functions = [
+        _text(item)
+        for item in _as_list(surface_function_profile.get("primary_service_functions"))
+        if _text(item)
+    ] or [
+        function_id
+        for function_id in surface_functions
+        if classify_function_kind(function_id) == "primary_service_function"
+    ]
+    secondary_service_functions = [
+        _text(item)
+        for item in _as_list(surface_function_profile.get("secondary_service_functions"))
+        if _text(item)
+    ] or [
+        function_id
+        for function_id in surface_functions
+        if classify_function_kind(function_id) == "secondary_service_function"
+    ]
+    support_considerations = [
+        _text(item)
+        for item in _as_list(surface_function_profile.get("support_or_lifecycle_considerations"))
+        if _text(item)
+    ] or [
+        function_id
+        for function_id in surface_functions
+        if classify_function_kind(function_id) == "support_or_lifecycle_consideration"
+    ]
+    risk_considerations = [
+        _text(item)
+        for item in _as_list(surface_function_profile.get("risk_or_interface_considerations"))
+        if _text(item)
+    ] or [
+        function_id
+        for function_id in surface_functions
+        if classify_function_kind(function_id) == "risk_or_interface_consideration"
+    ]
     return {
         "candidate_id": _candidate_id(candidate),
         "system_name": _system_name(candidate),
@@ -182,6 +219,10 @@ def build_surface_protection_profile(candidate: Mapping[str, Any]) -> dict[str, 
         "surface_functions": surface_functions,
         "primary_surface_functions": list(_as_list(surface_function_profile.get("primary_surface_functions"))),
         "secondary_surface_functions": list(_as_list(surface_function_profile.get("secondary_surface_functions"))),
+        "primary_service_functions": primary_service_functions,
+        "secondary_service_functions": secondary_service_functions,
+        "support_or_lifecycle_considerations": support_considerations,
+        "risk_or_interface_considerations": risk_considerations,
         "coating_or_surface_summary": _coating_summary(candidate),
         "gradient_summary": _gradient_summary(candidate),
         "interface_types": _interface_types(candidate),
@@ -210,7 +251,9 @@ def _contains_any(values: Sequence[Any], *terms: str) -> bool:
 def _profile_strengths(profile: Mapping[str, Any], *, gradient: bool) -> list[str]:
     strengths: list[str] = []
     maturity = _text(profile.get("evidence_maturity"))
-    functions = set(_as_list(profile.get("surface_functions")))
+    functions = set(_as_list(profile.get("primary_service_functions"))) | set(
+        _as_list(profile.get("secondary_service_functions"))
+    )
     benefits = _as_list(profile.get("route_benefits"))
     if maturity in {"A", "B", "C"}:
         strengths.append(f"evidence maturity {maturity} is comparatively visible")
@@ -220,7 +263,7 @@ def _profile_strengths(profile: Mapping[str, Any], *, gradient: bool) -> list[st
         strengths.append("environmental or oxidation-protection function is explicit")
     if "wear_resistance" in functions or "hard_surface" in functions:
         strengths.append("wear or hard-surface function is explicit")
-    if gradient and "transition_management" in functions:
+    if gradient and "transition_zone_management" in functions:
         strengths.append("transition-management intent is explicit")
     if benefits:
         strengths.extend(_text(item) for item in benefits[:2])
@@ -250,15 +293,32 @@ def compare_surface_profiles(
 ) -> dict[str, Any]:
     coating_functions = set(_as_list(coating_profile.get("surface_functions")))
     gradient_functions = set(_as_list(gradient_profile.get("surface_functions")))
+    coating_primary = set(_as_list(coating_profile.get("primary_service_functions")))
+    gradient_primary = set(_as_list(gradient_profile.get("primary_service_functions")))
+    coating_secondary = set(_as_list(coating_profile.get("secondary_service_functions")))
+    gradient_secondary = set(_as_list(gradient_profile.get("secondary_service_functions")))
+    coating_support = set(_as_list(coating_profile.get("support_or_lifecycle_considerations")))
+    gradient_support = set(_as_list(gradient_profile.get("support_or_lifecycle_considerations")))
+    coating_risk_considerations = set(_as_list(coating_profile.get("risk_or_interface_considerations")))
+    gradient_risk_considerations = set(_as_list(gradient_profile.get("risk_or_interface_considerations")))
     shared = sorted(coating_functions & gradient_functions)
+    shared_primary = sorted(coating_primary & gradient_primary)
+    shared_secondary = sorted(coating_secondary & gradient_secondary)
+    shared_support = sorted(coating_support & gradient_support)
+    shared_risk_considerations = sorted(coating_risk_considerations & gradient_risk_considerations)
     coating_only = sorted(coating_functions - gradient_functions)
     gradient_only = sorted(gradient_functions - coating_functions)
+    coating_only_primary = sorted(coating_primary - gradient_primary)
+    gradient_only_primary = sorted(gradient_primary - coating_primary)
+    support_or_risk_overlap = bool(shared_support or shared_risk_considerations)
     if not coating_functions or not gradient_functions or coating_functions == {"unknown_surface_function"} or gradient_functions == {"unknown_surface_function"}:
         overlap_status = "unknown_overlap"
-    elif len(shared) >= 2:
-        overlap_status = "strong_overlap"
-    elif shared:
-        overlap_status = "partial_overlap"
+    elif shared_primary:
+        overlap_status = "strong_primary_overlap" if len(shared_primary) >= 1 else "partial_primary_overlap"
+    elif shared_secondary or (coating_primary & gradient_secondary) or (gradient_primary & coating_secondary):
+        overlap_status = "partial_primary_overlap"
+    elif support_or_risk_overlap:
+        overlap_status = "support_only_overlap"
     else:
         overlap_status = "limited_overlap"
     coating_risks = _profile_risks(coating_profile, gradient=False)
@@ -279,8 +339,14 @@ def compare_surface_profiles(
         "coating_candidate_id": _text(coating_profile.get("candidate_id"), "unknown_coating"),
         "gradient_candidate_id": _text(gradient_profile.get("candidate_id"), "unknown_gradient"),
         "shared_surface_functions": shared,
+        "shared_primary_service_functions": shared_primary,
+        "shared_secondary_service_functions": shared_secondary,
+        "shared_support_considerations": shared_support,
+        "shared_risk_considerations": shared_risk_considerations,
         "coating_only_surface_functions": coating_only,
         "gradient_only_surface_functions": gradient_only,
+        "coating_only_primary_service_functions": coating_only_primary,
+        "gradient_only_primary_service_functions": gradient_only_primary,
         "functional_overlap_status": overlap_status,
         "coating_strengths": _profile_strengths(coating_profile, gradient=False),
         "gradient_strengths": _profile_strengths(gradient_profile, gradient=True),
@@ -345,12 +411,24 @@ def _observation_counts(profiles: Sequence[Mapping[str, Any]], field: str) -> di
 def _build_pairwise(coating_profiles: list[Mapping[str, Any]], gradient_profiles: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
     pairs: list[tuple[int, str, str, Mapping[str, Any], Mapping[str, Any]]] = []
     for coating in coating_profiles:
-        coating_functions = set(_as_list(coating.get("surface_functions")))
+        coating_primary = set(_as_list(coating.get("primary_service_functions")))
+        coating_secondary = set(_as_list(coating.get("secondary_service_functions")))
+        coating_support = set(_as_list(coating.get("support_or_lifecycle_considerations"))) | set(
+            _as_list(coating.get("risk_or_interface_considerations"))
+        )
         for gradient in gradient_profiles:
-            shared = sorted(coating_functions & set(_as_list(gradient.get("surface_functions"))))
+            shared_primary = coating_primary & set(_as_list(gradient.get("primary_service_functions")))
+            cross_service = (coating_primary & set(_as_list(gradient.get("secondary_service_functions")))) | (
+                set(_as_list(gradient.get("primary_service_functions"))) & coating_secondary
+            )
+            support_overlap = coating_support & (
+                set(_as_list(gradient.get("support_or_lifecycle_considerations")))
+                | set(_as_list(gradient.get("risk_or_interface_considerations")))
+            )
+            priority = 0 if shared_primary else 1 if cross_service else 2 if support_overlap else 3
             pairs.append(
                 (
-                    0 if shared else 1,
+                    priority,
                     _text(coating.get("candidate_id")),
                     _text(gradient.get("candidate_id")),
                     coating,
@@ -381,6 +459,20 @@ def build_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str
     shared_surface_functions = sorted(
         set(_common_items(coating_profiles, "surface_functions"))
         & set(_common_items(gradient_profiles, "surface_functions"))
+    )
+    shared_primary_functions = sorted(
+        set(_common_items(coating_profiles, "primary_service_functions"))
+        & set(_common_items(gradient_profiles, "primary_service_functions"))
+    )
+    shared_support_considerations = sorted(
+        (
+            set(_common_items(coating_profiles, "support_or_lifecycle_considerations"))
+            | set(_common_items(coating_profiles, "risk_or_interface_considerations"))
+        )
+        & (
+            set(_common_items(gradient_profiles, "support_or_lifecycle_considerations"))
+            | set(_common_items(gradient_profiles, "risk_or_interface_considerations"))
+        )
     )
 
     warnings: list[str] = []
@@ -415,6 +507,8 @@ def build_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str
         "gradient_profiles": gradient_profiles,
         "pairwise_comparisons": pairwise,
         "shared_surface_function_themes": shared_surface_functions,
+        "shared_primary_service_functions": shared_primary_functions,
+        "shared_support_considerations": shared_support_considerations,
         "coating_common_strengths": _common_items(
             [{"items": _profile_strengths(profile, gradient=False)} for profile in coating_profiles],
             "items",

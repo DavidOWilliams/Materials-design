@@ -231,6 +231,22 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
         "secondary_surface_functions": [
             _text(item) for item in _as_list(surface_profile.get("secondary_surface_functions")) if _text(item)
         ],
+        "primary_service_functions": [
+            _text(item) for item in _as_list(surface_profile.get("primary_service_functions")) if _text(item)
+        ],
+        "secondary_service_functions": [
+            _text(item) for item in _as_list(surface_profile.get("secondary_service_functions")) if _text(item)
+        ],
+        "support_or_lifecycle_considerations": [
+            _text(item)
+            for item in _as_list(surface_profile.get("support_or_lifecycle_considerations"))
+            if _text(item)
+        ],
+        "risk_or_interface_considerations": [
+            _text(item)
+            for item in _as_list(surface_profile.get("risk_or_interface_considerations"))
+            if _text(item)
+        ],
         "unknown_surface_function_flag": surface_profile.get("unknown_surface_function_flag") is True,
         "readiness_category": _text(readiness.get("readiness_category"), "unknown_readiness"),
         "readiness_label": _text(readiness.get("readiness_label"), "Unknown decision readiness"),
@@ -369,6 +385,12 @@ def build_coating_vs_gradient_diagnostic_view_model(package: Mapping[str, Any]) 
         "shared_surface_function_themes": [
             _text(item) for item in _as_list(diagnostic.get("shared_surface_function_themes")) if _text(item)
         ],
+        "shared_primary_service_functions": [
+            _text(item) for item in _as_list(diagnostic.get("shared_primary_service_functions")) if _text(item)
+        ],
+        "shared_support_considerations": [
+            _text(item) for item in _as_list(diagnostic.get("shared_support_considerations")) if _text(item)
+        ],
         "coating_common_strengths": [
             _text(item) for item in _as_list(diagnostic.get("coating_common_strengths")) if _text(item)
         ],
@@ -399,11 +421,33 @@ def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> di
     return {
         "required_surface_functions": required_functions,
         "function_to_candidate_ids": dict(_mapping(summary.get("function_to_candidate_ids"))),
+        "primary_service_function_to_candidate_ids": dict(
+            _mapping(summary.get("primary_service_function_to_candidate_ids"))
+        ),
+        "secondary_service_function_to_candidate_ids": dict(
+            _mapping(summary.get("secondary_service_function_to_candidate_ids"))
+        ),
+        "support_consideration_to_candidate_ids": dict(
+            _mapping(summary.get("support_consideration_to_candidate_ids"))
+        ),
+        "risk_consideration_to_candidate_ids": dict(
+            _mapping(summary.get("risk_consideration_to_candidate_ids"))
+        ),
         "candidate_to_function_ids": dict(_mapping(summary.get("candidate_to_function_ids"))),
         "coating_enabled_function_counts": dict(_mapping(summary.get("coating_enabled_function_counts"))),
         "spatial_gradient_function_counts": dict(_mapping(summary.get("spatial_gradient_function_counts"))),
         "shared_coating_gradient_functions": [
             _text(item) for item in _as_list(summary.get("shared_coating_gradient_functions")) if _text(item)
+        ],
+        "shared_coating_gradient_primary_service_functions": [
+            _text(item)
+            for item in _as_list(summary.get("shared_coating_gradient_primary_service_functions"))
+            if _text(item)
+        ],
+        "shared_coating_gradient_support_considerations": [
+            _text(item)
+            for item in _as_list(summary.get("shared_coating_gradient_support_considerations"))
+            if _text(item)
         ],
         "functions_only_seen_in_coatings": [
             _text(item) for item in _as_list(summary.get("functions_only_seen_in_coatings")) if _text(item)
@@ -411,6 +455,13 @@ def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> di
         "functions_only_seen_in_gradients": [
             _text(item) for item in _as_list(summary.get("functions_only_seen_in_gradients")) if _text(item)
         ],
+        "functions_only_seen_in_coatings_primary": [
+            _text(item) for item in _as_list(summary.get("functions_only_seen_in_coatings_primary")) if _text(item)
+        ],
+        "functions_only_seen_in_gradients_primary": [
+            _text(item) for item in _as_list(summary.get("functions_only_seen_in_gradients_primary")) if _text(item)
+        ],
+        "coverage_caveats": [_text(item) for item in _as_list(summary.get("coverage_caveats")) if _text(item)],
         "unknown_surface_function_candidate_ids": [
             _text(item) for item in _as_list(summary.get("unknown_surface_function_candidate_ids")) if _text(item)
         ],
@@ -425,6 +476,21 @@ def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> di
         ],
         "uncovered_required_function_ids": [
             _text(item) for item in _as_list(required_coverage.get("uncovered_required_function_ids")) if _text(item)
+        ],
+        "covered_required_primary_service_function_ids": [
+            _text(item)
+            for item in _as_list(required_coverage.get("covered_required_primary_service_function_ids"))
+            if _text(item)
+        ],
+        "uncovered_required_primary_service_function_ids": [
+            _text(item)
+            for item in _as_list(required_coverage.get("uncovered_required_primary_service_function_ids"))
+            if _text(item)
+        ],
+        "covered_required_support_consideration_ids": [
+            _text(item)
+            for item in _as_list(required_coverage.get("covered_required_support_consideration_ids"))
+            if _text(item)
         ],
     }
 
@@ -664,32 +730,85 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
         for item in surface_view.get("required_surface_functions", [])
         if isinstance(item, Mapping)
     ]
+    required_primary_labels = [
+        _text(item.get("function_id"))
+        for item in surface_view.get("required_surface_functions", [])
+        if isinstance(item, Mapping)
+        and _text(item.get("function_kind")) == "primary_service_function"
+    ]
     lines.extend(
         [
             "",
             "## Surface Function Coverage",
             "- Required surface functions: " + (", ".join(required_labels) or "none inferred"),
+            "- Required primary service functions: " + (", ".join(required_primary_labels) or "none inferred"),
             "- Covered required functions: "
             + (", ".join(surface_view.get("covered_required_function_ids", [])) or "none visible"),
             "- Uncovered required functions: "
             + (", ".join(surface_view.get("uncovered_required_function_ids", [])) or "none"),
+            "- Covered required primary service functions: "
+            + (", ".join(surface_view.get("covered_required_primary_service_function_ids", [])) or "none visible"),
+            "- Uncovered required primary service functions: "
+            + (", ".join(surface_view.get("uncovered_required_primary_service_function_ids", [])) or "none"),
+            "- Covered required support / lifecycle considerations: "
+            + (", ".join(surface_view.get("covered_required_support_consideration_ids", [])) or "none visible"),
         ]
     )
     lines.extend(_markdown_table_from_mix("Function-to-candidate coverage", surface_view.get("function_to_candidate_ids", {})))
+    lines.extend(
+        _markdown_table_from_mix(
+            "Primary service function coverage",
+            surface_view.get("primary_service_function_to_candidate_ids", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Secondary service function coverage",
+            surface_view.get("secondary_service_function_to_candidate_ids", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Support / lifecycle considerations",
+            surface_view.get("support_consideration_to_candidate_ids", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Risk / interface considerations",
+            surface_view.get("risk_consideration_to_candidate_ids", {}),
+        )
+    )
     lines.extend(_markdown_table_from_mix("Coating-enabled function coverage", surface_view.get("coating_enabled_function_counts", {})))
     lines.extend(_markdown_table_from_mix("Spatial-gradient function coverage", surface_view.get("spatial_gradient_function_counts", {})))
     lines.extend(
         [
             "- Shared coating/gradient functions: "
             + (", ".join(surface_view.get("shared_coating_gradient_functions", [])) or "none visible"),
+            "- Shared coating/gradient primary service functions: "
+            + (
+                ", ".join(surface_view.get("shared_coating_gradient_primary_service_functions", []))
+                or "none visible"
+            ),
+            "- Shared coating/gradient support considerations: "
+            + (
+                ", ".join(surface_view.get("shared_coating_gradient_support_considerations", []))
+                or "none visible"
+            ),
             "- Functions only seen in coatings: "
             + (", ".join(surface_view.get("functions_only_seen_in_coatings", [])) or "none visible"),
             "- Functions only seen in gradients: "
             + (", ".join(surface_view.get("functions_only_seen_in_gradients", [])) or "none visible"),
+            "- Primary functions only seen in coatings: "
+            + (", ".join(surface_view.get("functions_only_seen_in_coatings_primary", [])) or "none visible"),
+            "- Primary functions only seen in gradients: "
+            + (", ".join(surface_view.get("functions_only_seen_in_gradients_primary", [])) or "none visible"),
             "- Candidates with unknown surface function: "
             + (", ".join(surface_view.get("unknown_surface_function_candidate_ids", [])) or "none"),
         ]
     )
+    for caveat in surface_view.get("coverage_caveats", [])[:4]:
+        lines.append(f"- Coverage caveat: {caveat}")
     for note in surface_view.get("coverage_notes", [])[:4]:
         lines.append(f"- {note}")
     process_route_summary = _mapping(summary.get("process_route_summary"))
@@ -771,6 +890,10 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
             + (", ".join(diagnostic.get("spatial_gradient_candidate_ids", [])) or "none visible"),
             "- Shared surface-function themes: "
             + (", ".join(diagnostic.get("shared_surface_function_themes", [])) or "none visible"),
+            "- Shared primary service functions: "
+            + (", ".join(diagnostic.get("shared_primary_service_functions", [])) or "none visible"),
+            "- Shared support considerations: "
+            + (", ".join(diagnostic.get("shared_support_considerations", [])) or "none visible"),
             "- Common coating strengths: "
             + (", ".join(diagnostic.get("coating_common_strengths", [])[:5]) or "none visible"),
             "- Common gradient strengths: "
@@ -793,10 +916,22 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"### Diagnostic Pair: {pairwise.get('coating_candidate_id')} vs {pairwise.get('gradient_candidate_id')}",
                 "- Shared surface functions: "
                 + (", ".join(_as_list(pairwise.get("shared_surface_functions"))) or "none visible"),
+                "- Shared primary service functions: "
+                + (", ".join(_as_list(pairwise.get("shared_primary_service_functions"))) or "none visible"),
+                "- Shared secondary service functions: "
+                + (", ".join(_as_list(pairwise.get("shared_secondary_service_functions"))) or "none visible"),
+                "- Shared support considerations: "
+                + (", ".join(_as_list(pairwise.get("shared_support_considerations"))) or "none visible"),
+                "- Shared risk/interface considerations: "
+                + (", ".join(_as_list(pairwise.get("shared_risk_considerations"))) or "none visible"),
                 "- Coating-only surface functions: "
                 + (", ".join(_as_list(pairwise.get("coating_only_surface_functions"))) or "none visible"),
                 "- Gradient-only surface functions: "
                 + (", ".join(_as_list(pairwise.get("gradient_only_surface_functions"))) or "none visible"),
+                "- Coating-only primary service functions: "
+                + (", ".join(_as_list(pairwise.get("coating_only_primary_service_functions"))) or "none visible"),
+                "- Gradient-only primary service functions: "
+                + (", ".join(_as_list(pairwise.get("gradient_only_primary_service_functions"))) or "none visible"),
                 f"- Functional overlap: {pairwise.get('functional_overlap_status')}",
                 f"- {pairwise.get('evidence_maturity_contrast')}",
                 f"- {pairwise.get('inspection_contrast')}",
@@ -852,6 +987,11 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Gradient: {card['gradient_summary'].get('summary', '') or 'not specified'}",
                 f"- Primary surface functions: {', '.join(card['primary_surface_functions']) or 'unknown'}",
                 f"- Secondary surface functions: {', '.join(card['secondary_surface_functions']) or 'none visible'}",
+                f"- Primary service functions: {', '.join(card['primary_service_functions']) or 'none visible'}",
+                "- Support / lifecycle considerations: "
+                + (", ".join(card["support_or_lifecycle_considerations"]) or "none visible"),
+                "- Risk / interface considerations: "
+                + (", ".join(card["risk_or_interface_considerations"]) or "none visible"),
                 f"- Decision readiness: {card['readiness_label']} ({card['readiness_status']})",
                 f"- Narrative role: {card['narrative_role']}",
                 f"- Responsible use: {card['responsible_use'] or 'not specified'}",

@@ -2,9 +2,12 @@ import json
 from pathlib import Path
 
 from src.recommendation_builder import build_recommendation_package
+from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 import src.ui_view_models as ui_view_models
 from src.ui_view_models import (
     build_candidate_card_view_model,
+    build_coating_vs_gradient_view_model,
+    build_optimisation_summary_view_model,
     build_package_summary_view_model,
     build_recommendation_package_view_model,
     package_to_json_safe_dict,
@@ -96,6 +99,10 @@ def _package():
     return build_recommendation_package(_schema(), _design_space(), _candidate_systems(), run_id="view-model-test")
 
 
+def _optimised_package():
+    return attach_deterministic_optimisation(_package())
+
+
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
     package = _package()
     card = build_candidate_card_view_model(package["candidate_systems"][0])
@@ -139,7 +146,7 @@ def test_cmc_ebc_candidate_remains_distinct_from_coating_and_graded_am():
 
 
 def test_package_summary_returns_candidate_count_and_mix_fields():
-    summary = build_package_summary_view_model(_package())
+    summary = build_package_summary_view_model(_optimised_package())
 
     assert summary["candidate_count"] == 3
     assert summary["candidate_class_mix"]["coating_enabled"] == 1
@@ -147,23 +154,33 @@ def test_package_summary_returns_candidate_count_and_mix_fields():
     assert summary["evidence_maturity_mix"]["E"] == 1
     assert summary["factor_namespace_mix"]["graded_am"] == 6
     assert summary["live_model_calls_made"] is False
+    assert summary["optimisation_status"] == "skeleton_no_variants_generated"
+    assert summary["total_limiting_factor_count"] > 0
+    assert summary["total_refinement_option_count"] > 0
+    assert summary["generated_candidate_count"] == 0
+    assert summary["coating_vs_gradient_comparison_required"] is True
 
 
 def test_markdown_report_includes_not_final_recommendation():
-    report = render_markdown_report(_package())
+    report = render_markdown_report(_optimised_package())
 
     assert "not a final recommendation" in report.lower()
 
 
-def test_markdown_report_mentions_ranking_and_optimisation_not_implemented():
-    report = render_markdown_report(_package()).lower()
+def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries():
+    report = render_markdown_report(_optimised_package()).lower()
 
-    assert "ranking is not implemented" in report
-    assert "optimisation is not implemented" in report
+    assert "deterministic optimisation skeleton" in report
+    assert "no variants were generated" in report
+    assert "no final ranking was produced" in report
+    assert "no pareto optimisation was performed" in report
+    assert "no live model calls were made" in report
+    assert "refinement operators are suggestions, not applied design changes" in report
+    assert "coating vs gradient comparison" in report
 
 
 def test_markdown_report_mentions_research_adapters_disabled():
-    report = render_markdown_report(_package()).lower()
+    report = render_markdown_report(_optimised_package()).lower()
 
     assert "research adapters are disabled" in report
 
@@ -183,7 +200,7 @@ def test_package_to_json_safe_dict_can_be_serialized_with_json_dumps():
 
 
 def test_no_candidates_are_filtered_out_by_view_model_creation():
-    package = _package()
+    package = _optimised_package()
     view_model = build_recommendation_package_view_model(package)
 
     assert len(view_model["candidate_cards"]) == len(package["candidate_systems"])
@@ -192,6 +209,37 @@ def test_no_candidates_are_filtered_out_by_view_model_creation():
         "coating-1",
         "graded-1",
     ]
+
+
+def test_view_model_includes_optimisation_summary_and_trace_cards():
+    package = _optimised_package()
+    view_model = build_recommendation_package_view_model(package)
+
+    assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
+    assert view_model["optimisation_summary_view"]["generated_candidate_count"] == 0
+    assert view_model["optimisation_summary_view"]["live_model_calls_made"] is False
+    assert len(view_model["optimisation_trace_cards"]) == len(package["candidate_systems"])
+    assert view_model["optimisation_trace_cards"][0]["top_limiting_factors"]
+    assert view_model["optimisation_trace_cards"][0]["top_refinement_options"]
+
+
+def test_optimisation_summary_view_model_preserves_empty_ranking_and_pareto_boundary():
+    package = _optimised_package()
+    summary = build_optimisation_summary_view_model(package)
+
+    assert summary["status"] == "skeleton_no_variants_generated"
+    assert summary["generated_candidate_count"] == 0
+    assert package["ranked_recommendations"] == []
+    assert package["pareto_front"] == []
+
+
+def test_coating_vs_gradient_view_model_lists_candidate_ids_and_shared_themes():
+    comparison = build_coating_vs_gradient_view_model(_optimised_package())
+
+    assert comparison["comparison_required"] is True
+    assert comparison["coating_enabled_candidate_ids"] == ["coating-1"]
+    assert comparison["spatial_gradient_candidate_ids"] == ["graded-1"]
+    assert isinstance(comparison["shared_limiting_factor_themes"], list)
 
 
 def test_view_models_do_not_import_streamlit():

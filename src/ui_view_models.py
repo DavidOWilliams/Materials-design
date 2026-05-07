@@ -10,7 +10,7 @@ from src.recommendation_builder import summarize_recommendation_package
 DEFERRED_CAPABILITIES = [
     "final ranking not implemented",
     "Pareto optimisation not implemented",
-    "deterministic optimisation not implemented",
+    "deterministic optimisation skeleton only; no variants generated",
     "Streamlit Build 4 UI not integrated",
     "live research adapters disabled",
 ]
@@ -188,12 +188,22 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
 def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
     summary = summarize_recommendation_package(package)
     diagnostics = dict(_mapping(package.get("diagnostics")))
+    optimisation_summary = _mapping(package.get("optimisation_summary"))
+    comparison = _mapping(
+        package.get("coating_vs_gradient_comparison")
+        or optimisation_summary.get("coating_vs_gradient_comparison")
+    )
     return {
         **summary,
         "source_mix_summary": dict(_mapping(package.get("source_mix_summary"))),
         "diagnostics": diagnostics,
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
         "live_model_calls_made": diagnostics.get("live_model_calls_made") is True,
+        "optimisation_status": _text(optimisation_summary.get("status"), summary.get("optimisation_status")),
+        "total_limiting_factor_count": optimisation_summary.get("total_limiting_factor_count", 0),
+        "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
+        "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
+        "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
         "evidence_maturity_summary": dict(_mapping(package.get("evidence_maturity_summary"))),
         "factor_summary": dict(_mapping(package.get("factor_summary"))),
         "interface_risk_summary": dict(
@@ -202,12 +212,94 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
     }
 
 
+def build_optimisation_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    optimisation_summary = _mapping(package.get("optimisation_summary"))
+    return {
+        "status": _text(optimisation_summary.get("status"), "unknown"),
+        "candidate_count": optimisation_summary.get("candidate_count", 0),
+        "trace_count": optimisation_summary.get("trace_count", 0),
+        "total_limiting_factor_count": optimisation_summary.get("total_limiting_factor_count", 0),
+        "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
+        "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
+        "live_model_calls_made": optimisation_summary.get("live_model_calls_made") is True,
+        "severity_counts": dict(_mapping(optimisation_summary.get("severity_counts"))),
+        "operator_type_counts": dict(_mapping(optimisation_summary.get("operator_type_counts"))),
+        "warnings": [_text(item) for item in _as_list(optimisation_summary.get("warnings")) if _text(item)],
+    }
+
+
+def build_coating_vs_gradient_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    optimisation_summary = _mapping(package.get("optimisation_summary"))
+    comparison = _mapping(
+        package.get("coating_vs_gradient_comparison")
+        or optimisation_summary.get("coating_vs_gradient_comparison")
+    )
+    return {
+        "comparison_required": comparison.get("comparison_required") is True,
+        "coating_enabled_candidate_ids": [
+            _text(item) for item in _as_list(comparison.get("coating_enabled_candidate_ids")) if _text(item)
+        ],
+        "spatial_gradient_candidate_ids": [
+            _text(item) for item in _as_list(comparison.get("spatial_gradient_candidate_ids")) if _text(item)
+        ],
+        "shared_limiting_factor_themes": [
+            _text(item) for item in _as_list(comparison.get("shared_limiting_factor_themes")) if _text(item)
+        ],
+        "comparison_notes": [
+            _text(item) for item in _as_list(comparison.get("comparison_notes")) if _text(item)
+        ],
+        "warnings": [_text(item) for item in _as_list(comparison.get("warnings")) if _text(item)],
+    }
+
+
+def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
+    limiting_factors = [_mapping(item) for item in _as_list(trace.get("limiting_factors")) if _mapping(item)]
+    refinement_options = [_mapping(item) for item in _as_list(trace.get("refinement_options")) if _mapping(item)]
+    return {
+        "candidate_id": _text(trace.get("candidate_id"), "unknown_candidate"),
+        "candidate_class": _text(trace.get("candidate_class"), "unknown"),
+        "system_architecture_type": _text(trace.get("system_architecture_type"), "unknown"),
+        "evidence_maturity": _text(trace.get("evidence_maturity"), "unknown"),
+        "status": _text(trace.get("status"), "unknown"),
+        "limiting_factor_count": len(limiting_factors),
+        "refinement_option_count": len(refinement_options),
+        "top_limiting_factors": [
+            {
+                "factor": _text(item.get("factor"), "unknown_factor"),
+                "namespace": _text(item.get("namespace"), "unknown"),
+                "severity": _text(item.get("severity"), "unknown"),
+                "reason": _text(item.get("reason")),
+            }
+            for item in limiting_factors[:3]
+        ],
+        "top_refinement_options": [
+            {
+                "operator_type": _text(item.get("operator_type"), "unknown_operator"),
+                "status": _text(item.get("status"), "unknown"),
+                "description": _text(item.get("description")),
+                "expected_benefit": _text(item.get("expected_benefit")),
+                "generated_candidate_flag": item.get("generated_candidate_flag") is True,
+            }
+            for item in refinement_options[:3]
+        ],
+        "variants_generated_count": len(_as_list(trace.get("variants_generated"))),
+        "before_after_delta_count": len(_as_list(trace.get("before_after_deltas"))),
+        "warnings": [_text(item) for item in _as_list(trace.get("warnings")) if _text(item)],
+    }
+
+
 def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
     candidates = [
         candidate for candidate in _as_list(package.get("candidate_systems")) if isinstance(candidate, Mapping)
     ]
+    traces = [
+        trace for trace in _as_list(package.get("optimisation_trace")) if isinstance(trace, Mapping)
+    ]
     return {
         "summary": build_package_summary_view_model(package),
+        "optimisation_summary_view": build_optimisation_summary_view_model(package),
+        "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
+        "optimisation_trace_cards": [build_optimisation_trace_card(trace) for trace in traces],
         "candidate_cards": [build_candidate_card_view_model(candidate) for candidate in candidates],
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
         "diagnostics": dict(_mapping(package.get("diagnostics"))),
@@ -229,7 +321,9 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines = [
         "# Build 4 Package Summary",
         "",
-        "This is not a final recommendation. Ranking is not implemented. Optimisation is not implemented. Research adapters are disabled.",
+        "This is not a final recommendation. Deterministic optimisation is a skeleton. Research adapters are disabled.",
+        "No variants were generated. No final ranking was produced. No Pareto optimisation was performed. No live model calls were made.",
+        "Refinement operators are suggestions, not applied design changes.",
         "Low maturity D/E/F candidates are exploratory and not qualification-ready.",
         "",
         f"- Run ID: {summary.get('run_id')}",
@@ -251,6 +345,58 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(_markdown_table_from_mix("System architectures", summary.get("system_architecture_mix", {})))
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
+    optimisation = view_model["optimisation_summary_view"]
+    comparison = view_model["coating_vs_gradient_comparison_view"]
+    lines.extend(
+        [
+            "",
+            "## Deterministic Optimisation Skeleton",
+            "- Deterministic optimisation is a skeleton; no variants were generated.",
+            "- No final ranking was produced.",
+            "- No Pareto optimisation was performed.",
+            "- No live model calls were made.",
+            f"- Status: {optimisation.get('status')}",
+            f"- Total limiting factor count: {optimisation.get('total_limiting_factor_count')}",
+            f"- Total refinement option count: {optimisation.get('total_refinement_option_count')}",
+            f"- Generated candidate count: {optimisation.get('generated_candidate_count')}",
+            "",
+            "## Coating vs Gradient Comparison",
+            f"- Comparison required: {comparison.get('comparison_required')}",
+            "- Coating-enabled candidate IDs: "
+            + (", ".join(comparison.get("coating_enabled_candidate_ids", [])) or "none visible"),
+            "- Spatial-gradient candidate IDs: "
+            + (", ".join(comparison.get("spatial_gradient_candidate_ids", [])) or "none visible"),
+            "- Shared limiting-factor themes: "
+            + (", ".join(comparison.get("shared_limiting_factor_themes", [])) or "none visible"),
+        ]
+    )
+    for note in comparison.get("comparison_notes", [])[:4]:
+        lines.append(f"- {note}")
+    lines.extend(["", "## Limiting Factors and Refinement Options"])
+    lines.append("- Refinement operators are suggestions, not applied design changes.")
+    for trace_card in view_model["optimisation_trace_cards"]:
+        lines.extend(
+            [
+                f"### {trace_card['candidate_id']}",
+                f"- Class: {trace_card['candidate_class']}",
+                f"- Evidence maturity: {trace_card['evidence_maturity']}",
+                f"- Trace status: {trace_card['status']}",
+                f"- Limiting factors: {trace_card['limiting_factor_count']}",
+                f"- Refinement options: {trace_card['refinement_option_count']}",
+            ]
+        )
+        for factor in trace_card["top_limiting_factors"]:
+            lines.append(
+                "- Top limiting factor: "
+                f"{factor['factor']} ({factor['severity']}) - {factor['reason']}"
+            )
+        for option in trace_card["top_refinement_options"]:
+            lines.append(
+                "- Top refinement option: "
+                f"{option['operator_type']} ({option['status']}) - {option['description']}"
+            )
+    if not view_model["optimisation_trace_cards"]:
+        lines.append("- none")
     lines.extend(["", "## Candidate Cards"])
     for card in view_model["candidate_cards"]:
         lines.extend(

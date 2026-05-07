@@ -16,6 +16,9 @@ from src.recommendation_builder import (  # noqa: E402
     build_package_from_candidate_source_package,
     summarize_recommendation_package,
 )
+from src.optimisation.deterministic_optimizer import (  # noqa: E402
+    attach_deterministic_optimisation,
+)
 from src.ui_view_models import (  # noqa: E402
     build_recommendation_package_view_model,
     package_to_json_safe_dict,
@@ -48,6 +51,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         source_package,
         run_id="build4_ceramics_first_harness",
     )
+    recommendation_package = attach_deterministic_optimisation(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
 
@@ -63,6 +67,8 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     _write_json(view_model_json_path, view_model_json)
 
     summary = summarize_recommendation_package(recommendation_package)
+    optimisation_summary = recommendation_package.get("optimisation_summary") or {}
+    comparison = recommendation_package.get("coating_vs_gradient_comparison") or {}
     return {
         "report_path": str(report_path),
         "package_json_path": str(package_json_path),
@@ -73,8 +79,12 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "evidence_maturity_mix": summary["evidence_maturity_mix"],
         "warning_count": summary["warning_count"],
         "optimisation_status": summary["optimisation_status"],
+        "total_limiting_factor_count": optimisation_summary.get("total_limiting_factor_count", 0),
+        "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
+        "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "research_mode_enabled": summary["research_mode_enabled"],
         "live_model_calls_made": view_model["summary"]["live_model_calls_made"],
+        "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
     }
 
 
@@ -87,8 +97,15 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Candidate class mix: {json.dumps(summary['candidate_class_mix'], sort_keys=True)}")
     print(f"Evidence maturity mix: {json.dumps(summary['evidence_maturity_mix'], sort_keys=True)}")
     print(f"Optimisation status: {summary['optimisation_status']}")
+    print(f"Total limiting factor count: {summary['total_limiting_factor_count']}")
+    print(f"Total refinement option count: {summary['total_refinement_option_count']}")
+    print(f"Generated candidate count: {summary['generated_candidate_count']}")
     print(f"Research mode enabled: {summary['research_mode_enabled']}")
     print(f"Live model calls made: {summary['live_model_calls_made']}")
+    print(
+        "Coating vs gradient comparison required: "
+        f"{summary['coating_vs_gradient_comparison_required']}"
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

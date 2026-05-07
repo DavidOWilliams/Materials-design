@@ -305,6 +305,50 @@ def build_coating_vs_gradient_view_model(package: Mapping[str, Any]) -> dict[str
     }
 
 
+def build_coating_vs_gradient_diagnostic_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    diagnostic = _mapping(package.get("coating_vs_gradient_diagnostic"))
+    return {
+        "diagnostic_status": _text(diagnostic.get("diagnostic_status"), "not_available"),
+        "comparison_required": diagnostic.get("comparison_required") is True,
+        "coating_enabled_candidate_ids": [
+            _text(item) for item in _as_list(diagnostic.get("coating_enabled_candidate_ids")) if _text(item)
+        ],
+        "spatial_gradient_candidate_ids": [
+            _text(item) for item in _as_list(diagnostic.get("spatial_gradient_candidate_ids")) if _text(item)
+        ],
+        "coating_profiles": [
+            dict(item) for item in _as_list(diagnostic.get("coating_profiles")) if isinstance(item, Mapping)
+        ],
+        "gradient_profiles": [
+            dict(item) for item in _as_list(diagnostic.get("gradient_profiles")) if isinstance(item, Mapping)
+        ],
+        "pairwise_comparisons": [
+            dict(item) for item in _as_list(diagnostic.get("pairwise_comparisons")) if isinstance(item, Mapping)
+        ],
+        "shared_surface_function_themes": [
+            _text(item) for item in _as_list(diagnostic.get("shared_surface_function_themes")) if _text(item)
+        ],
+        "coating_common_strengths": [
+            _text(item) for item in _as_list(diagnostic.get("coating_common_strengths")) if _text(item)
+        ],
+        "gradient_common_strengths": [
+            _text(item) for item in _as_list(diagnostic.get("gradient_common_strengths")) if _text(item)
+        ],
+        "coating_common_risks": [
+            _text(item) for item in _as_list(diagnostic.get("coating_common_risks")) if _text(item)
+        ],
+        "gradient_common_risks": [
+            _text(item) for item in _as_list(diagnostic.get("gradient_common_risks")) if _text(item)
+        ],
+        "evidence_maturity_observations": dict(_mapping(diagnostic.get("evidence_maturity_observations"))),
+        "inspection_repair_observations": dict(_mapping(diagnostic.get("inspection_repair_observations"))),
+        "qualification_observations": dict(_mapping(diagnostic.get("qualification_observations"))),
+        "validation_gap_observations": dict(_mapping(diagnostic.get("validation_gap_observations"))),
+        "summary_notes": [_text(item) for item in _as_list(diagnostic.get("summary_notes")) if _text(item)],
+        "warnings": [_text(item) for item in _as_list(diagnostic.get("warnings")) if _text(item)],
+    }
+
+
 def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
     limiting_factors = [_mapping(item) for item in _as_list(trace.get("limiting_factors")) if _mapping(item)]
     refinement_options = [_mapping(item) for item in _as_list(trace.get("refinement_options")) if _mapping(item)]
@@ -361,6 +405,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "summary": build_package_summary_view_model(package),
         "optimisation_summary_view": build_optimisation_summary_view_model(package),
         "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
+        "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
         "optimisation_trace_cards": [build_optimisation_trace_card(trace) for trace in traces],
         "candidate_cards": [build_candidate_card_view_model(candidate) for candidate in candidates],
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
@@ -439,6 +484,7 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
         )
     optimisation = view_model["optimisation_summary_view"]
     comparison = view_model["coating_vs_gradient_comparison_view"]
+    diagnostic = view_model["coating_vs_gradient_diagnostic_view"]
     lines.extend(
         [
             "",
@@ -473,6 +519,52 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     )
     for note in comparison.get("comparison_notes", [])[:4]:
         lines.append(f"- {note}")
+    lines.extend(
+        [
+            "",
+            "## Coating vs Gradient Diagnostic",
+            f"- Diagnostic status: {diagnostic.get('diagnostic_status')}",
+            f"- Comparison required: {diagnostic.get('comparison_required')}",
+            "- Coating-enabled candidate IDs: "
+            + (", ".join(diagnostic.get("coating_enabled_candidate_ids", [])) or "none visible"),
+            "- Spatial-gradient candidate IDs: "
+            + (", ".join(diagnostic.get("spatial_gradient_candidate_ids", [])) or "none visible"),
+            "- Shared surface-function themes: "
+            + (", ".join(diagnostic.get("shared_surface_function_themes", [])) or "none visible"),
+            "- Common coating strengths: "
+            + (", ".join(diagnostic.get("coating_common_strengths", [])[:5]) or "none visible"),
+            "- Common gradient strengths: "
+            + (", ".join(diagnostic.get("gradient_common_strengths", [])[:5]) or "none visible"),
+            "- Common coating risks: "
+            + (", ".join(diagnostic.get("coating_common_risks", [])[:5]) or "none visible"),
+            "- Common gradient risks: "
+            + (", ".join(diagnostic.get("gradient_common_risks", [])[:5]) or "none visible"),
+            f"- Evidence maturity observations: {diagnostic.get('evidence_maturity_observations')}",
+            f"- Inspection / repairability observations: {diagnostic.get('inspection_repair_observations')}",
+            f"- Qualification observations: {diagnostic.get('qualification_observations')}",
+            f"- Validation gap observations: {diagnostic.get('validation_gap_observations')}",
+        ]
+    )
+    for note in diagnostic.get("summary_notes", [])[:4]:
+        lines.append(f"- {note}")
+    for pairwise in diagnostic.get("pairwise_comparisons", [])[:12]:
+        lines.extend(
+            [
+                f"### Diagnostic Pair: {pairwise.get('coating_candidate_id')} vs {pairwise.get('gradient_candidate_id')}",
+                "- Shared surface functions: "
+                + (", ".join(_as_list(pairwise.get("shared_surface_functions"))) or "none visible"),
+                f"- {pairwise.get('evidence_maturity_contrast')}",
+                f"- {pairwise.get('inspection_contrast')}",
+                f"- {pairwise.get('repairability_contrast')}",
+                f"- {pairwise.get('qualification_contrast')}",
+                f"- {pairwise.get('interface_contrast')}",
+                f"- {pairwise.get('process_route_contrast')}",
+                f"- {pairwise.get('validation_gap_contrast')}",
+                "- Diagnostic notes: "
+                + ("; ".join(_as_list(pairwise.get("diagnostic_notes"))) or "none"),
+                "- No winner selected",
+            ]
+        )
     lines.extend(["", "## Limiting Factors and Refinement Options"])
     lines.append("- Suggestions only — not applied.")
     for trace_card in view_model["optimisation_trace_cards"]:

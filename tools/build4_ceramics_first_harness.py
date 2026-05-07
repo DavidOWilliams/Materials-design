@@ -19,6 +19,9 @@ from src.recommendation_builder import (  # noqa: E402
 from src.optimisation.deterministic_optimizer import (  # noqa: E402
     attach_deterministic_optimisation,
 )
+from src.coating_vs_gradient_diagnostics import (  # noqa: E402
+    attach_coating_vs_gradient_diagnostic,
+)
 from src.process_route_enrichment import (  # noqa: E402
     attach_process_route_enrichment,
 )
@@ -56,6 +59,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     )
     recommendation_package = attach_process_route_enrichment(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
+    recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
 
@@ -74,6 +78,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     optimisation_summary = recommendation_package.get("optimisation_summary") or {}
     process_route_summary = recommendation_package.get("process_route_summary") or {}
     comparison = recommendation_package.get("coating_vs_gradient_comparison") or {}
+    coating_gradient_diagnostic = recommendation_package.get("coating_vs_gradient_diagnostic") or {}
     return {
         "report_path": str(report_path),
         "package_json_path": str(package_json_path),
@@ -98,6 +103,11 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "research_mode_enabled": summary["research_mode_enabled"],
         "live_model_calls_made": view_model["summary"]["live_model_calls_made"],
         "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
+        "coating_vs_gradient_diagnostic_status": coating_gradient_diagnostic.get("diagnostic_status", "unknown"),
+        "coating_vs_gradient_pairwise_count": len(coating_gradient_diagnostic.get("pairwise_comparisons", [])),
+        "coating_profile_count": len(coating_gradient_diagnostic.get("coating_profiles", [])),
+        "gradient_profile_count": len(coating_gradient_diagnostic.get("gradient_profiles", [])),
+        "shared_surface_function_themes": coating_gradient_diagnostic.get("shared_surface_function_themes", []),
     }
 
 
@@ -126,6 +136,11 @@ def _print_summary(summary: dict[str, Any]) -> None:
         "Coating vs gradient comparison required: "
         f"{summary['coating_vs_gradient_comparison_required']}"
     )
+    print(f"Coating vs gradient diagnostic status: {summary['coating_vs_gradient_diagnostic_status']}")
+    print(f"Coating vs gradient pairwise count: {summary['coating_vs_gradient_pairwise_count']}")
+    print(f"Coating profile count: {summary['coating_profile_count']}")
+    print(f"Gradient profile count: {summary['gradient_profile_count']}")
+    print(f"Shared surface-function themes: {json.dumps(summary['shared_surface_function_themes'])}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

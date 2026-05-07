@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from src.recommendation_builder import build_recommendation_package
+from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 from src.process_route_enrichment import attach_process_route_enrichment
 import src.ui_view_models as ui_view_models
@@ -101,7 +102,9 @@ def _package():
 
 
 def _optimised_package():
-    return attach_deterministic_optimisation(attach_process_route_enrichment(_package()))
+    return attach_coating_vs_gradient_diagnostic(
+        attach_deterministic_optimisation(attach_process_route_enrichment(_package()))
+    )
 
 
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
@@ -182,6 +185,8 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "advisory warnings" in report
     assert "evidence maturity constraints" in report
     assert "coating vs gradient comparison" in report
+    assert "coating vs gradient diagnostic" in report
+    assert "no winner selected" in report
     assert "process route, inspection and repairability" in report
 
 
@@ -234,6 +239,8 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["optimisation_trace_cards"][0]["top_refinement_options"]
     assert len(view_model["optimisation_trace_cards"][0]["top_limiting_factors"]) <= 8
     assert len(view_model["optimisation_trace_cards"][0]["top_refinement_options"]) <= 6
+    assert view_model["coating_vs_gradient_diagnostic_view"]["diagnostic_status"] == "comparison_only_no_winner"
+    assert view_model["coating_vs_gradient_diagnostic_view"]["pairwise_comparisons"]
 
 
 def test_candidate_cards_include_process_route_fields():

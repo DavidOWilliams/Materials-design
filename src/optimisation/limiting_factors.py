@@ -8,6 +8,7 @@ from src.contracts import EVIDENCE_MATURITY_LEVELS
 
 
 _LOW_MATURITY = {"D", "E", "F"}
+_SEVERITY_RANK = {"unknown": 0, "low": 1, "medium": 2, "high": 3}
 _RISK_TERMS = (
     "risk",
     "spallation",
@@ -90,18 +91,45 @@ def _evidence_maturity(candidate: Mapping[str, Any]) -> str:
     return "unknown"
 
 
-def _severity_from_score(score: Any) -> str:
+def normalise_factor_score(raw_score: Any) -> float | None:
+    """Normalize factor scores expressed on either 0-1 or 0-100 scales."""
     try:
-        value = float(score)
+        value = float(raw_score)
     except (TypeError, ValueError):
-        return "unknown"
-    if value < 35.0:
-        return "high"
-    if value < 50.0:
-        return "medium"
-    if value < 65.0:
-        return "low"
-    return ""
+        return None
+    if value <= 1.0:
+        return round(value * 100.0, 6)
+    if value <= 100.0:
+        return round(value, 6)
+    return None
+
+
+def classify_factor_score(raw_score: Any) -> dict[str, Any]:
+    """Classify a score where higher is better and lower means more concern."""
+    normalised_score = normalise_factor_score(raw_score)
+    if normalised_score is None:
+        return {
+            "raw_score": raw_score,
+            "normalised_score": None,
+            "severity": "unknown",
+            "category": "advisory_warning",
+            "is_limiting": False,
+        }
+    if normalised_score < 35.0:
+        severity = "high"
+    elif normalised_score < 55.0:
+        severity = "medium"
+    elif normalised_score < 70.0:
+        severity = "low"
+    else:
+        severity = ""
+    return {
+        "raw_score": raw_score,
+        "normalised_score": normalised_score,
+        "severity": severity,
+        "category": "hard_limit" if severity else "",
+        "is_limiting": bool(severity),
+    }
 
 
 def _severity_from_text(text: str, default: str = "medium") -> str:
@@ -119,34 +147,74 @@ def _record(
     factor: str,
     namespace: str,
     severity: str,
+    category: str,
     reason: str,
     related_warnings: Sequence[Any] | None = None,
+    normalised_score: float | None = None,
+    source_field: str = "",
+    dedupe_key: str | None = None,
 ) -> dict[str, Any]:
+    candidate_id = _candidate_id(candidate)
+    category_text = _text(category, "advisory_warning")
+    factor_text = _text(factor, "unknown_factor")
+    severity_text = severity or "unknown"
     return {
-        "factor": factor,
+        "factor": factor_text,
         "namespace": namespace,
-        "severity": severity or "unknown",
+        "severity": severity_text,
+        "category": category_text,
         "reason": reason,
+        "normalised_score": normalised_score,
+        "source_field": source_field,
         "evidence_maturity": _evidence_maturity(candidate),
-        "candidate_id": _candidate_id(candidate),
+        "candidate_id": candidate_id,
         "candidate_class": _candidate_class(candidate),
         "related_warnings": [_text(item) for item in _as_list(related_warnings) if _text(item)],
+        "dedupe_key": dedupe_key
+        or f"{candidate_id}|{namespace}|{factor_text}|{category_text}|{severity_text}",
     }
 
 
-def _dedupe(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def dedupe_limiting_factors(factors: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """De-duplicate factor records while keeping the most severe deterministic representative."""
     output: list[dict[str, Any]] = []
-    seen: set[tuple[str, str, str]] = set()
-    for record in records:
-        key = (
-            _text(record.get("candidate_id")),
-            _text(record.get("factor")),
-            _text(record.get("reason")),
+    key_to_index: dict[str, int] = {}
+    for record in factors:
+        item = dict(record)
+        key = _text(
+            item.get("dedupe_key"),
+            "|".join(
+                [
+                    _text(item.get("candidate_id")),
+                    _text(item.get("namespace")),
+                    _text(item.get("factor")),
+                    _text(item.get("category")),
+                    _text(item.get("severity")),
+                ]
+            ),
         )
-        if key in seen:
+        item["dedupe_key"] = key
+        if key not in key_to_index:
+            key_to_index[key] = len(output)
+            output.append(item)
             continue
-        seen.add(key)
-        output.append(dict(record))
+
+        existing = output[key_to_index[key]]
+        existing_rank = _SEVERITY_RANK.get(_text(existing.get("severity")), 0)
+        item_rank = _SEVERITY_RANK.get(_text(item.get("severity")), 0)
+        keep = item if item_rank > existing_rank else existing
+        merged_warnings = list(
+            dict.fromkeys(
+                [
+                    _text(warning)
+                    for warning in _as_list(existing.get("related_warnings"))
+                    + _as_list(item.get("related_warnings"))
+                    if _text(warning)
+                ]
+            )
+        )
+        keep["related_warnings"] = merged_warnings
+        output[key_to_index[key]] = keep
     return output
 
 
@@ -157,17 +225,23 @@ def _factor_score_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
         if not score_map:
             continue
         factor = _text(score_map.get("factor") or score_map.get("factor_name"), "unknown_factor")
-        severity = _severity_from_score(score_map.get("score"))
+        classification = classify_factor_score(score_map.get("score"))
+        severity = _text(classification.get("severity"))
         warnings = [_text(item) for item in _as_list(score_map.get("warnings")) if _text(item)]
-        if severity:
+        normalised_score = classification.get("normalised_score")
+        if classification.get("is_limiting"):
             records.append(
                 _record(
                     candidate=candidate,
                     factor=factor,
                     namespace=_namespace(factor),
                     severity=severity,
-                    reason=f"Factor score {score_map.get('score')} is low enough to limit confidence.",
+                    category="hard_limit",
+                    reason=f"Normalised factor score {normalised_score:.1f} is below the calibrated confidence threshold.",
                     related_warnings=warnings,
+                    normalised_score=normalised_score,
+                    source_field="factor_scores.score",
+                    dedupe_key=f"{_candidate_id(candidate)}|score|{factor}|hard_limit",
                 )
             )
         for warning in warnings:
@@ -178,8 +252,11 @@ def _factor_score_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                         factor=f"{factor}.warning",
                         namespace=_namespace(factor),
                         severity=_severity_from_text(warning),
+                        category="advisory_warning",
                         reason=warning,
                         related_warnings=[warning],
+                        source_field="factor_scores.warnings",
+                        dedupe_key=f"{_candidate_id(candidate)}|warning|{factor}|{warning.lower()}",
                     )
                 )
     return records
@@ -201,8 +278,11 @@ def _flag_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                     factor=f"{namespace}.{field}",
                     namespace=namespace,
                     severity=_severity_from_text(text),
+                    category="certification" if namespace == "certification" else "uncertainty",
                     reason=text,
                     related_warnings=[text],
+                    source_field=field,
+                    dedupe_key=f"{_candidate_id(candidate)}|{namespace}|{field}|{text.lower()}",
                 )
             )
     return records
@@ -223,11 +303,14 @@ def _interface_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                 factor=f"interface.{interface_type}",
                 namespace="interface",
                 severity=severity,
+                category="interface_risk",
                 reason=_text(
                     interface_map.get("reason"),
                     f"{interface_type} requires interface compatibility review.",
                 ),
                 related_warnings=interface_map.get("risk_flags"),
+                source_field="interfaces",
+                dedupe_key=f"{_candidate_id(candidate)}|interface|{interface_type}",
             )
         )
     return records
@@ -246,7 +329,10 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                 factor="evidence.low_maturity",
                 namespace="evidence",
                 severity="high" if _evidence_maturity(candidate) in {"E", "F"} else "medium",
+                category="evidence_maturity",
                 reason=f"Evidence maturity {_evidence_maturity(candidate)} prevents recommendation-ready treatment.",
+                source_field="evidence_maturity",
+                dedupe_key=f"{_candidate_id(candidate)}|evidence|low_maturity",
             )
         )
 
@@ -259,7 +345,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                 factor="cmc.ebc_dependency",
                 namespace="cmc",
                 severity="medium",
+                category="route_risk",
                 reason="CMC hot-section use visibly depends on EBC, oxidation or recession assumptions.",
+                source_field="candidate_class",
             )
         )
 
@@ -271,7 +359,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                     factor="coating.life_interface_inspection",
                     namespace="coating",
                     severity="medium",
+                    category="route_risk",
                     reason="Coating life, spallation or inspection burden is visible in the system record.",
+                    source_field="coating_or_surface_system",
                 )
             )
 
@@ -287,7 +377,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                     factor=factor,
                     namespace="graded_am",
                     severity="high" if _evidence_maturity(candidate) in {"E", "F"} else "medium",
+                    category="route_risk",
                     reason=reason,
+                    source_field="gradient_architecture",
                 )
             )
 
@@ -298,7 +390,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                 factor="ceramic.brittleness_proof_testing",
                 namespace="ceramic",
                 severity="medium",
+                category="hard_limit",
                 reason="Monolithic ceramics require brittleness, thermal-shock and proof-testing limitations to remain visible.",
+                source_field="candidate_class",
             )
         )
 
@@ -309,7 +403,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                 factor="metallic_tbc.coating_life_density_thermal_margin",
                 namespace="metallic_tbc",
                 severity="medium",
+                category="route_risk",
                 reason="Metallic + TBC comparison carries coating-life, density and thermal-margin limitations.",
+                source_field="candidate_class",
             )
         )
 
@@ -320,7 +416,9 @@ def _class_specific_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]
                 factor="process.missing_route_detail",
                 namespace="process",
                 severity="unknown",
+                category="route_risk",
                 reason="Process route detail is missing or not visible.",
+                source_field="processing_routes",
             )
         )
 
@@ -342,8 +440,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                 factor="inspection.high_route_inspection_burden",
                 namespace="inspection",
                 severity="high",
+                category="route_risk",
                 reason=f"Process route {route_id} has high inspection burden.",
                 related_warnings=inspection.get("inspection_challenges"),
+                source_field="inspection_plan.inspection_burden",
+                dedupe_key=f"{_candidate_id(candidate)}|route|inspection_burden",
             )
         )
     elif inspection_burden == "unknown":
@@ -353,8 +454,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                 factor="inspection.unknown_route_inspection_burden",
                 namespace="inspection",
                 severity="unknown",
+                category="route_risk",
                 reason=f"Process route {route_id} has unknown inspection burden.",
                 related_warnings=inspection.get("inspection_challenges"),
+                source_field="inspection_plan.inspection_burden",
+                dedupe_key=f"{_candidate_id(candidate)}|route|inspection_burden",
             )
         )
 
@@ -366,8 +470,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                 factor="repairability.limited_or_poor_route_repairability",
                 namespace="repairability",
                 severity="high" if repairability_level == "poor" else "medium",
+                category="route_risk",
                 reason=f"Process route {route_id} has {repairability_level} repairability.",
                 related_warnings=repairability.get("repair_constraints"),
+                source_field="repairability.repairability_level",
+                dedupe_key=f"{_candidate_id(candidate)}|route|repairability",
             )
         )
 
@@ -379,8 +486,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                 factor="certification.high_route_qualification_burden",
                 namespace="certification",
                 severity="high" if qualification_burden == "very_high" else "medium",
+                category="certification",
                 reason=f"Process route {route_id} has {qualification_burden} qualification burden.",
                 related_warnings=qualification.get("qualification_notes"),
+                source_field="qualification_route.qualification_burden",
+                dedupe_key=f"{_candidate_id(candidate)}|route|qualification",
             )
         )
 
@@ -393,8 +503,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                     factor=f"process_route.route_risk_{index + 1}",
                     namespace="process_route",
                     severity=_severity_from_text(text, default="medium"),
+                    category="route_risk",
                     reason=text,
                     related_warnings=[text],
+                    source_field="route_risks",
+                    dedupe_key=f"{_candidate_id(candidate)}|route_risk|{text.lower()}",
                 )
             )
 
@@ -407,8 +520,11 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
                     factor=f"process.route_validation_gap_{index + 1}",
                     namespace="process",
                     severity="medium",
+                    category="route_risk",
                     reason=text,
                     related_warnings=[text],
+                    source_field="route_validation_gaps",
+                    dedupe_key=f"{_candidate_id(candidate)}|route_gap|{text.lower()}",
                 )
             )
     return records
@@ -422,7 +538,7 @@ def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, An
     records.extend(_interface_limits(candidate))
     records.extend(_class_specific_limits(candidate))
     records.extend(_process_route_limits(candidate))
-    return _dedupe(records)
+    return dedupe_limiting_factors(records)
 
 
 def summarize_limiting_factors(candidates: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -433,6 +549,7 @@ def summarize_limiting_factors(candidates: Sequence[Mapping[str, Any]]) -> dict[
     }
     all_records = [record for records in candidate_records.values() for record in records]
     severity_counts = Counter(_text(record.get("severity"), "unknown") for record in all_records)
+    category_counts = Counter(_text(record.get("category"), "unknown") for record in all_records)
     namespace_counts = Counter(_text(record.get("namespace"), "unknown") for record in all_records)
     high_ids = sorted(
         candidate_id
@@ -446,7 +563,13 @@ def summarize_limiting_factors(candidates: Sequence[Mapping[str, Any]]) -> dict[
     return {
         "candidate_count": len(candidates),
         "total_limiting_factor_count": len(all_records),
+        "total_hard_limit_count": category_counts.get("hard_limit", 0),
+        "total_advisory_warning_count": category_counts.get("advisory_warning", 0),
+        "total_evidence_maturity_limit_count": category_counts.get("evidence_maturity", 0),
+        "total_route_risk_count": category_counts.get("route_risk", 0) + category_counts.get("interface_risk", 0),
+        "total_certification_limit_count": category_counts.get("certification", 0),
         "severity_counts": dict(sorted(severity_counts.items())),
+        "category_counts": dict(sorted(category_counts.items())),
         "namespace_counts": dict(sorted(namespace_counts.items())),
         "candidate_limiting_factor_counts": {
             candidate_id: len(records)

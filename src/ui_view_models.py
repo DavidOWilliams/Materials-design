@@ -260,6 +260,18 @@ def build_optimisation_summary_view_model(package: Mapping[str, Any]) -> dict[st
         "candidate_count": optimisation_summary.get("candidate_count", 0),
         "trace_count": optimisation_summary.get("trace_count", 0),
         "total_limiting_factor_count": optimisation_summary.get("total_limiting_factor_count", 0),
+        "displayed_limiting_factor_count": optimisation_summary.get("displayed_limiting_factor_count", 0),
+        "full_limiting_factor_count": optimisation_summary.get("full_limiting_factor_count", 0),
+        "total_hard_limit_count": optimisation_summary.get("total_hard_limit_count", 0),
+        "total_advisory_warning_count": optimisation_summary.get("total_advisory_warning_count", 0),
+        "total_evidence_maturity_limit_count": optimisation_summary.get(
+            "total_evidence_maturity_limit_count", 0
+        ),
+        "total_route_risk_count": optimisation_summary.get("total_route_risk_count", 0),
+        "total_certification_limit_count": optimisation_summary.get("total_certification_limit_count", 0),
+        "average_limiting_factors_per_candidate": optimisation_summary.get(
+            "average_limiting_factors_per_candidate", 0.0
+        ),
         "total_refinement_option_count": optimisation_summary.get("total_refinement_option_count", 0),
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "live_model_calls_made": optimisation_summary.get("live_model_calls_made") is True,
@@ -302,16 +314,25 @@ def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
         "system_architecture_type": _text(trace.get("system_architecture_type"), "unknown"),
         "evidence_maturity": _text(trace.get("evidence_maturity"), "unknown"),
         "status": _text(trace.get("status"), "unknown"),
-        "limiting_factor_count": len(limiting_factors),
-        "refinement_option_count": len(refinement_options),
+        "limiting_factor_count": trace.get("limiting_factor_count", len(limiting_factors)),
+        "displayed_limiting_factor_count": trace.get("displayed_limiting_factor_count", len(limiting_factors)),
+        "hard_limit_count": trace.get("hard_limit_count", 0),
+        "advisory_warning_count": trace.get("advisory_warning_count", 0),
+        "evidence_maturity_limit_count": trace.get("evidence_maturity_limit_count", 0),
+        "route_risk_count": trace.get("route_risk_count", 0),
+        "certification_limit_count": trace.get("certification_limit_count", 0),
+        "refinement_option_count": trace.get("refinement_option_count", len(refinement_options)),
+        "displayed_refinement_option_count": trace.get("displayed_refinement_option_count", len(refinement_options)),
         "top_limiting_factors": [
             {
                 "factor": _text(item.get("factor"), "unknown_factor"),
                 "namespace": _text(item.get("namespace"), "unknown"),
                 "severity": _text(item.get("severity"), "unknown"),
+                "category": _text(item.get("category"), "unknown"),
+                "normalised_score": item.get("normalised_score"),
                 "reason": _text(item.get("reason")),
             }
-            for item in limiting_factors[:3]
+            for item in limiting_factors
         ],
         "top_refinement_options": [
             {
@@ -321,7 +342,7 @@ def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
                 "expected_benefit": _text(item.get("expected_benefit")),
                 "generated_candidate_flag": item.get("generated_candidate_flag") is True,
             }
-            for item in refinement_options[:3]
+            for item in refinement_options
         ],
         "variants_generated_count": len(_as_list(trace.get("variants_generated"))),
         "before_after_delta_count": len(_as_list(trace.get("before_after_deltas"))),
@@ -422,12 +443,21 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
         [
             "",
             "## Deterministic Optimisation Skeleton",
-            "- Deterministic optimisation is a skeleton; no variants were generated.",
+            "- Deterministic optimisation is a skeleton.",
+            "- No variants generated.",
             "- No final ranking was produced.",
             "- No Pareto optimisation was performed.",
             "- No live model calls were made.",
+            "- Suggestions only — not applied.",
             f"- Status: {optimisation.get('status')}",
-            f"- Total limiting factor count: {optimisation.get('total_limiting_factor_count')}",
+            f"- Full limiting-factor count: {optimisation.get('full_limiting_factor_count')}",
+            f"- Displayed limiting-factor count: {optimisation.get('displayed_limiting_factor_count')}",
+            f"- Hard limits: {optimisation.get('total_hard_limit_count')}",
+            f"- Advisory warnings: {optimisation.get('total_advisory_warning_count')}",
+            f"- Evidence maturity constraints: {optimisation.get('total_evidence_maturity_limit_count')}",
+            f"- Route/interface risks: {optimisation.get('total_route_risk_count')}",
+            f"- Certification constraints: {optimisation.get('total_certification_limit_count')}",
+            f"- Average limiting factors per candidate: {optimisation.get('average_limiting_factors_per_candidate')}",
             f"- Total refinement option count: {optimisation.get('total_refinement_option_count')}",
             f"- Generated candidate count: {optimisation.get('generated_candidate_count')}",
             "",
@@ -444,7 +474,7 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     for note in comparison.get("comparison_notes", [])[:4]:
         lines.append(f"- {note}")
     lines.extend(["", "## Limiting Factors and Refinement Options"])
-    lines.append("- Refinement operators are suggestions, not applied design changes.")
+    lines.append("- Suggestions only — not applied.")
     for trace_card in view_model["optimisation_trace_cards"]:
         lines.extend(
             [
@@ -452,14 +482,18 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Class: {trace_card['candidate_class']}",
                 f"- Evidence maturity: {trace_card['evidence_maturity']}",
                 f"- Trace status: {trace_card['status']}",
-                f"- Limiting factors: {trace_card['limiting_factor_count']}",
-                f"- Refinement options: {trace_card['refinement_option_count']}",
+                f"- Full limiting factors: {trace_card['limiting_factor_count']}",
+                f"- Displayed limiting factors: {trace_card['displayed_limiting_factor_count']}",
+                f"- Hard limits: {trace_card['hard_limit_count']}",
+                f"- Advisory warnings: {trace_card['advisory_warning_count']}",
+                f"- Evidence maturity constraints: {trace_card['evidence_maturity_limit_count']}",
+                f"- Refinement options: {trace_card['displayed_refinement_option_count']} displayed of {trace_card['refinement_option_count']}",
             ]
         )
         for factor in trace_card["top_limiting_factors"]:
             lines.append(
                 "- Top limiting factor: "
-                f"{factor['factor']} ({factor['severity']}) - {factor['reason']}"
+                f"{factor['factor']} ({factor['severity']}, {factor['category']}) - {factor['reason']}"
             )
         for option in trace_card["top_refinement_options"]:
             lines.append(

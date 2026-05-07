@@ -51,6 +51,8 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "no pareto optimisation was performed" in report
     assert "research adapters are disabled" in report
     assert "not qualification-ready" in report
+    assert "hard limits" in report
+    assert "advisory warnings" in report
     assert "coating vs gradient comparison" in report
     assert "process route, inspection and repairability" in report
 

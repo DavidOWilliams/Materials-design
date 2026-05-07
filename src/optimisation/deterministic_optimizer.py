@@ -17,6 +17,8 @@ from src.optimisation.refinement_operators import (
 
 
 SKELETON_WARNING = "Deterministic optimisation skeleton only; no variants were generated."
+DISPLAY_LIMITING_FACTOR_COUNT = 8
+DISPLAY_REFINEMENT_OPTION_COUNT = 6
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -81,25 +83,73 @@ def _candidates_from_package(package: Mapping[str, Any]) -> list[Mapping[str, An
     ]
 
 
+def _severity_rank(severity: Any) -> int:
+    return {"high": 0, "medium": 1, "low": 2, "unknown": 3}.get(_text(severity), 4)
+
+
+def _category_rank(category: Any) -> int:
+    return {
+        "hard_limit": 0,
+        "certification": 1,
+        "evidence_maturity": 2,
+        "route_risk": 3,
+        "interface_risk": 3,
+        "repairability": 3,
+        "inspection": 3,
+        "uncertainty": 5,
+        "advisory_warning": 6,
+    }.get(_text(category), 4)
+
+
+def sort_limiting_factors(factors: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Sort factors for concise display while preserving deterministic tie order."""
+    indexed = [(index, dict(factor)) for index, factor in enumerate(factors)]
+    indexed.sort(
+        key=lambda item: (
+            _severity_rank(item[1].get("severity")),
+            _category_rank(item[1].get("category")),
+            item[0],
+        )
+    )
+    return [item for _, item in indexed]
+
+
+def _count_category(factors: Sequence[Mapping[str, Any]], *categories: str) -> int:
+    return sum(1 for factor in factors if _text(factor.get("category")) in set(categories))
+
+
 def build_candidate_optimisation_trace(
     candidate: Mapping[str, Any],
     package_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic analyse/propose trace for one existing candidate."""
-    limiting_factors = identify_limiting_factors(candidate)
-    refinement_options = select_refinement_operators(candidate, limiting_factors, package_context)
+    limiting_factors_full = sort_limiting_factors(identify_limiting_factors(candidate))
+    limiting_factors = limiting_factors_full[:DISPLAY_LIMITING_FACTOR_COUNT]
+    refinement_options_full = select_refinement_operators(candidate, limiting_factors_full, package_context)
+    refinement_options = refinement_options_full[:DISPLAY_REFINEMENT_OPTION_COUNT]
     warnings = []
-    if not limiting_factors:
+    if not limiting_factors_full:
         warnings.append("No limiting factors identified by skeleton heuristics.")
-    if not refinement_options:
+    if not refinement_options_full:
         warnings.append("No refinement operators suggested by skeleton heuristics.")
     return {
         "candidate_id": _candidate_id(candidate),
         "candidate_class": _candidate_class(candidate),
         "system_architecture_type": _architecture(candidate),
         "evidence_maturity": _evidence_maturity(candidate),
+        "limiting_factors_full": limiting_factors_full,
         "limiting_factors": limiting_factors,
+        "limiting_factor_count": len(limiting_factors_full),
+        "displayed_limiting_factor_count": len(limiting_factors),
+        "advisory_warning_count": _count_category(limiting_factors_full, "advisory_warning"),
+        "hard_limit_count": _count_category(limiting_factors_full, "hard_limit"),
+        "evidence_maturity_limit_count": _count_category(limiting_factors_full, "evidence_maturity"),
+        "route_risk_count": _count_category(limiting_factors_full, "route_risk", "interface_risk"),
+        "certification_limit_count": _count_category(limiting_factors_full, "certification"),
+        "refinement_options_full": refinement_options_full,
         "refinement_options": refinement_options,
+        "refinement_option_count": len(refinement_options_full),
+        "displayed_refinement_option_count": len(refinement_options),
         "status": "analysed_no_variants_generated",
         "variants_generated": [],
         "before_after_deltas": [],
@@ -191,18 +241,31 @@ def build_deterministic_optimisation_summary(package: Mapping[str, Any]) -> dict
         build_candidate_optimisation_trace(candidate, package)
         for candidate in candidates
     ]
-    limiting_summary = summarize_limiting_factors(candidates)
     operator_summary = summarize_refinement_operators(traces)
+    limiting_summary = summarize_limiting_factors(candidates)
     comparison = build_coating_vs_gradient_comparison(candidates, package)
+    full_count = sum(trace.get("limiting_factor_count", 0) for trace in traces)
+    displayed_count = sum(trace.get("displayed_limiting_factor_count", 0) for trace in traces)
     warnings = list(limiting_summary.get("warnings") or [])
     warnings.append(SKELETON_WARNING)
     return {
         "status": "skeleton_no_variants_generated",
         "candidate_count": len(candidates),
         "trace_count": len(traces),
-        "total_limiting_factor_count": limiting_summary["total_limiting_factor_count"],
+        "total_limiting_factor_count": full_count,
+        "displayed_limiting_factor_count": displayed_count,
+        "full_limiting_factor_count": full_count,
+        "total_hard_limit_count": sum(trace.get("hard_limit_count", 0) for trace in traces),
+        "total_advisory_warning_count": sum(trace.get("advisory_warning_count", 0) for trace in traces),
+        "total_evidence_maturity_limit_count": sum(
+            trace.get("evidence_maturity_limit_count", 0) for trace in traces
+        ),
+        "total_route_risk_count": sum(trace.get("route_risk_count", 0) for trace in traces),
+        "total_certification_limit_count": sum(trace.get("certification_limit_count", 0) for trace in traces),
+        "average_limiting_factors_per_candidate": round(full_count / len(candidates), 2) if candidates else 0.0,
         "total_refinement_option_count": operator_summary["total_refinement_option_count"],
         "severity_counts": limiting_summary["severity_counts"],
+        "category_counts": limiting_summary.get("category_counts", {}),
         "operator_type_counts": operator_summary["operator_type_counts"],
         "coating_vs_gradient_comparison": comparison,
         "generated_candidate_count": 0,
@@ -221,17 +284,30 @@ def attach_deterministic_optimisation(package: Mapping[str, Any]) -> dict[str, A
     ]
     comparison = build_coating_vs_gradient_comparison(candidates, output)
 
-    limiting_summary = summarize_limiting_factors(candidates)
     operator_summary = summarize_refinement_operators(traces)
+    limiting_summary = summarize_limiting_factors(candidates)
+    full_count = sum(trace.get("limiting_factor_count", 0) for trace in traces)
+    displayed_count = sum(trace.get("displayed_limiting_factor_count", 0) for trace in traces)
     summary_warnings = list(limiting_summary.get("warnings") or [])
     summary_warnings.append(SKELETON_WARNING)
     optimisation_summary = {
         "status": "skeleton_no_variants_generated",
         "candidate_count": len(candidates),
         "trace_count": len(traces),
-        "total_limiting_factor_count": limiting_summary["total_limiting_factor_count"],
+        "total_limiting_factor_count": full_count,
+        "displayed_limiting_factor_count": displayed_count,
+        "full_limiting_factor_count": full_count,
+        "total_hard_limit_count": sum(trace.get("hard_limit_count", 0) for trace in traces),
+        "total_advisory_warning_count": sum(trace.get("advisory_warning_count", 0) for trace in traces),
+        "total_evidence_maturity_limit_count": sum(
+            trace.get("evidence_maturity_limit_count", 0) for trace in traces
+        ),
+        "total_route_risk_count": sum(trace.get("route_risk_count", 0) for trace in traces),
+        "total_certification_limit_count": sum(trace.get("certification_limit_count", 0) for trace in traces),
+        "average_limiting_factors_per_candidate": round(full_count / len(candidates), 2) if candidates else 0.0,
         "total_refinement_option_count": operator_summary["total_refinement_option_count"],
         "severity_counts": limiting_summary["severity_counts"],
+        "category_counts": limiting_summary.get("category_counts", {}),
         "operator_type_counts": operator_summary["operator_type_counts"],
         "coating_vs_gradient_comparison": comparison,
         "generated_candidate_count": 0,

@@ -178,6 +178,9 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "no pareto optimisation was performed" in report
     assert "no live model calls were made" in report
     assert "refinement operators are suggestions, not applied design changes" in report
+    assert "hard limits" in report
+    assert "advisory warnings" in report
+    assert "evidence maturity constraints" in report
     assert "coating vs gradient comparison" in report
     assert "process route, inspection and repairability" in report
 
@@ -221,9 +224,16 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
     assert view_model["optimisation_summary_view"]["generated_candidate_count"] == 0
     assert view_model["optimisation_summary_view"]["live_model_calls_made"] is False
+    assert view_model["optimisation_summary_view"]["full_limiting_factor_count"] >= (
+        view_model["optimisation_summary_view"]["displayed_limiting_factor_count"]
+    )
+    assert "total_hard_limit_count" in view_model["optimisation_summary_view"]
+    assert "total_advisory_warning_count" in view_model["optimisation_summary_view"]
     assert len(view_model["optimisation_trace_cards"]) == len(package["candidate_systems"])
     assert view_model["optimisation_trace_cards"][0]["top_limiting_factors"]
     assert view_model["optimisation_trace_cards"][0]["top_refinement_options"]
+    assert len(view_model["optimisation_trace_cards"][0]["top_limiting_factors"]) <= 8
+    assert len(view_model["optimisation_trace_cards"][0]["top_refinement_options"]) <= 6
 
 
 def test_candidate_cards_include_process_route_fields():

@@ -6,6 +6,7 @@ from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagn
 from src.decision_readiness import attach_decision_readiness
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 from src.process_route_enrichment import attach_process_route_enrichment
+from src.recommendation_narrative import attach_recommendation_narrative
 from src.surface_function_model import attach_surface_function_profiles
 import src.ui_view_models as ui_view_models
 from src.ui_view_models import (
@@ -104,9 +105,9 @@ def _package():
 
 
 def _optimised_package():
-    return attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
+    return attach_recommendation_narrative(attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
         attach_deterministic_optimisation(attach_surface_function_profiles(attach_process_route_enrichment(_package())))
-    ))
+    )))
 
 
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
@@ -250,6 +251,12 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["surface_function_coverage_view"]["shared_coating_gradient_functions"]
     assert view_model["decision_readiness_summary_view"]["readiness_category_counts"]
     assert view_model["decision_readiness_summary_view"]["readiness_status_counts"]
+    assert view_model["recommendation_narrative_view"]["narrative_status"] == (
+        "controlled_narrative_no_final_recommendation"
+    )
+    assert len(view_model["recommendation_narrative_view"]["candidate_narrative_cards"]) == len(
+        package["candidate_systems"]
+    )
 
 
 def test_candidate_cards_include_process_route_fields():
@@ -274,6 +281,11 @@ def test_candidate_cards_include_process_route_fields():
     assert by_id["cmc-1"]["disallowed_use"]
     assert by_id["cmc-1"]["required_next_evidence"]
     assert isinstance(by_id["cmc-1"]["top_readiness_constraints"], list)
+    assert by_id["cmc-1"]["narrative_role"]
+    assert by_id["cmc-1"]["responsible_use"]
+    assert isinstance(by_id["cmc-1"]["main_strengths"], list)
+    assert isinstance(by_id["cmc-1"]["main_cautions"], list)
+    assert isinstance(by_id["cmc-1"]["evidence_gaps"], list)
 
 
 def test_optimisation_summary_view_model_preserves_empty_ranking_and_pareto_boundary():

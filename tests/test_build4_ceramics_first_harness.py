@@ -38,6 +38,7 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert package["surface_function_coverage_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
+    assert package["recommendation_narrative"]
     assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
     assert view_model["optimisation_trace_cards"]
     assert view_model["summary"]["process_route_summary"]
@@ -62,6 +63,7 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "no winner selected" in report
     assert "surface function coverage" in report
     assert "decision readiness" in report
+    assert "controlled recommendation narrative" in report
     assert "not final recommendation" in report
     assert "process route, inspection and repairability" in report
 
@@ -147,6 +149,17 @@ def test_returned_summary_includes_decision_readiness_counts(tmp_path):
     assert summary["usable_as_reference_count"] > 0
     assert summary["exploratory_only_candidate_count"] > 0
     assert summary["not_decision_ready_count"] == 0
+
+
+def test_returned_summary_includes_recommendation_narrative_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["recommendation_narrative_status"] == "controlled_narrative_no_final_recommendation"
+    assert summary["mature_comparison_reference_count"] > 0
+    assert summary["engineering_analogue_option_count"] > 0
+    assert summary["exploratory_option_count"] > 0
+    assert summary["research_only_option_count"] > 0
+    assert summary["not_decision_ready_option_count"] == 0
 
 
 def test_main_quiet_returns_zero(tmp_path):

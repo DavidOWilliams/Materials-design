@@ -5,6 +5,7 @@ from typing import Any
 
 from src.contracts import evidence_maturity_label, evidence_maturity_treatment
 from src.recommendation_builder import summarize_recommendation_package
+from src.recommendation_narrative import render_recommendation_narrative_markdown
 
 
 DEFERRED_CAPABILITIES = [
@@ -190,6 +191,7 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     process_route = _summarize_process_route(candidate)
     surface_profile = _mapping(candidate.get("surface_function_profile"))
     readiness = _mapping(candidate.get("decision_readiness"))
+    narrative_card = _mapping(candidate.get("recommendation_narrative_card"))
     constraints = [
         _mapping(item) for item in _as_list(readiness.get("constraints")) if _mapping(item)
     ]
@@ -249,6 +251,11 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
             }
             for item in constraints[:4]
         ],
+        "narrative_role": _text(narrative_card.get("narrative_role"), "unknown_role"),
+        "responsible_use": _text(narrative_card.get("responsible_use")),
+        "main_strengths": [_text(item) for item in _as_list(narrative_card.get("main_strengths")) if _text(item)],
+        "main_cautions": [_text(item) for item in _as_list(narrative_card.get("main_cautions")) if _text(item)],
+        "evidence_gaps": [_text(item) for item in _as_list(narrative_card.get("evidence_gaps")) if _text(item)],
         "top_factor_signals": _top_factor_signals(candidate),
         "warnings": _candidate_warnings(candidate),
         "certification_risk_flags": [_text(item) for item in _as_list(candidate.get("certification_risk_flags")) if _text(item)],
@@ -453,6 +460,44 @@ def build_decision_readiness_summary_view_model(package: Mapping[str, Any]) -> d
     }
 
 
+def build_recommendation_narrative_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    narrative = _mapping(package.get("recommendation_narrative"))
+    return {
+        "narrative_status": _text(narrative.get("narrative_status"), "not_available"),
+        "executive_summary": [_text(item) for item in _as_list(narrative.get("executive_summary")) if _text(item)],
+        "mature_comparison_references": [
+            _text(item) for item in _as_list(narrative.get("mature_comparison_references")) if _text(item)
+        ],
+        "engineering_analogue_options": [
+            _text(item) for item in _as_list(narrative.get("engineering_analogue_options")) if _text(item)
+        ],
+        "exploratory_options": [_text(item) for item in _as_list(narrative.get("exploratory_options")) if _text(item)],
+        "research_only_options": [_text(item) for item in _as_list(narrative.get("research_only_options")) if _text(item)],
+        "not_decision_ready_options": [
+            _text(item) for item in _as_list(narrative.get("not_decision_ready_options")) if _text(item)
+        ],
+        "coating_vs_gradient_considerations": [
+            _text(item) for item in _as_list(narrative.get("coating_vs_gradient_considerations")) if _text(item)
+        ],
+        "key_evidence_gaps": [_text(item) for item in _as_list(narrative.get("key_evidence_gaps")) if _text(item)],
+        "process_inspection_repair_considerations": [
+            _text(item) for item in _as_list(narrative.get("process_inspection_repair_considerations")) if _text(item)
+        ],
+        "decision_readiness_overview": dict(_mapping(narrative.get("decision_readiness_overview"))),
+        "next_validation_steps": [
+            _text(item) for item in _as_list(narrative.get("next_validation_steps")) if _text(item)
+        ],
+        "deferred_capabilities": [
+            _text(item) for item in _as_list(narrative.get("deferred_capabilities")) if _text(item)
+        ],
+        "safety_disclaimer": _text(narrative.get("safety_disclaimer")),
+        "candidate_narrative_cards": [
+            dict(item) for item in _as_list(narrative.get("candidate_narrative_cards")) if isinstance(item, Mapping)
+        ],
+        "warnings": [_text(item) for item in _as_list(narrative.get("warnings")) if _text(item)],
+    }
+
+
 def build_optimisation_trace_card(trace: Mapping[str, Any]) -> dict[str, Any]:
     limiting_factors = [_mapping(item) for item in _as_list(trace.get("limiting_factors")) if _mapping(item)]
     refinement_options = [_mapping(item) for item in _as_list(trace.get("refinement_options")) if _mapping(item)]
@@ -512,6 +557,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
+        "recommendation_narrative_view": build_recommendation_narrative_view_model(package),
         "optimisation_trace_cards": [build_optimisation_trace_card(trace) for trace in traces],
         "candidate_cards": [build_candidate_card_view_model(candidate) for candidate in candidates],
         "warnings": [_text(item) for item in _as_list(package.get("warnings")) if _text(item)],
@@ -559,6 +605,9 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
     readiness_view = view_model["decision_readiness_summary_view"]
+    narrative_view = view_model["recommendation_narrative_view"]
+    narrative_markdown = render_recommendation_narrative_markdown(narrative_view)
+    lines.extend(["", narrative_markdown.rstrip()])
     lines.extend(
         [
             "",
@@ -804,6 +853,8 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Primary surface functions: {', '.join(card['primary_surface_functions']) or 'unknown'}",
                 f"- Secondary surface functions: {', '.join(card['secondary_surface_functions']) or 'none visible'}",
                 f"- Decision readiness: {card['readiness_label']} ({card['readiness_status']})",
+                f"- Narrative role: {card['narrative_role']}",
+                f"- Responsible use: {card['responsible_use'] or 'not specified'}",
                 f"- Interfaces: {', '.join(card['interface_summary'].get('interface_types', [])) or 'none visible'}",
             ]
         )

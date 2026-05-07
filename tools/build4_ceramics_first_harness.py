@@ -25,6 +25,9 @@ from src.coating_vs_gradient_diagnostics import (  # noqa: E402
 from src.decision_readiness import (  # noqa: E402
     attach_decision_readiness,
 )
+from src.recommendation_narrative import (  # noqa: E402
+    attach_recommendation_narrative,
+)
 from src.process_route_enrichment import (  # noqa: E402
     attach_process_route_enrichment,
 )
@@ -69,6 +72,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     recommendation_package = attach_decision_readiness(recommendation_package)
+    recommendation_package = attach_recommendation_narrative(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
 
@@ -90,6 +94,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     coating_gradient_diagnostic = recommendation_package.get("coating_vs_gradient_diagnostic") or {}
     surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
     readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
+    narrative = recommendation_package.get("recommendation_narrative") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
@@ -133,6 +138,12 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "usable_with_caveats_count": len(readiness_summary.get("usable_with_caveats_candidate_ids", [])),
         "usable_as_reference_count": len(readiness_summary.get("usable_as_reference_candidate_ids", [])),
         "not_decision_ready_count": len(readiness_summary.get("not_decision_ready_candidate_ids", [])),
+        "recommendation_narrative_status": narrative.get("narrative_status", "unknown"),
+        "mature_comparison_reference_count": len(narrative.get("mature_comparison_references", [])),
+        "engineering_analogue_option_count": len(narrative.get("engineering_analogue_options", [])),
+        "exploratory_option_count": len(narrative.get("exploratory_options", [])),
+        "research_only_option_count": len(narrative.get("research_only_options", [])),
+        "not_decision_ready_option_count": len(narrative.get("not_decision_ready_options", [])),
     }
 
 
@@ -183,6 +194,12 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Usable-with-caveats count: {summary['usable_with_caveats_count']}")
     print(f"Usable-as-reference count: {summary['usable_as_reference_count']}")
     print(f"Not-decision-ready count: {summary['not_decision_ready_count']}")
+    print(f"Recommendation narrative status: {summary['recommendation_narrative_status']}")
+    print(f"Mature comparison reference count: {summary['mature_comparison_reference_count']}")
+    print(f"Engineering analogue option count: {summary['engineering_analogue_option_count']}")
+    print(f"Exploratory option count: {summary['exploratory_option_count']}")
+    print(f"Research-only option count: {summary['research_only_option_count']}")
+    print(f"Not-decision-ready option count: {summary['not_decision_ready_option_count']}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

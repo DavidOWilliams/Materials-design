@@ -259,6 +259,13 @@ def _summarize_application_fit(candidate: Mapping[str, Any]) -> dict[str, Any]:
         "missing_required_primary_functions": [
             _text(item) for item in _as_list(fit.get("missing_required_primary_functions")) if _text(item)
         ],
+        "architecture_path": _text(fit.get("architecture_path"), "unknown_path"),
+        "architecture_path_rationale": [
+            _text(item) for item in _as_list(fit.get("architecture_path_rationale")) if _text(item)
+        ],
+        "architecture_path_cautions": [
+            _text(item) for item in _as_list(fit.get("architecture_path_cautions")) if _text(item)
+        ],
         "major_cautions": [_text(item) for item in _as_list(fit.get("major_cautions")) if _text(item)],
         "critical_blockers": [_text(item) for item in _as_list(fit.get("critical_blockers")) if _text(item)],
         "required_next_evidence": [
@@ -340,6 +347,7 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
             "missing_required_primary_functions",
             [],
         ),
+        "application_architecture_path": application_fit.get("architecture_path", ""),
         "application_major_cautions": application_fit.get("major_cautions", []),
         "application_required_next_evidence": application_fit.get("required_next_evidence", []),
         "primary_surface_functions": [
@@ -661,6 +669,14 @@ def build_application_requirement_fit_view_model(package: Mapping[str, Any]) -> 
             key: [_text(item) for item in _as_list(value) if _text(item)]
             for key, value in _mapping(matrix.get("candidate_ids_by_fit_status")).items()
         },
+        "architecture_path_counts": dict(_mapping(matrix.get("architecture_path_counts"))),
+        "candidate_ids_by_architecture_path": {
+            key: [_text(item) for item in _as_list(value) if _text(item)]
+            for key, value in _mapping(matrix.get("candidate_ids_by_architecture_path")).items()
+        },
+        "alternative_architecture_path_notes": [
+            _text(item) for item in _as_list(matrix.get("alternative_architecture_path_notes")) if _text(item)
+        ],
         "required_function_coverage_summary": dict(coverage),
         "common_blockers": [_text(item) for item in _as_list(matrix.get("common_blockers")) if _text(item)],
         "common_major_cautions": [
@@ -1313,8 +1329,11 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
         ]
     )
     lines.extend(_markdown_table_from_mix("Fit status counts", app_fit.get("fit_status_counts", {})))
+    lines.extend(_markdown_table_from_mix("Architecture path counts", app_fit.get("architecture_path_counts", {})))
     for status, candidate_ids in app_fit.get("candidate_ids_by_fit_status", {}).items():
         lines.append(f"- {status}: {', '.join(candidate_ids) or 'none'}")
+    for path, candidate_ids in app_fit.get("candidate_ids_by_architecture_path", {}).items():
+        lines.append(f"- Architecture path {path}: {', '.join(candidate_ids) or 'none'}")
     lines.extend(
         [
             "- Candidates missing all required primary functions: "
@@ -1340,11 +1359,16 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     )
     for note in app_fit.get("practical_use_summary", [])[:4]:
         lines.append(f"- {note}")
+    for note in app_fit.get("alternative_architecture_path_notes", [])[:3]:
+        lines.append(f"- Architecture path note: {note}")
     for record in app_fit.get("fit_records", [])[:12]:
         lines.extend(
             [
                 f"### Application Fit: {record.get('candidate_id')}",
                 f"- Fit status: {record.get('fit_status')}",
+                f"- Architecture path: {record.get('architecture_path', 'unknown_path')}",
+                "- Architecture path rationale: "
+                + ("; ".join(_as_list(record.get("architecture_path_rationale"))[:2]) or "not specified"),
                 "- Matched required primary functions: "
                 + (", ".join(_as_list(record.get("matched_required_primary_functions"))) or "none"),
                 "- Missing required primary functions: "

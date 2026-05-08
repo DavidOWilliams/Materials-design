@@ -15,6 +15,7 @@ _SUPPORT_OR_RISK_FUNCTIONS = {
     "coating_interface_management",
     "transition_zone_management",
 }
+_HOT_SECTION_REQUIRED = {"thermal_barrier", "oxidation_resistance"}
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -123,6 +124,168 @@ def _secondary_service_functions(candidate: Mapping[str, Any]) -> list[str]:
 
 def _readiness_status(candidate: Mapping[str, Any]) -> str:
     return _text(_mapping(candidate.get("decision_readiness")).get("readiness_status"), "unknown")
+
+
+def is_hot_section_profile(profile: Mapping[str, Any]) -> bool:
+    app = normalise_application_profile(profile)
+    required = {_text(item) for item in _as_list(app.get("required_primary_service_functions")) if _text(item)}
+    if app.get("profile_id") == "hot_section_thermal_cycling_oxidation":
+        return True
+    if _HOT_SECTION_REQUIRED <= required:
+        return True
+    text = _blob(
+        {
+            "profile_id": app.get("profile_id"),
+            "display_name": app.get("display_name"),
+            "description": app.get("description"),
+            "service_environment": app.get("service_environment"),
+        }
+    )
+    return "hot-section" in text and "thermal" in text and "oxidation" in text
+
+
+def has_cmc_ebc_environmental_protection_path(candidate: Mapping[str, Any]) -> bool:
+    candidate_class = _candidate_class(candidate)
+    primary = set(_primary_service_functions(candidate))
+    text = _blob(
+        {
+            "candidate_id": candidate.get("candidate_id"),
+            "system_name": candidate.get("system_name") or candidate.get("name"),
+            "candidate_class": candidate.get("candidate_class"),
+            "system_architecture_type": candidate.get("system_architecture_type"),
+            "coating_or_surface_system": candidate.get("coating_or_surface_system"),
+            "environmental_barrier_coating": candidate.get("environmental_barrier_coating"),
+            "surface_function_profile": candidate.get("surface_function_profile"),
+            "cmc_ebc_environmental_durability": candidate.get("cmc_ebc_environmental_durability"),
+            "coating_spallation_adhesion": candidate.get("coating_spallation_adhesion"),
+            "process_route_profile": candidate.get("process_route_profile"),
+            "summary": candidate.get("summary"),
+        }
+    )
+    ebc_terms = (
+        "ebc",
+        "environmental barrier",
+        "rare-earth silicate",
+        "rare earth silicate",
+        "steam recession",
+        "recession",
+        "cmc with ebc",
+        "cmc+ebc",
+        "oxidation protection",
+    )
+    has_environmental_function = bool(primary & {"environmental_barrier", "steam_recession_resistance"})
+    has_ebc_cue = any(term in text for term in ebc_terms)
+    if candidate_class == "ceramic_matrix_composite" and has_ebc_cue:
+        return True
+    if candidate_class == "coating_enabled" and has_environmental_function and has_ebc_cue:
+        return True
+    return has_environmental_function and has_ebc_cue and "cmc" in text
+
+
+def detect_hot_section_architecture_path(
+    candidate: Mapping[str, Any],
+    profile: Mapping[str, Any],
+) -> dict[str, Any]:
+    primary = set(_primary_service_functions(candidate))
+    candidate_class = _candidate_class(candidate)
+    text = _blob(
+        {
+            "candidate_id": candidate.get("candidate_id"),
+            "system_name": candidate.get("system_name") or candidate.get("name"),
+            "candidate_class": candidate.get("candidate_class"),
+            "system_architecture_type": candidate.get("system_architecture_type"),
+            "coating_or_surface_system": candidate.get("coating_or_surface_system"),
+            "environmental_barrier_coating": candidate.get("environmental_barrier_coating"),
+            "surface_function_profile": candidate.get("surface_function_profile"),
+            "cmc_ebc_environmental_durability": candidate.get("cmc_ebc_environmental_durability"),
+            "coating_spallation_adhesion": candidate.get("coating_spallation_adhesion"),
+            "gradient_architecture": candidate.get("gradient_architecture"),
+        }
+    )
+    tbc_terms = ("tbc", "thermal barrier", "bond coat", "bondcoat", "top coat", "ceramic top coat")
+    if candidate_class == "spatially_graded_am":
+        return {
+            "architecture_path": "graded_am_research_path",
+            "path_matched_required_functions": sorted(primary & _HOT_SECTION_REQUIRED),
+            "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+            "path_cautions": ["Spatially graded AM concepts remain exploratory/research paths for this profile."],
+            "path_required_next_evidence": ["graded transition-zone validation for the target hot-section application"],
+            "path_rationale": ["Candidate is a spatially graded AM architecture."],
+        }
+    if is_hot_section_profile(profile) and (
+        _HOT_SECTION_REQUIRED <= primary
+        or candidate_class == "coating_enabled"
+        and any(term in text for term in tbc_terms)
+    ):
+        return {
+            "architecture_path": "coated_metallic_tbc_path",
+            "path_matched_required_functions": sorted(_HOT_SECTION_REQUIRED & (primary | _HOT_SECTION_REQUIRED)),
+            "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+            "path_cautions": [],
+            "path_required_next_evidence": ["coating durability and thermal-cycling validation"],
+            "path_rationale": [
+                "Candidate follows the coated metallic/TBC hot-section protection path.",
+            ],
+        }
+    if is_hot_section_profile(profile) and has_cmc_ebc_environmental_protection_path(candidate):
+        matched = sorted(primary & {"environmental_barrier", "steam_recession_resistance", "oxidation_resistance"})
+        return {
+            "architecture_path": "cmc_ebc_environmental_protection_path",
+            "path_matched_required_functions": matched,
+            "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+            "path_cautions": [
+                "CMC/EBC path is an alternative environmental-protection architecture, not a direct TBC equivalence.",
+                "EBC dependency and oxidation/steam recession behaviour remain validation-heavy.",
+                "CTE, interface/interphase compatibility, inspection, repair and qualification evidence are required.",
+            ],
+            "path_required_next_evidence": [
+                "environment-specific EBC durability evidence",
+                "steam recession evidence",
+                "EBC/substrate compatibility evidence",
+                "interphase recession evidence where relevant",
+                "inspection and repair acceptance criteria",
+                "comparison against Ni/TBC reference architecture",
+            ],
+            "path_rationale": [
+                "Candidate has CMC/EBC or rare-earth silicate environmental-barrier cues relevant to hot-section protection.",
+                "Missing literal thermal_barrier is treated as an architecture difference, not an automatic poor-fit blocker.",
+            ],
+        }
+    if primary & {"wear_resistance", "erosion_resistance", "hard_surface"} and not primary & _HOT_SECTION_REQUIRED:
+        return {
+            "architecture_path": "wear_or_erosion_path",
+            "path_matched_required_functions": sorted(primary & {"wear_resistance", "erosion_resistance", "hard_surface"}),
+            "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+            "path_cautions": ["Wear/erosion service functions do not satisfy the default hot-section thermal/oxidation path."],
+            "path_required_next_evidence": ["changed application requirements or added thermal/oxidation protection evidence"],
+            "path_rationale": ["Candidate is dominated by wear, erosion or hard-surface functions."],
+        }
+    if primary & {"oxidation_resistance"} and "thermal_barrier" not in primary:
+        return {
+            "architecture_path": "oxidation_protection_only_path",
+            "path_matched_required_functions": ["oxidation_resistance"],
+            "path_missing_required_functions": ["thermal_barrier"],
+            "path_cautions": ["Oxidation protection alone does not satisfy the default hot-section thermal-barrier need."],
+            "path_required_next_evidence": ["thermal-barrier relevance or changed application requirements"],
+            "path_rationale": ["Candidate provides oxidation protection without a thermal-barrier path."],
+        }
+    if candidate_class == "monolithic_ceramic":
+        return {
+            "architecture_path": "monolithic_ceramic_path",
+            "path_matched_required_functions": sorted(primary & _HOT_SECTION_REQUIRED),
+            "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+            "path_cautions": ["Monolithic ceramic record does not show a discrete hot-section protection architecture."],
+            "path_required_next_evidence": ["explicit hot-section thermal and oxidation protection evidence"],
+            "path_rationale": ["Candidate is a monolithic ceramic reference."],
+        }
+    return {
+        "architecture_path": "unknown_path",
+        "path_matched_required_functions": sorted(primary & _HOT_SECTION_REQUIRED),
+        "path_missing_required_functions": sorted(_HOT_SECTION_REQUIRED - primary),
+        "path_cautions": [],
+        "path_required_next_evidence": [],
+        "path_rationale": ["No deterministic hot-section architecture path was identified."],
+    }
 
 
 def _evidence_alignment(maturity: str, profile: Mapping[str, Any], readiness_status: str) -> str:
@@ -262,6 +425,7 @@ def assess_candidate_against_application_profile(candidate: Mapping[str, Any], p
     missing_required = sorted(function for function in required if function not in primary)
     matched_desired = sorted(function for function in desired if function in secondary or function in primary)
     missing_desired = sorted(function for function in desired if function not in set(matched_desired))
+    architecture_path = detect_hot_section_architecture_path(candidate, app)
     evidence_alignment = _evidence_alignment(maturity, app, readiness_status)
     exposure_alignment = _exposure_alignment(candidate, app, matched_required)
     inspection_alignment, inspection_cautions, inspection_blockers = _inspection_repair_alignment(candidate, app)
@@ -269,8 +433,20 @@ def assess_candidate_against_application_profile(candidate: Mapping[str, Any], p
     diagnostic_evidence, diagnostic_cautions, diagnostic_blockers = _diagnostic_evidence(candidate, app)
 
     blockers = list(dict.fromkeys(inspection_blockers + diagnostic_blockers))
-    cautions = list(dict.fromkeys(inspection_cautions + certification_cautions + diagnostic_cautions))
-    required_next_evidence = list(dict.fromkeys(diagnostic_evidence))
+    cautions = list(
+        dict.fromkeys(
+            inspection_cautions
+            + certification_cautions
+            + diagnostic_cautions
+            + [_text(item) for item in _as_list(architecture_path.get("path_cautions")) if _text(item)]
+        )
+    )
+    required_next_evidence = list(
+        dict.fromkeys(
+            diagnostic_evidence
+            + [_text(item) for item in _as_list(architecture_path.get("path_required_next_evidence")) if _text(item)]
+        )
+    )
     if missing_required:
         required_next_evidence.append("evidence for missing required primary service functions: " + ", ".join(missing_required))
     if missing_desired:
@@ -303,6 +479,37 @@ def assess_candidate_against_application_profile(candidate: Mapping[str, Any], p
     else:
         fit_status = "exploratory_only_for_profile"
 
+    path_id = _text(architecture_path.get("architecture_path"), "unknown_path")
+    if is_hot_section_profile(app):
+        if path_id == "cmc_ebc_environmental_protection_path":
+            if evidence_alignment == "research_only" or maturity == "F" or readiness_status == "research_only":
+                fit_status = "research_only_for_profile"
+            elif maturity in {"D", "E"} or readiness_status == "exploratory_only":
+                fit_status = "exploratory_only_for_profile"
+            elif maturity in {"A", "B", "C"}:
+                fit_status = "plausible_with_validation"
+            else:
+                fit_status = "insufficient_information"
+        elif path_id == "oxidation_protection_only_path":
+            if evidence_alignment == "research_only" or maturity == "F" or readiness_status == "research_only":
+                fit_status = "research_only_for_profile"
+            elif maturity in {"D", "E"} or readiness_status == "exploratory_only":
+                fit_status = "exploratory_only_for_profile"
+            elif missing_required:
+                fit_status = "poor_fit_for_profile"
+        elif path_id == "wear_or_erosion_path":
+            if evidence_alignment == "research_only" or maturity == "F" or readiness_status == "research_only":
+                fit_status = "research_only_for_profile"
+            else:
+                fit_status = "poor_fit_for_profile"
+        elif path_id == "monolithic_ceramic_path" and not matched_required:
+            fit_status = "poor_fit_for_profile"
+        elif path_id == "graded_am_research_path":
+            if evidence_alignment == "research_only" or maturity == "F" or readiness_status == "research_only":
+                fit_status = "research_only_for_profile"
+            elif maturity in {"D", "E"} or readiness_status == "exploratory_only":
+                fit_status = "exploratory_only_for_profile" if matched_required else "poor_fit_for_profile"
+
     if fit_status == "exploratory_only_for_profile" and app.get("allow_exploratory_concepts") and matched_required:
         fit_status = "plausible_with_validation"
     if maturity == "F":
@@ -312,8 +519,10 @@ def assess_candidate_against_application_profile(candidate: Mapping[str, Any], p
         f"Matched {len(matched_required)} of {len(required)} required primary service functions.",
         f"Evidence alignment: {evidence_alignment}.",
         f"Exposure alignment: {exposure_alignment}.",
+        f"Architecture path: {path_id}.",
         "Fit status is conservative decision support only.",
     ]
+    rationale.extend(_text(item) for item in _as_list(architecture_path.get("path_rationale")) if _text(item))
     return {
         "candidate_id": candidate_id,
         "system_name": _system_name(candidate),
@@ -326,6 +535,19 @@ def assess_candidate_against_application_profile(candidate: Mapping[str, Any], p
         "missing_required_primary_functions": missing_required,
         "matched_desired_secondary_functions": matched_desired,
         "missing_desired_secondary_functions": missing_desired,
+        "architecture_path": path_id,
+        "architecture_path_rationale": [
+            _text(item) for item in _as_list(architecture_path.get("path_rationale")) if _text(item)
+        ],
+        "architecture_path_matched_functions": [
+            _text(item) for item in _as_list(architecture_path.get("path_matched_required_functions")) if _text(item)
+        ],
+        "architecture_path_missing_functions": [
+            _text(item) for item in _as_list(architecture_path.get("path_missing_required_functions")) if _text(item)
+        ],
+        "architecture_path_cautions": [
+            _text(item) for item in _as_list(architecture_path.get("path_cautions")) if _text(item)
+        ],
         "exposure_alignment": exposure_alignment,
         "evidence_alignment": evidence_alignment,
         "inspection_repair_alignment": inspection_alignment,
@@ -344,9 +566,14 @@ def build_application_requirement_fit_matrix(package: Mapping[str, Any], profile
     candidates = [candidate for candidate in _as_list(package.get("candidate_systems")) if isinstance(candidate, Mapping)]
     records = [assess_candidate_against_application_profile(candidate, app) for candidate in candidates]
     status_counts = Counter(_text(record.get("fit_status"), "unknown") for record in records)
+    path_counts = Counter(_text(record.get("architecture_path"), "unknown_path") for record in records)
     by_status: dict[str, list[str]] = {}
+    by_path: dict[str, list[str]] = {}
     for record in records:
         by_status.setdefault(_text(record.get("fit_status"), "unknown"), []).append(_text(record.get("candidate_id")))
+        by_path.setdefault(_text(record.get("architecture_path"), "unknown_path"), []).append(
+            _text(record.get("candidate_id"))
+        )
     required = _as_list(app.get("required_primary_service_functions"))
     coverage = {
         function_id: [
@@ -385,6 +612,15 @@ def build_application_requirement_fit_matrix(package: Mapping[str, Any], profile
         practical.append("Exploratory concepts require profile-specific validation before engineering use.")
     if status_counts.get("poor_fit_for_profile"):
         practical.append("Poor-fit candidates should not be advanced for this profile without changed requirements.")
+    alternative_path_notes = []
+    if path_counts.get("cmc_ebc_environmental_protection_path"):
+        alternative_path_notes.append(
+            "CMC/EBC environmental-protection paths are treated as hot-section relevant but validation-dependent."
+        )
+    if path_counts.get("oxidation_protection_only_path"):
+        alternative_path_notes.append(
+            "Oxidation-only paths do not satisfy the full default thermal-barrier plus oxidation profile."
+        )
     warnings = []
     if not records:
         warnings.append("No candidates are available for application requirement-fit assessment.")
@@ -396,6 +632,9 @@ def build_application_requirement_fit_matrix(package: Mapping[str, Any], profile
         "fit_records": records,
         "fit_status_counts": dict(sorted(status_counts.items())),
         "candidate_ids_by_fit_status": {key: value for key, value in sorted(by_status.items())},
+        "architecture_path_counts": dict(sorted(path_counts.items())),
+        "candidate_ids_by_architecture_path": {key: value for key, value in sorted(by_path.items())},
+        "alternative_architecture_path_notes": alternative_path_notes,
         "required_function_coverage_summary": {
             "required_primary_service_functions": list(required),
             "candidate_ids_covering_each_required_function": coverage,

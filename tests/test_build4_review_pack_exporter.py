@@ -123,6 +123,7 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert package["application_profile"]
     assert package["application_requirement_fit"]
     assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
+    assert package["application_requirement_fit"]["architecture_path_counts"]
     assert view_model["candidate_cards"]
     assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
     assert view_model["graded_am_transition_zone_summary_view"]["relevant_candidate_count"] > 0
@@ -151,6 +152,7 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     assert "application requirement fit" in full_report
     assert "not final material selection" in full_report
     assert "no ranking has been applied" in full_report
+    assert "architecture path" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename
         assert section.is_file()

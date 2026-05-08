@@ -181,6 +181,7 @@ def test_package_summary_returns_candidate_count_and_mix_fields():
     assert summary["coating_spallation_adhesion_summary"]["relevant_candidate_count"] > 0
     assert summary["graded_am_transition_zone_summary"]["relevant_candidate_count"] > 0
     assert summary["application_requirement_fit"]["candidate_count"] == 3
+    assert summary["application_requirement_fit"]["architecture_path_counts"]
 
 
 def test_markdown_report_includes_not_final_recommendation():
@@ -215,6 +216,7 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "application requirement fit" in report
     assert "not final material selection" in report
     assert "no ranking has been applied" in report
+    assert "architecture path" in report
 
 
 def test_markdown_report_mentions_research_adapters_disabled():
@@ -279,6 +281,7 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
     assert view_model["graded_am_transition_zone_summary_view"]["relevant_candidate_count"] > 0
     assert view_model["application_requirement_fit_view"]["candidate_count"] == 3
+    assert view_model["application_requirement_fit_view"]["architecture_path_counts"]
     assert view_model["coating_vs_gradient_diagnostic_view"]["pairwise_comparisons"]
     assert view_model["surface_function_coverage_view"]["required_surface_functions"]
     assert view_model["surface_function_coverage_view"]["shared_coating_gradient_functions"]

@@ -112,6 +112,7 @@ def _inspection_repair_notes(candidate: Mapping[str, Any]) -> list[str]:
     repair = _mapping(candidate.get("repairability"))
     qualification = _mapping(candidate.get("qualification_route"))
     coating = _mapping(candidate.get("coating_spallation_adhesion"))
+    graded_am = _mapping(candidate.get("graded_am_transition_zone_risk"))
     notes = [
         f"Inspection burden: {_text(inspection.get('inspection_burden'), 'unknown')}.",
         f"Repairability: {_text(repair.get('repairability_level'), 'unknown')}.",
@@ -124,6 +125,14 @@ def _inspection_repair_notes(candidate: Mapping[str, Any]) -> list[str]:
             f"adhesion/spallation risk {_text(coating.get('adhesion_or_spallation_risk'), 'unknown')}; "
             f"inspection difficulty {_text(coating.get('inspection_difficulty'), 'unknown')}; "
             f"repairability constraint {_text(coating.get('repairability_constraint'), 'unknown')}."
+        )
+    if graded_am:
+        notes.append(
+            "Graded AM diagnostic: "
+            f"{_text(graded_am.get('gradient_system_label'), 'gradient system')}; "
+            f"transition-zone complexity {_text(graded_am.get('transition_zone_complexity'), 'unknown')}; "
+            f"residual-stress risk {_text(graded_am.get('residual_stress_risk'), 'unknown')}; "
+            f"through-depth inspection {_text(graded_am.get('through_depth_inspection_difficulty'), 'unknown')}."
         )
     return notes
 
@@ -166,6 +175,10 @@ def build_candidate_narrative_card(
     coating_evidence = [
         _text(item) for item in _as_list(coating.get("required_validation_evidence")) if _text(item)
     ]
+    graded_am = _mapping(candidate.get("graded_am_transition_zone_risk"))
+    graded_am_evidence = [
+        _text(item) for item in _as_list(graded_am.get("required_validation_evidence")) if _text(item)
+    ]
     required_evidence = [
         _text(item) for item in _as_list(readiness.get("required_next_evidence")) if _text(item)
     ]
@@ -188,7 +201,7 @@ def build_candidate_narrative_card(
         "responsible_use": _text(readiness.get("allowed_use"), "Use only as decision-support context."),
         "main_strengths": _strengths(candidate),
         "main_cautions": _cautions(candidate),
-        "evidence_gaps": list(dict.fromkeys(gaps + coating_evidence + required_evidence))[:5],
+        "evidence_gaps": list(dict.fromkeys(gaps + coating_evidence + graded_am_evidence + required_evidence))[:5],
         "process_route_notes": _route_notes(candidate),
         "inspection_repair_notes": _inspection_repair_notes(candidate),
         "surface_function_notes": _surface_notes(candidate),
@@ -214,6 +227,12 @@ def _diagnostic_notes(package: Mapping[str, Any]) -> list[str]:
             "Coating spallation/adhesion diagnostic relevant candidates: "
             f"{coating_summary.get('relevant_candidate_count', 0)}."
         )
+    graded_am_summary = _mapping(package.get("graded_am_transition_zone_summary"))
+    if graded_am_summary:
+        notes.append(
+            "Graded AM transition-zone diagnostic relevant candidates: "
+            f"{graded_am_summary.get('relevant_candidate_count', 0)}."
+        )
     return list(dict.fromkeys(notes))[:6]
 
 
@@ -223,6 +242,7 @@ def build_recommendation_narrative(package: Mapping[str, Any]) -> dict[str, Any]
     readiness_summary = _mapping(package.get("decision_readiness_summary"))
     route_summary = _mapping(package.get("process_route_summary"))
     coating_summary = _mapping(package.get("coating_spallation_adhesion_summary"))
+    graded_am_summary = _mapping(package.get("graded_am_transition_zone_summary"))
     key_gaps = []
     for card in cards:
         key_gaps.extend(_as_list(card.get("evidence_gaps"))[:2])
@@ -263,6 +283,12 @@ def build_recommendation_narrative(package: Mapping[str, Any]) -> dict[str, Any]
             "Coating inspection/repair high-constraint candidates: "
             f"{len(_as_list(coating_summary.get('high_inspection_difficulty_candidate_ids')))} inspection, "
             f"{len(_as_list(coating_summary.get('high_repairability_constraint_candidate_ids')))} repair.",
+            "Graded AM transition/residual-stress high-risk candidates: "
+            f"{len(_as_list(graded_am_summary.get('high_transition_complexity_candidate_ids')))} transition, "
+            f"{len(_as_list(graded_am_summary.get('high_residual_stress_risk_candidate_ids')))} residual stress.",
+            "Graded AM inspection/repair high-constraint candidates: "
+            f"{len(_as_list(graded_am_summary.get('high_inspection_difficulty_candidate_ids')))} inspection, "
+            f"{len(_as_list(graded_am_summary.get('high_repairability_constraint_candidate_ids')))} repair.",
         ],
         "decision_readiness_overview": {
             "readiness_category_counts": dict(_mapping(readiness_summary.get("readiness_category_counts"))),

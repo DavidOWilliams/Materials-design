@@ -16,6 +16,7 @@ from src.recommendation_builder import (  # noqa: E402
     build_package_from_candidate_source_package,
     summarize_recommendation_package,
 )
+from src.application_requirement_fit import attach_application_requirement_fit  # noqa: E402
 from src.optimisation.deterministic_optimizer import (  # noqa: E402
     attach_deterministic_optimisation,
 )
@@ -24,6 +25,9 @@ from src.coating_vs_gradient_diagnostics import (  # noqa: E402
 )
 from src.factor_models.coatings.spallation_adhesion import (  # noqa: E402
     attach_coating_spallation_adhesion,
+)
+from src.factor_models.graded_am.transition_zone_risk import (  # noqa: E402
+    attach_graded_am_transition_zone_risk,
 )
 from src.decision_readiness import (  # noqa: E402
     attach_decision_readiness,
@@ -73,6 +77,8 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     recommendation_package = attach_process_route_enrichment(recommendation_package)
     recommendation_package = attach_surface_function_profiles(recommendation_package)
     recommendation_package = attach_coating_spallation_adhesion(recommendation_package)
+    recommendation_package = attach_graded_am_transition_zone_risk(recommendation_package)
+    recommendation_package = attach_application_requirement_fit(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     recommendation_package = attach_decision_readiness(recommendation_package)
@@ -100,6 +106,8 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
     narrative = recommendation_package.get("recommendation_narrative") or {}
     coating_spallation_summary = recommendation_package.get("coating_spallation_adhesion_summary") or {}
+    graded_am_summary = recommendation_package.get("graded_am_transition_zone_summary") or {}
+    application_fit = recommendation_package.get("application_requirement_fit") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
@@ -146,6 +154,18 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "high_coating_repairability_constraint_candidate_count": len(
             coating_spallation_summary.get("high_repairability_constraint_candidate_ids", [])
         ),
+        "graded_am_transition_relevant_candidate_count": graded_am_summary.get("relevant_candidate_count", 0),
+        "high_transition_complexity_candidate_count": len(
+            graded_am_summary.get("high_transition_complexity_candidate_ids", [])
+        ),
+        "high_residual_stress_risk_candidate_count": len(
+            graded_am_summary.get("high_residual_stress_risk_candidate_ids", [])
+        ),
+        "high_gradient_inspection_difficulty_candidate_count": len(
+            graded_am_summary.get("high_inspection_difficulty_candidate_ids", [])
+        ),
+        "application_profile_id": (recommendation_package.get("application_profile") or {}).get("profile_id"),
+        "application_fit_status_counts": application_fit.get("fit_status_counts", {}),
         "decision_readiness_category_counts": readiness_summary.get("readiness_category_counts", {}),
         "decision_readiness_status_counts": readiness_summary.get("readiness_status_counts", {}),
         "research_only_candidate_count": len(readiness_summary.get("research_only_candidate_ids", [])),
@@ -206,6 +226,15 @@ def _print_summary(summary: dict[str, Any]) -> None:
         "High coating repairability constraint count: "
         f"{summary['high_coating_repairability_constraint_candidate_count']}"
     )
+    print(f"Graded AM transition relevant candidate count: {summary['graded_am_transition_relevant_candidate_count']}")
+    print(f"High transition complexity count: {summary['high_transition_complexity_candidate_count']}")
+    print(f"High residual stress risk count: {summary['high_residual_stress_risk_candidate_count']}")
+    print(
+        "High graded AM inspection difficulty count: "
+        f"{summary['high_gradient_inspection_difficulty_candidate_count']}"
+    )
+    print(f"Application profile ID: {summary['application_profile_id']}")
+    print(f"Application fit status counts: {json.dumps(summary['application_fit_status_counts'], sort_keys=True)}")
     print(
         "Decision-readiness category counts: "
         f"{json.dumps(summary['decision_readiness_category_counts'], sort_keys=True)}"

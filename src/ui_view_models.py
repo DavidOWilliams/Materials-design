@@ -215,6 +215,58 @@ def _summarize_coating_spallation(candidate: Mapping[str, Any]) -> dict[str, Any
     }
 
 
+def _summarize_graded_am_transition(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _mapping(candidate.get("graded_am_transition_zone_risk"))
+    if not profile:
+        return {"present": False}
+    return {
+        "present": True,
+        "gradient_system_label": _text(profile.get("gradient_system_label"), "Unknown gradient system"),
+        "gradient_system_kind": _text(profile.get("gradient_system_kind"), "unknown"),
+        "transition_zone_complexity": _text(profile.get("transition_zone_complexity"), "unknown"),
+        "residual_stress_risk": _text(profile.get("residual_stress_risk"), "unknown"),
+        "cracking_or_delamination_risk": _text(profile.get("cracking_or_delamination_risk"), "unknown"),
+        "process_window_sensitivity": _text(profile.get("process_window_sensitivity"), "unknown"),
+        "through_depth_inspection_difficulty": _text(
+            profile.get("through_depth_inspection_difficulty"),
+            "unknown",
+        ),
+        "repairability_constraint": _text(profile.get("repairability_constraint"), "unknown"),
+        "qualification_burden": _text(profile.get("qualification_burden"), "unknown"),
+        "required_validation_evidence": [
+            _text(item) for item in _as_list(profile.get("required_validation_evidence")) if _text(item)
+        ],
+        "inspection_and_repair_notes": [
+            _text(item) for item in _as_list(profile.get("inspection_and_repair_notes")) if _text(item)
+        ],
+        "gradient_concerns": [_text(item) for item in _as_list(profile.get("gradient_concerns")) if _text(item)],
+        "not_a_process_qualification_claim": profile.get("not_a_process_qualification_claim") is True,
+        "not_a_life_prediction": profile.get("not_a_life_prediction") is True,
+        "not_a_final_recommendation": profile.get("not_a_final_recommendation") is True,
+    }
+
+
+def _summarize_application_fit(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    fit = _mapping(candidate.get("application_requirement_fit"))
+    if not fit:
+        return {"present": False}
+    return {
+        "present": True,
+        "fit_status": _text(fit.get("fit_status"), "unknown"),
+        "matched_required_primary_functions": [
+            _text(item) for item in _as_list(fit.get("matched_required_primary_functions")) if _text(item)
+        ],
+        "missing_required_primary_functions": [
+            _text(item) for item in _as_list(fit.get("missing_required_primary_functions")) if _text(item)
+        ],
+        "major_cautions": [_text(item) for item in _as_list(fit.get("major_cautions")) if _text(item)],
+        "critical_blockers": [_text(item) for item in _as_list(fit.get("critical_blockers")) if _text(item)],
+        "required_next_evidence": [
+            _text(item) for item in _as_list(fit.get("required_next_evidence")) if _text(item)
+        ],
+    }
+
+
 def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, Any]:
     maturity = _evidence_maturity(candidate)
     evidence = _evidence(candidate)
@@ -223,6 +275,8 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     readiness = _mapping(candidate.get("decision_readiness"))
     narrative_card = _mapping(candidate.get("recommendation_narrative_card"))
     coating_spallation = _summarize_coating_spallation(candidate)
+    graded_am_transition = _summarize_graded_am_transition(candidate)
+    application_fit = _summarize_application_fit(candidate)
     constraints = [
         _mapping(item) for item in _as_list(readiness.get("constraints")) if _mapping(item)
     ]
@@ -266,6 +320,28 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
         "inspection_difficulty": coating_spallation.get("inspection_difficulty", ""),
         "repairability_constraint": coating_spallation.get("repairability_constraint", ""),
         "coating_required_validation_evidence": coating_spallation.get("required_validation_evidence", []),
+        "graded_am_transition_zone_risk": graded_am_transition,
+        "gradient_system_label": graded_am_transition.get("gradient_system_label", ""),
+        "transition_zone_complexity": graded_am_transition.get("transition_zone_complexity", ""),
+        "residual_stress_risk": graded_am_transition.get("residual_stress_risk", ""),
+        "cracking_or_delamination_risk": graded_am_transition.get("cracking_or_delamination_risk", ""),
+        "process_window_sensitivity": graded_am_transition.get("process_window_sensitivity", ""),
+        "through_depth_inspection_difficulty": graded_am_transition.get("through_depth_inspection_difficulty", ""),
+        "gradient_repairability_constraint": graded_am_transition.get("repairability_constraint", ""),
+        "gradient_qualification_burden": graded_am_transition.get("qualification_burden", ""),
+        "graded_am_required_validation_evidence": graded_am_transition.get("required_validation_evidence", []),
+        "application_requirement_fit": application_fit,
+        "application_fit_status": application_fit.get("fit_status", ""),
+        "application_matched_required_primary_functions": application_fit.get(
+            "matched_required_primary_functions",
+            [],
+        ),
+        "application_missing_required_primary_functions": application_fit.get(
+            "missing_required_primary_functions",
+            [],
+        ),
+        "application_major_cautions": application_fit.get("major_cautions", []),
+        "application_required_next_evidence": application_fit.get("required_next_evidence", []),
         "primary_surface_functions": [
             _text(item) for item in _as_list(surface_profile.get("primary_surface_functions")) if _text(item)
         ],
@@ -343,6 +419,9 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         "coating_spallation_adhesion_summary": dict(
             _mapping(package.get("coating_spallation_adhesion_summary"))
         ),
+        "graded_am_transition_zone_summary": dict(_mapping(package.get("graded_am_transition_zone_summary"))),
+        "application_requirement_fit": dict(_mapping(package.get("application_requirement_fit"))),
+        "application_profile": dict(_mapping(package.get("application_profile"))),
         "surface_function_coverage_summary": dict(_mapping(package.get("surface_function_coverage_summary"))),
         "surface_function_required_coverage": dict(_mapping(package.get("surface_function_required_coverage"))),
         "decision_readiness_summary": dict(_mapping(package.get("decision_readiness_summary"))),
@@ -494,6 +573,111 @@ def build_coating_spallation_adhesion_summary_view_model(package: Mapping[str, A
             _text(item) for item in _as_list(summary.get("required_validation_evidence_themes")) if _text(item)
         ],
         "warnings": [_text(item) for item in _as_list(summary.get("warnings")) if _text(item)],
+    }
+
+
+def build_graded_am_transition_zone_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    summary = _mapping(package.get("graded_am_transition_zone_summary"))
+    return {
+        "candidate_count": summary.get("candidate_count", 0),
+        "relevant_candidate_count": summary.get("relevant_candidate_count", 0),
+        "gradient_system_kind_counts": dict(_mapping(summary.get("gradient_system_kind_counts"))),
+        "transition_zone_complexity_counts": dict(_mapping(summary.get("transition_zone_complexity_counts"))),
+        "residual_stress_risk_counts": dict(_mapping(summary.get("residual_stress_risk_counts"))),
+        "cracking_or_delamination_risk_counts": dict(
+            _mapping(summary.get("cracking_or_delamination_risk_counts"))
+        ),
+        "process_window_sensitivity_counts": dict(_mapping(summary.get("process_window_sensitivity_counts"))),
+        "through_depth_inspection_difficulty_counts": dict(
+            _mapping(summary.get("through_depth_inspection_difficulty_counts"))
+        ),
+        "repairability_constraint_counts": dict(_mapping(summary.get("repairability_constraint_counts"))),
+        "qualification_burden_counts": dict(_mapping(summary.get("qualification_burden_counts"))),
+        "maturity_constraint_counts": dict(_mapping(summary.get("maturity_constraint_counts"))),
+        "high_transition_complexity_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_transition_complexity_candidate_ids")) if _text(item)
+        ],
+        "high_residual_stress_risk_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_residual_stress_risk_candidate_ids")) if _text(item)
+        ],
+        "high_cracking_or_delamination_risk_candidate_ids": [
+            _text(item)
+            for item in _as_list(summary.get("high_cracking_or_delamination_risk_candidate_ids"))
+            if _text(item)
+        ],
+        "high_process_window_sensitivity_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_process_window_sensitivity_candidate_ids")) if _text(item)
+        ],
+        "high_inspection_difficulty_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_inspection_difficulty_candidate_ids")) if _text(item)
+        ],
+        "high_repairability_constraint_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_repairability_constraint_candidate_ids")) if _text(item)
+        ],
+        "high_qualification_burden_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_qualification_burden_candidate_ids")) if _text(item)
+        ],
+        "low_maturity_gradient_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("low_maturity_gradient_candidate_ids")) if _text(item)
+        ],
+        "required_validation_evidence_themes": [
+            _text(item) for item in _as_list(summary.get("required_validation_evidence_themes")) if _text(item)
+        ],
+        "warnings": [_text(item) for item in _as_list(summary.get("warnings")) if _text(item)],
+    }
+
+
+def build_application_requirement_fit_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    matrix = _mapping(package.get("application_requirement_fit"))
+    profile = _mapping(package.get("application_profile") or matrix.get("profile"))
+    coverage = _mapping(matrix.get("required_function_coverage_summary"))
+    return {
+        "profile": dict(profile),
+        "profile_id": _text(profile.get("profile_id"), "unknown_profile"),
+        "display_name": _text(profile.get("display_name"), "Unknown application profile"),
+        "description": _text(profile.get("description")),
+        "required_primary_service_functions": [
+            _text(item) for item in _as_list(profile.get("required_primary_service_functions")) if _text(item)
+        ],
+        "desired_secondary_service_functions": [
+            _text(item) for item in _as_list(profile.get("desired_secondary_service_functions")) if _text(item)
+        ],
+        "key_profile_constraints": {
+            "thermal_exposure_level": _text(profile.get("thermal_exposure_level"), "unknown"),
+            "thermal_cycling_severity": _text(profile.get("thermal_cycling_severity"), "unknown"),
+            "oxidation_or_steam_exposure": _text(profile.get("oxidation_or_steam_exposure"), "unknown"),
+            "erosion_or_wear_exposure": _text(profile.get("erosion_or_wear_exposure"), "unknown"),
+            "inspection_access": _text(profile.get("inspection_access"), "unknown"),
+            "repairability_expectation": _text(profile.get("repairability_expectation"), "unknown"),
+            "certification_sensitivity": _text(profile.get("certification_sensitivity"), "unknown"),
+            "minimum_evidence_maturity_for_engineering_use": _text(
+                profile.get("minimum_evidence_maturity_for_engineering_use"),
+                "unknown",
+            ),
+        },
+        "candidate_count": matrix.get("candidate_count", 0),
+        "fit_status_counts": dict(_mapping(matrix.get("fit_status_counts"))),
+        "candidate_ids_by_fit_status": {
+            key: [_text(item) for item in _as_list(value) if _text(item)]
+            for key, value in _mapping(matrix.get("candidate_ids_by_fit_status")).items()
+        },
+        "required_function_coverage_summary": dict(coverage),
+        "common_blockers": [_text(item) for item in _as_list(matrix.get("common_blockers")) if _text(item)],
+        "common_major_cautions": [
+            _text(item) for item in _as_list(matrix.get("common_major_cautions")) if _text(item)
+        ],
+        "required_next_evidence_themes": [
+            _text(item) for item in _as_list(matrix.get("required_next_evidence_themes")) if _text(item)
+        ],
+        "practical_use_summary": [
+            _text(item) for item in _as_list(matrix.get("practical_use_summary")) if _text(item)
+        ],
+        "fit_records": [
+            dict(item) for item in _as_list(matrix.get("fit_records")) if isinstance(item, Mapping)
+        ],
+        "warnings": [_text(item) for item in _as_list(matrix.get("warnings")) if _text(item)],
+        "not_a_final_recommendation": matrix.get("not_a_final_recommendation") is True,
+        "no_ranking_applied": matrix.get("no_ranking_applied") is True,
     }
 
 
@@ -707,6 +891,8 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
         "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
         "coating_spallation_adhesion_summary_view": build_coating_spallation_adhesion_summary_view_model(package),
+        "graded_am_transition_zone_summary_view": build_graded_am_transition_zone_summary_view_model(package),
+        "application_requirement_fit_view": build_application_requirement_fit_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
         "recommendation_narrative_view": build_recommendation_narrative_view_model(package),
@@ -1016,6 +1202,156 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Repairability constraint: {card['repairability_constraint']}",
                 "- Required validation evidence: "
                 + (", ".join(card["coating_required_validation_evidence"][:5]) or "not specified"),
+            ]
+        )
+    graded_am_view = view_model["graded_am_transition_zone_summary_view"]
+    lines.extend(
+        [
+            "",
+            "## Graded AM Transition-Zone Risk",
+            "- Diagnostic only.",
+            "- This is not a process qualification claim.",
+            "- This is not a life prediction.",
+            "- This is not qualification/certification approval.",
+            f"- Relevant graded AM candidate count: {graded_am_view.get('relevant_candidate_count')}",
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Gradient system kinds", graded_am_view.get("gradient_system_kind_counts", {})))
+    lines.extend(
+        _markdown_table_from_mix(
+            "Transition-zone complexity",
+            graded_am_view.get("transition_zone_complexity_counts", {}),
+        )
+    )
+    lines.extend(_markdown_table_from_mix("Residual-stress risk", graded_am_view.get("residual_stress_risk_counts", {})))
+    lines.extend(
+        _markdown_table_from_mix(
+            "Cracking / delamination risk",
+            graded_am_view.get("cracking_or_delamination_risk_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Process-window sensitivity",
+            graded_am_view.get("process_window_sensitivity_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Through-depth inspection difficulty",
+            graded_am_view.get("through_depth_inspection_difficulty_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Repairability constraint",
+            graded_am_view.get("repairability_constraint_counts", {}),
+        )
+    )
+    lines.extend(
+        [
+            "- High transition-zone complexity candidates: "
+            + (", ".join(graded_am_view.get("high_transition_complexity_candidate_ids", [])) or "none"),
+            "- High residual-stress risk candidates: "
+            + (", ".join(graded_am_view.get("high_residual_stress_risk_candidate_ids", [])) or "none"),
+            "- High cracking/delamination risk candidates: "
+            + (", ".join(graded_am_view.get("high_cracking_or_delamination_risk_candidate_ids", [])) or "none"),
+            "- High process-window sensitivity candidates: "
+            + (", ".join(graded_am_view.get("high_process_window_sensitivity_candidate_ids", [])) or "none"),
+            "- High through-depth inspection difficulty candidates: "
+            + (", ".join(graded_am_view.get("high_inspection_difficulty_candidate_ids", [])) or "none"),
+            "- High repairability constraint candidates: "
+            + (", ".join(graded_am_view.get("high_repairability_constraint_candidate_ids", [])) or "none"),
+            "- High qualification burden candidates: "
+            + (", ".join(graded_am_view.get("high_qualification_burden_candidate_ids", [])) or "none"),
+            "- Low maturity gradient candidates: "
+            + (", ".join(graded_am_view.get("low_maturity_gradient_candidate_ids", [])) or "none"),
+            "- Required validation evidence themes: "
+            + (", ".join(graded_am_view.get("required_validation_evidence_themes", [])[:10]) or "none visible"),
+        ]
+    )
+    for card in view_model["candidate_cards"]:
+        profile = card.get("graded_am_transition_zone_risk") or {}
+        if not profile.get("present"):
+            continue
+        lines.extend(
+            [
+                f"### Graded AM Diagnostic: {card['candidate_id']}",
+                f"- Gradient system: {card['gradient_system_label']}",
+                f"- Transition-zone complexity: {card['transition_zone_complexity']}",
+                f"- Residual-stress risk: {card['residual_stress_risk']}",
+                f"- Cracking/delamination risk: {card['cracking_or_delamination_risk']}",
+                f"- Process-window sensitivity: {card['process_window_sensitivity']}",
+                f"- Through-depth inspection difficulty: {card['through_depth_inspection_difficulty']}",
+                f"- Repairability constraint: {card['gradient_repairability_constraint']}",
+                f"- Qualification burden: {card['gradient_qualification_burden']}",
+                "- Required validation evidence: "
+                + (", ".join(card["graded_am_required_validation_evidence"][:5]) or "not specified"),
+            ]
+        )
+    app_fit = view_model["application_requirement_fit_view"]
+    coverage = _mapping(app_fit.get("required_function_coverage_summary"))
+    constraints = _mapping(app_fit.get("key_profile_constraints"))
+    lines.extend(
+        [
+            "",
+            "## Application Requirement Fit",
+            "- This is not final material selection.",
+            "- No ranking has been applied.",
+            "- Fit status is a conservative decision-support classification only.",
+            f"- Selected application profile: {app_fit.get('display_name')} ({app_fit.get('profile_id')})",
+            f"- Profile description: {app_fit.get('description') or 'not specified'}",
+            "- Required primary service functions: "
+            + (", ".join(app_fit.get("required_primary_service_functions", [])) or "none specified"),
+            "- Desired secondary service functions: "
+            + (", ".join(app_fit.get("desired_secondary_service_functions", [])) or "none specified"),
+            "- Key constraints: "
+            + (
+                ", ".join(f"{key}={value}" for key, value in constraints.items() if value)
+                or "not specified"
+            ),
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Fit status counts", app_fit.get("fit_status_counts", {})))
+    for status, candidate_ids in app_fit.get("candidate_ids_by_fit_status", {}).items():
+        lines.append(f"- {status}: {', '.join(candidate_ids) or 'none'}")
+    lines.extend(
+        [
+            "- Candidates missing all required primary functions: "
+            + (
+                ", ".join(_as_list(coverage.get("candidate_ids_missing_all_required_functions")))
+                or "none"
+            ),
+            "- Candidates matching all required primary functions: "
+            + (
+                ", ".join(_as_list(coverage.get("candidate_ids_matching_all_required_functions")))
+                or "none"
+            ),
+            "- Candidates matching some required primary functions: "
+            + (
+                ", ".join(_as_list(coverage.get("candidate_ids_matching_some_required_functions")))
+                or "none"
+            ),
+            "- Common blockers: " + (", ".join(app_fit.get("common_blockers", [])[:5]) or "none visible"),
+            "- Common major cautions: " + (", ".join(app_fit.get("common_major_cautions", [])[:5]) or "none visible"),
+            "- Required next evidence themes: "
+            + (", ".join(app_fit.get("required_next_evidence_themes", [])[:8]) or "none visible"),
+        ]
+    )
+    for note in app_fit.get("practical_use_summary", [])[:4]:
+        lines.append(f"- {note}")
+    for record in app_fit.get("fit_records", [])[:12]:
+        lines.extend(
+            [
+                f"### Application Fit: {record.get('candidate_id')}",
+                f"- Fit status: {record.get('fit_status')}",
+                "- Matched required primary functions: "
+                + (", ".join(_as_list(record.get("matched_required_primary_functions"))) or "none"),
+                "- Missing required primary functions: "
+                + (", ".join(_as_list(record.get("missing_required_primary_functions"))) or "none"),
+                "- Major cautions: " + ("; ".join(_as_list(record.get("major_cautions"))[:3]) or "none visible"),
+                "- Required next evidence: "
+                + ("; ".join(_as_list(record.get("required_next_evidence"))[:3]) or "not specified"),
             ]
         )
     optimisation = view_model["optimisation_summary_view"]

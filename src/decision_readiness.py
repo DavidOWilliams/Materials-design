@@ -142,6 +142,7 @@ def derive_candidate_readiness_constraints(candidate: Mapping[str, Any]) -> list
     repairability = _mapping(candidate.get("repairability"))
     qualification = _mapping(candidate.get("qualification_route"))
     coating_profile = _mapping(candidate.get("coating_spallation_adhesion"))
+    graded_am_profile = _mapping(candidate.get("graded_am_transition_zone_risk"))
 
     if maturity in {"E"}:
         constraints.append(
@@ -301,6 +302,57 @@ def derive_candidate_readiness_constraints(candidate: Mapping[str, Any]) -> list
                 )
             )
 
+    graded_am_constraint_fields = (
+        (
+            "transition_zone_complexity",
+            "graded_am_transition_complexity",
+            "transition_zone",
+            "High graded AM transition-zone complexity is visible.",
+        ),
+        (
+            "residual_stress_risk",
+            "graded_am_residual_stress",
+            "residual_stress",
+            "High graded AM residual-stress risk is visible.",
+        ),
+        (
+            "cracking_or_delamination_risk",
+            "graded_am_cracking_delamination",
+            "transition_zone",
+            "High graded AM cracking/delamination risk is visible.",
+        ),
+        (
+            "process_window_sensitivity",
+            "graded_am_process_window",
+            "process_route",
+            "High graded AM process-window sensitivity is visible.",
+        ),
+        (
+            "through_depth_inspection_difficulty",
+            "graded_am_through_depth_inspection",
+            "inspection",
+            "High graded AM through-depth inspection difficulty is visible.",
+        ),
+        (
+            "repairability_constraint",
+            "graded_am_repairability_constraint",
+            "repairability",
+            "High graded AM repairability constraint is visible.",
+        ),
+    )
+    for field, constraint_id, category, reason in graded_am_constraint_fields:
+        if _text(graded_am_profile.get(field)) == "high":
+            constraints.append(
+                _constraint(
+                    candidate,
+                    constraint_id=constraint_id,
+                    category=category,
+                    severity="high",
+                    reason=reason,
+                    source_field=f"graded_am_transition_zone_risk.{field}",
+                )
+            )
+
     route_id = _text(candidate.get("process_route_template_id"), "unknown_route")
     if route_id == "unknown_route" or not candidate.get("process_route_details"):
         constraints.append(
@@ -434,6 +486,12 @@ def determine_decision_readiness(
         _text(item) for item in _as_list(_mapping(candidate.get("coating_spallation_adhesion")).get("required_validation_evidence")) if _text(item)
     ]
     required_next_evidence.extend(coating_validation[:4])
+    graded_am_validation = [
+        _text(item)
+        for item in _as_list(_mapping(candidate.get("graded_am_transition_zone_risk")).get("required_validation_evidence"))
+        if _text(item)
+    ]
+    required_next_evidence.extend(graded_am_validation[:4])
     if any(item["category"] in {"evidence", "maturity", "research_mode"} for item in constraints):
         required_next_evidence.append("higher maturity evidence package")
     if not required_next_evidence:

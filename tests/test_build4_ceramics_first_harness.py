@@ -37,6 +37,9 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert package["required_surface_functions"]
     assert package["surface_function_coverage_summary"]
     assert package["coating_spallation_adhesion_summary"]
+    assert package["graded_am_transition_zone_summary"]
+    assert package["application_profile"]
+    assert package["application_requirement_fit"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
     assert package["recommendation_narrative"]
@@ -69,6 +72,11 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "process route, inspection and repairability" in report
     assert "coating spallation, adhesion and repair" in report
     assert "not a life prediction" in report
+    assert "graded am transition-zone risk" in report
+    assert "not a process qualification claim" in report
+    assert "application requirement fit" in report
+    assert "not final material selection" in report
+    assert "no ranking has been applied" in report
 
 
 def test_returned_summary_includes_candidate_count_greater_than_zero(tmp_path):
@@ -149,6 +157,20 @@ def test_returned_summary_includes_coating_spallation_counts(tmp_path):
 
     assert summary["coating_spallation_relevant_candidate_count"] > 0
     assert summary["high_spallation_risk_candidate_count"] > 0
+
+
+def test_returned_summary_includes_graded_am_transition_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["graded_am_transition_relevant_candidate_count"] > 0
+    assert summary["high_transition_complexity_candidate_count"] > 0
+
+
+def test_returned_summary_includes_application_fit_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert summary["application_fit_status_counts"]
 
 
 def test_returned_summary_includes_decision_readiness_counts(tmp_path):

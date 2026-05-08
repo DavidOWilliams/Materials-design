@@ -581,6 +581,61 @@ def _coating_spallation_limits(candidate: Mapping[str, Any]) -> list[dict[str, A
     return records
 
 
+def _graded_am_transition_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
+    profile = _mapping(candidate.get("graded_am_transition_zone_risk"))
+    if not profile:
+        return []
+    records: list[dict[str, Any]] = []
+    checks = (
+        (
+            "transition_zone_complexity",
+            "graded_am.transition_zone_complexity",
+            "High graded AM transition-zone complexity is visible.",
+        ),
+        (
+            "residual_stress_risk",
+            "graded_am.residual_stress_risk",
+            "High graded AM residual-stress risk is visible.",
+        ),
+        (
+            "cracking_or_delamination_risk",
+            "graded_am.cracking_delamination_risk",
+            "High graded AM cracking/delamination risk is visible.",
+        ),
+        (
+            "process_window_sensitivity",
+            "graded_am.process_window_sensitivity",
+            "High graded AM process-window sensitivity is visible.",
+        ),
+        (
+            "through_depth_inspection_difficulty",
+            "graded_am.through_depth_inspection_difficulty",
+            "High graded AM through-depth inspection difficulty is visible.",
+        ),
+        (
+            "repairability_constraint",
+            "graded_am.repairability_constraint",
+            "High graded AM repairability constraint is visible.",
+        ),
+    )
+    for field, factor, reason in checks:
+        if _text(profile.get(field)) == "high":
+            records.append(
+                _record(
+                    candidate=candidate,
+                    factor=factor,
+                    namespace="graded_am",
+                    severity="high",
+                    category="route_risk",
+                    reason=reason,
+                    related_warnings=profile.get("gradient_concerns"),
+                    source_field=f"graded_am_transition_zone_risk.{field}",
+                    dedupe_key=f"{_candidate_id(candidate)}|graded_am_transition|{field}",
+                )
+            )
+    return records
+
+
 def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Identify deterministic, transparent limiting factors for one existing candidate."""
     records: list[dict[str, Any]] = []
@@ -590,6 +645,7 @@ def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, An
     records.extend(_class_specific_limits(candidate))
     records.extend(_process_route_limits(candidate))
     records.extend(_coating_spallation_limits(candidate))
+    records.extend(_graded_am_transition_limits(candidate))
     return dedupe_limiting_factors(records)
 
 

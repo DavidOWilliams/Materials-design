@@ -25,6 +25,9 @@ def test_build_full_build4_package_returns_enriched_candidate_package():
     assert package["process_route_summary"]
     assert package["surface_function_coverage_summary"]
     assert package["coating_spallation_adhesion_summary"]
+    assert package["graded_am_transition_zone_summary"]
+    assert package["application_profile"]
+    assert package["application_requirement_fit"]
     assert package["optimisation_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
@@ -38,6 +41,10 @@ def test_build_review_pack_summary_includes_review_metrics():
 
     assert summary["candidate_count"] >= 30
     assert summary["coating_spallation_relevant_candidate_count"] > 0
+    assert summary["coating_spallation_relevant_candidate_count"] < 24
+    assert summary["graded_am_transition_relevant_candidate_count"] > 0
+    assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert summary["application_fit_status_counts"]
     assert summary["exporter_status"] == "review_pack_created"
     assert summary["recommendation_narrative_status"] == "controlled_narrative_no_final_recommendation"
     assert summary["optimisation_status"] == "skeleton_no_variants_generated"
@@ -76,6 +83,8 @@ def test_split_full_report_into_expected_sections():
     assert "Surface Function Coverage" in sections["surface_function_coverage"]
     assert "Process Route, Inspection and Repairability" in sections["process_route_inspection_repair"]
     assert "Coating Spallation, Adhesion and Repair" in sections["coating_spallation_adhesion"]
+    assert "Graded AM Transition-Zone Risk" in sections["graded_am_transition_zone_risk"]
+    assert "Application Requirement Fit" in sections["application_requirement_fit"]
     assert "Deterministic Optimisation Skeleton" in sections["deterministic_optimisation_trace"]
     assert "Coating vs Gradient Diagnostic" in sections["coating_vs_gradient_diagnostic"]
     assert "Decision Readiness" in sections["decision_readiness"]
@@ -110,8 +119,14 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert summary["candidate_count"] >= 30
     assert package["candidate_systems"]
     assert package["coating_spallation_adhesion_summary"]
+    assert package["graded_am_transition_zone_summary"]
+    assert package["application_profile"]
+    assert package["application_requirement_fit"]
+    assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
     assert view_model["candidate_cards"]
     assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
+    assert view_model["graded_am_transition_zone_summary_view"]["relevant_candidate_count"] > 0
+    assert view_model["application_requirement_fit_view"]["fit_status_counts"]
     assert result["candidate_count"] >= 30
     assert result["generated_candidate_count"] == 0
     assert result["live_model_calls_made"] is False
@@ -131,6 +146,11 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     assert "shared coating/gradient primary service functions" in full_report
     assert "coating spallation, adhesion and repair" in full_report
     assert "not a life prediction" in full_report
+    assert "graded am transition-zone risk" in full_report
+    assert "not a process qualification claim" in full_report
+    assert "application requirement fit" in full_report
+    assert "not final material selection" in full_report
+    assert "no ranking has been applied" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename
         assert section.is_file()

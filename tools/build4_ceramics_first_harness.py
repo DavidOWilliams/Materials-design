@@ -22,6 +22,9 @@ from src.optimisation.deterministic_optimizer import (  # noqa: E402
 from src.coating_vs_gradient_diagnostics import (  # noqa: E402
     attach_coating_vs_gradient_diagnostic,
 )
+from src.factor_models.coatings.spallation_adhesion import (  # noqa: E402
+    attach_coating_spallation_adhesion,
+)
 from src.decision_readiness import (  # noqa: E402
     attach_decision_readiness,
 )
@@ -69,6 +72,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     )
     recommendation_package = attach_process_route_enrichment(recommendation_package)
     recommendation_package = attach_surface_function_profiles(recommendation_package)
+    recommendation_package = attach_coating_spallation_adhesion(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     recommendation_package = attach_decision_readiness(recommendation_package)
@@ -95,6 +99,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
     readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
     narrative = recommendation_package.get("recommendation_narrative") or {}
+    coating_spallation_summary = recommendation_package.get("coating_spallation_adhesion_summary") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
@@ -131,6 +136,16 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
             surface_summary.get("unknown_surface_function_candidate_ids", [])
         ),
         "shared_coating_gradient_function_count": len(surface_summary.get("shared_coating_gradient_functions", [])),
+        "coating_spallation_relevant_candidate_count": coating_spallation_summary.get("relevant_candidate_count", 0),
+        "high_spallation_risk_candidate_count": len(
+            coating_spallation_summary.get("high_spallation_risk_candidate_ids", [])
+        ),
+        "high_coating_inspection_difficulty_candidate_count": len(
+            coating_spallation_summary.get("high_inspection_difficulty_candidate_ids", [])
+        ),
+        "high_coating_repairability_constraint_candidate_count": len(
+            coating_spallation_summary.get("high_repairability_constraint_candidate_ids", [])
+        ),
         "decision_readiness_category_counts": readiness_summary.get("readiness_category_counts", {}),
         "decision_readiness_status_counts": readiness_summary.get("readiness_status_counts", {}),
         "research_only_candidate_count": len(readiness_summary.get("research_only_candidate_ids", [])),
@@ -181,6 +196,16 @@ def _print_summary(summary: dict[str, Any]) -> None:
     print(f"Covered required surface-function count: {summary['covered_required_surface_function_count']}")
     print(f"Unknown surface-function candidate count: {summary['unknown_surface_function_candidate_count']}")
     print(f"Shared coating/gradient function count: {summary['shared_coating_gradient_function_count']}")
+    print(f"Coating spallation relevant candidate count: {summary['coating_spallation_relevant_candidate_count']}")
+    print(f"High coating spallation risk count: {summary['high_spallation_risk_candidate_count']}")
+    print(
+        "High coating inspection difficulty count: "
+        f"{summary['high_coating_inspection_difficulty_candidate_count']}"
+    )
+    print(
+        "High coating repairability constraint count: "
+        f"{summary['high_coating_repairability_constraint_candidate_count']}"
+    )
     print(
         "Decision-readiness category counts: "
         f"{json.dumps(summary['decision_readiness_category_counts'], sort_keys=True)}"

@@ -185,6 +185,36 @@ def _summarize_process_route(candidate: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _summarize_coating_spallation(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    profile = _mapping(candidate.get("coating_spallation_adhesion"))
+    if not profile:
+        return {"present": False}
+    return {
+        "present": True,
+        "coating_system_label": _text(profile.get("coating_system_label"), "Unknown coating system"),
+        "coating_system_kind": _text(profile.get("coating_system_kind"), "unknown"),
+        "bond_coat_or_interface_dependency": _text(
+            profile.get("bond_coat_or_interface_dependency"),
+            "unknown",
+        ),
+        "adhesion_or_spallation_risk": _text(profile.get("adhesion_or_spallation_risk"), "unknown"),
+        "cte_mismatch_risk": _text(profile.get("cte_mismatch_risk"), "unknown"),
+        "thermal_cycling_damage_risk": _text(profile.get("thermal_cycling_damage_risk"), "unknown"),
+        "environmental_attack_risk": _text(profile.get("environmental_attack_risk"), "unknown"),
+        "inspection_difficulty": _text(profile.get("inspection_difficulty"), "unknown"),
+        "repairability_constraint": _text(profile.get("repairability_constraint"), "unknown"),
+        "required_validation_evidence": [
+            _text(item) for item in _as_list(profile.get("required_validation_evidence")) if _text(item)
+        ],
+        "inspection_and_repair_notes": [
+            _text(item) for item in _as_list(profile.get("inspection_and_repair_notes")) if _text(item)
+        ],
+        "coating_concerns": [_text(item) for item in _as_list(profile.get("coating_concerns")) if _text(item)],
+        "not_a_life_prediction": profile.get("not_a_life_prediction") is True,
+        "not_a_qualification_claim": profile.get("not_a_qualification_claim") is True,
+    }
+
+
 def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, Any]:
     maturity = _evidence_maturity(candidate)
     evidence = _evidence(candidate)
@@ -192,6 +222,7 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     surface_profile = _mapping(candidate.get("surface_function_profile"))
     readiness = _mapping(candidate.get("decision_readiness"))
     narrative_card = _mapping(candidate.get("recommendation_narrative_card"))
+    coating_spallation = _summarize_coating_spallation(candidate)
     constraints = [
         _mapping(item) for item in _as_list(readiness.get("constraints")) if _mapping(item)
     ]
@@ -225,6 +256,16 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
         "qualification_burden": process_route["qualification_burden"],
         "route_risks": process_route["route_risks"],
         "route_validation_gaps": process_route["route_validation_gaps"],
+        "coating_spallation_adhesion": coating_spallation,
+        "coating_system_label": coating_spallation.get("coating_system_label", ""),
+        "bond_coat_or_interface_dependency": coating_spallation.get("bond_coat_or_interface_dependency", ""),
+        "adhesion_or_spallation_risk": coating_spallation.get("adhesion_or_spallation_risk", ""),
+        "cte_mismatch_risk": coating_spallation.get("cte_mismatch_risk", ""),
+        "thermal_cycling_damage_risk": coating_spallation.get("thermal_cycling_damage_risk", ""),
+        "environmental_attack_risk": coating_spallation.get("environmental_attack_risk", ""),
+        "inspection_difficulty": coating_spallation.get("inspection_difficulty", ""),
+        "repairability_constraint": coating_spallation.get("repairability_constraint", ""),
+        "coating_required_validation_evidence": coating_spallation.get("required_validation_evidence", []),
         "primary_surface_functions": [
             _text(item) for item in _as_list(surface_profile.get("primary_surface_functions")) if _text(item)
         ],
@@ -299,6 +340,9 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "coating_vs_gradient_comparison_required": comparison.get("comparison_required") is True,
         "process_route_summary": dict(_mapping(package.get("process_route_summary"))),
+        "coating_spallation_adhesion_summary": dict(
+            _mapping(package.get("coating_spallation_adhesion_summary"))
+        ),
         "surface_function_coverage_summary": dict(_mapping(package.get("surface_function_coverage_summary"))),
         "surface_function_required_coverage": dict(_mapping(package.get("surface_function_required_coverage"))),
         "decision_readiness_summary": dict(_mapping(package.get("decision_readiness_summary"))),
@@ -409,6 +453,47 @@ def build_coating_vs_gradient_diagnostic_view_model(package: Mapping[str, Any]) 
         "validation_gap_observations": dict(_mapping(diagnostic.get("validation_gap_observations"))),
         "summary_notes": [_text(item) for item in _as_list(diagnostic.get("summary_notes")) if _text(item)],
         "warnings": [_text(item) for item in _as_list(diagnostic.get("warnings")) if _text(item)],
+    }
+
+
+def build_coating_spallation_adhesion_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    summary = _mapping(package.get("coating_spallation_adhesion_summary"))
+    return {
+        "candidate_count": summary.get("candidate_count", 0),
+        "relevant_candidate_count": summary.get("relevant_candidate_count", 0),
+        "coating_system_kind_counts": dict(_mapping(summary.get("coating_system_kind_counts"))),
+        "bond_coat_or_interface_dependency_counts": dict(
+            _mapping(summary.get("bond_coat_or_interface_dependency_counts"))
+        ),
+        "adhesion_or_spallation_risk_counts": dict(_mapping(summary.get("adhesion_or_spallation_risk_counts"))),
+        "cte_mismatch_risk_counts": dict(_mapping(summary.get("cte_mismatch_risk_counts"))),
+        "thermal_cycling_damage_risk_counts": dict(_mapping(summary.get("thermal_cycling_damage_risk_counts"))),
+        "environmental_attack_risk_counts": dict(_mapping(summary.get("environmental_attack_risk_counts"))),
+        "inspection_difficulty_counts": dict(_mapping(summary.get("inspection_difficulty_counts"))),
+        "repairability_constraint_counts": dict(_mapping(summary.get("repairability_constraint_counts"))),
+        "qualification_burden_counts": dict(_mapping(summary.get("qualification_burden_counts"))),
+        "high_spallation_risk_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_spallation_risk_candidate_ids")) if _text(item)
+        ],
+        "high_interface_dependency_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_interface_dependency_candidate_ids")) if _text(item)
+        ],
+        "high_inspection_difficulty_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_inspection_difficulty_candidate_ids")) if _text(item)
+        ],
+        "high_repairability_constraint_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_repairability_constraint_candidate_ids")) if _text(item)
+        ],
+        "high_qualification_burden_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("high_qualification_burden_candidate_ids")) if _text(item)
+        ],
+        "low_maturity_relevant_candidate_ids": [
+            _text(item) for item in _as_list(summary.get("low_maturity_relevant_candidate_ids")) if _text(item)
+        ],
+        "required_validation_evidence_themes": [
+            _text(item) for item in _as_list(summary.get("required_validation_evidence_themes")) if _text(item)
+        ],
+        "warnings": [_text(item) for item in _as_list(summary.get("warnings")) if _text(item)],
     }
 
 
@@ -621,6 +706,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "optimisation_summary_view": build_optimisation_summary_view_model(package),
         "coating_vs_gradient_comparison_view": build_coating_vs_gradient_view_model(package),
         "coating_vs_gradient_diagnostic_view": build_coating_vs_gradient_diagnostic_view_model(package),
+        "coating_spallation_adhesion_summary_view": build_coating_spallation_adhesion_summary_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
         "recommendation_narrative_view": build_recommendation_narrative_view_model(package),
@@ -839,6 +925,97 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 f"- Qualification burden: {card['qualification_burden']}",
                 f"- Route risks: {', '.join(card['route_risks'][:3]) or 'none visible'}",
                 f"- Validation gaps: {', '.join(card['route_validation_gaps'][:3]) or 'none visible'}",
+            ]
+        )
+    coating_spallation_view = view_model["coating_spallation_adhesion_summary_view"]
+    lines.extend(
+        [
+            "",
+            "## Coating Spallation, Adhesion and Repair",
+            "- Diagnostic only.",
+            "- This is not a life prediction.",
+            "- This is not qualification/certification approval.",
+            f"- Relevant coating candidate count: {coating_spallation_view.get('relevant_candidate_count')}",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Coating system kinds",
+            coating_spallation_view.get("coating_system_kind_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Bond coat / interface dependency",
+            coating_spallation_view.get("bond_coat_or_interface_dependency_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Adhesion / spallation risk",
+            coating_spallation_view.get("adhesion_or_spallation_risk_counts", {}),
+        )
+    )
+    lines.extend(_markdown_table_from_mix("CTE mismatch risk", coating_spallation_view.get("cte_mismatch_risk_counts", {})))
+    lines.extend(
+        _markdown_table_from_mix(
+            "Thermal cycling damage risk",
+            coating_spallation_view.get("thermal_cycling_damage_risk_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Environmental attack risk",
+            coating_spallation_view.get("environmental_attack_risk_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Inspection difficulty",
+            coating_spallation_view.get("inspection_difficulty_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Repairability constraint",
+            coating_spallation_view.get("repairability_constraint_counts", {}),
+        )
+    )
+    lines.extend(
+        [
+            "- High adhesion/spallation risk candidates: "
+            + (", ".join(coating_spallation_view.get("high_spallation_risk_candidate_ids", [])) or "none"),
+            "- High interface dependency candidates: "
+            + (", ".join(coating_spallation_view.get("high_interface_dependency_candidate_ids", [])) or "none"),
+            "- High inspection difficulty candidates: "
+            + (", ".join(coating_spallation_view.get("high_inspection_difficulty_candidate_ids", [])) or "none"),
+            "- High repairability constraint candidates: "
+            + (", ".join(coating_spallation_view.get("high_repairability_constraint_candidate_ids", [])) or "none"),
+            "- High qualification burden candidates: "
+            + (", ".join(coating_spallation_view.get("high_qualification_burden_candidate_ids", [])) or "none"),
+            "- Low maturity coating-relevant candidates: "
+            + (", ".join(coating_spallation_view.get("low_maturity_relevant_candidate_ids", [])) or "none"),
+            "- Required validation evidence themes: "
+            + (", ".join(coating_spallation_view.get("required_validation_evidence_themes", [])[:10]) or "none visible"),
+        ]
+    )
+    for card in view_model["candidate_cards"]:
+        profile = card.get("coating_spallation_adhesion") or {}
+        if not profile.get("present"):
+            continue
+        lines.extend(
+            [
+                f"### Coating Diagnostic: {card['candidate_id']}",
+                f"- Coating system: {card['coating_system_label']}",
+                f"- Bond coat/interface dependency: {card['bond_coat_or_interface_dependency']}",
+                f"- Adhesion/spallation risk: {card['adhesion_or_spallation_risk']}",
+                f"- CTE mismatch risk: {card['cte_mismatch_risk']}",
+                f"- Thermal cycling damage risk: {card['thermal_cycling_damage_risk']}",
+                f"- Environmental attack risk: {card['environmental_attack_risk']}",
+                f"- Inspection difficulty: {card['inspection_difficulty']}",
+                f"- Repairability constraint: {card['repairability_constraint']}",
+                "- Required validation evidence: "
+                + (", ".join(card["coating_required_validation_evidence"][:5]) or "not specified"),
             ]
         )
     optimisation = view_model["optimisation_summary_view"]

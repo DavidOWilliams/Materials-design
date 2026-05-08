@@ -36,6 +36,7 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert package["process_route_summary"]
     assert package["required_surface_functions"]
     assert package["surface_function_coverage_summary"]
+    assert package["coating_spallation_adhesion_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
     assert package["recommendation_narrative"]
@@ -66,6 +67,8 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "controlled recommendation narrative" in report
     assert "not final recommendation" in report
     assert "process route, inspection and repairability" in report
+    assert "coating spallation, adhesion and repair" in report
+    assert "not a life prediction" in report
 
 
 def test_returned_summary_includes_candidate_count_greater_than_zero(tmp_path):
@@ -139,6 +142,13 @@ def test_returned_summary_includes_surface_function_counts(tmp_path):
     assert summary["covered_required_surface_function_count"] > 0
     assert summary["unknown_surface_function_candidate_count"] == 0
     assert summary["shared_coating_gradient_function_count"] > 0
+
+
+def test_returned_summary_includes_coating_spallation_counts(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["coating_spallation_relevant_candidate_count"] > 0
+    assert summary["high_spallation_risk_candidate_count"] > 0
 
 
 def test_returned_summary_includes_decision_readiness_counts(tmp_path):

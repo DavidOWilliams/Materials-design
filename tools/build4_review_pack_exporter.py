@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic  # noqa: E402
 from src.decision_readiness import attach_decision_readiness  # noqa: E402
+from src.factor_models.coatings.spallation_adhesion import attach_coating_spallation_adhesion  # noqa: E402
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation  # noqa: E402
 from src.process_route_enrichment import attach_process_route_enrichment  # noqa: E402
 from src.recommendation_builder import build_package_from_candidate_source_package  # noqa: E402
@@ -39,11 +40,12 @@ SECTION_FILENAMES = {
     "package_summary": "01_package_summary.md",
     "surface_function_coverage": "02_surface_function_coverage.md",
     "process_route_inspection_repair": "03_process_route_inspection_repair.md",
-    "deterministic_optimisation_trace": "04_deterministic_optimisation_trace.md",
-    "coating_vs_gradient_diagnostic": "05_coating_vs_gradient_diagnostic.md",
-    "decision_readiness": "06_decision_readiness.md",
-    "controlled_recommendation_narrative": "07_controlled_recommendation_narrative.md",
-    "warnings_and_deferred_capabilities": "08_warnings_and_deferred_capabilities.md",
+    "coating_spallation_adhesion": "04_coating_spallation_adhesion.md",
+    "deterministic_optimisation_trace": "05_deterministic_optimisation_trace.md",
+    "coating_vs_gradient_diagnostic": "06_coating_vs_gradient_diagnostic.md",
+    "decision_readiness": "07_decision_readiness.md",
+    "controlled_recommendation_narrative": "08_controlled_recommendation_narrative.md",
+    "warnings_and_deferred_capabilities": "09_warnings_and_deferred_capabilities.md",
 }
 
 GENERATED_FILES = [
@@ -91,6 +93,7 @@ def build_full_build4_package() -> dict[str, Any]:
     )
     package = attach_process_route_enrichment(package)
     package = attach_surface_function_profiles(package)
+    package = attach_coating_spallation_adhesion(package)
     package = attach_deterministic_optimisation(package)
     package = attach_coating_vs_gradient_diagnostic(package)
     package = attach_decision_readiness(package)
@@ -104,6 +107,7 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
     process_route_summary = _mapping(package.get("process_route_summary"))
     surface_summary = _mapping(package.get("surface_function_coverage_summary"))
     required_coverage = _mapping(package.get("surface_function_required_coverage"))
+    coating_spallation = _mapping(package.get("coating_spallation_adhesion_summary"))
     diagnostic = _mapping(package.get("coating_vs_gradient_diagnostic"))
     readiness_summary = _mapping(package.get("decision_readiness_summary"))
     narrative = _mapping(package.get("recommendation_narrative"))
@@ -117,6 +121,8 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
         "process_route_enriched_candidate_count": process_route_summary.get("enriched_candidate_count", 0),
         "required_surface_function_count": _count(package.get("required_surface_functions")),
         "covered_required_surface_function_count": _count(required_coverage.get("covered_required_function_ids")),
+        "coating_spallation_relevant_candidate_count": coating_spallation.get("relevant_candidate_count", 0),
+        "coating_system_kind_counts": dict(_mapping(coating_spallation.get("coating_system_kind_counts"))),
         "coating_vs_gradient_diagnostic_status": diagnostic.get("diagnostic_status", "unknown"),
         "coating_vs_gradient_pairwise_count": _count(diagnostic.get("pairwise_comparisons")),
         "decision_readiness_category_counts": dict(_mapping(readiness_summary.get("readiness_category_counts"))),
@@ -155,6 +161,8 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
         f"- Process-route enriched candidates: {summary.get('process_route_enriched_candidate_count')}",
         f"- Required surface functions: {summary.get('required_surface_function_count')}",
         f"- Covered required surface functions: {summary.get('covered_required_surface_function_count')}",
+        f"- Coating spallation relevant candidates: {summary.get('coating_spallation_relevant_candidate_count')}",
+        f"- Coating system kinds: {summary.get('coating_system_kind_counts')}",
         f"- Coating-vs-gradient diagnostic status: {summary.get('coating_vs_gradient_diagnostic_status')}",
         f"- Coating-vs-gradient pairwise comparisons: {summary.get('coating_vs_gradient_pairwise_count')}",
         f"- Decision readiness categories: {summary.get('decision_readiness_category_counts')}",
@@ -177,11 +185,12 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
             "1. Read the package index and summary JSON.",
             "2. Review surface-function coverage.",
             "3. Review process route, inspection, repairability and qualification burdens.",
-            "4. Review deterministic optimisation trace boundaries.",
-            "5. Review coating-vs-gradient diagnostics.",
-            "6. Review decision readiness.",
-            "7. Review the controlled recommendation narrative.",
-            "8. Review warnings and deferred capabilities.",
+            "4. Review coating spallation, adhesion, inspection and repair diagnostics.",
+            "5. Review deterministic optimisation trace boundaries.",
+            "6. Review coating-vs-gradient diagnostics.",
+            "7. Review decision readiness.",
+            "8. Review the controlled recommendation narrative.",
+            "9. Review warnings and deferred capabilities.",
             "",
             "## Deferred Capabilities",
             "- final ranking",
@@ -215,6 +224,8 @@ def _section_key_for_heading(heading: str) -> str | None:
         return "surface_function_coverage"
     if "process route" in normalised and ("inspection" in normalised or "repairability" in normalised):
         return "process_route_inspection_repair"
+    if "coating spallation" in normalised and ("adhesion" in normalised or "repair" in normalised):
+        return "coating_spallation_adhesion"
     if "deterministic optimisation" in normalised or "limiting factors and refinement options" in normalised:
         return "deterministic_optimisation_trace"
     if "coating vs gradient diagnostic" in normalised:

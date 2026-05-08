@@ -24,6 +24,7 @@ def test_build_full_build4_package_returns_enriched_candidate_package():
     assert package["candidate_systems"]
     assert package["process_route_summary"]
     assert package["surface_function_coverage_summary"]
+    assert package["coating_spallation_adhesion_summary"]
     assert package["optimisation_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
@@ -36,6 +37,7 @@ def test_build_review_pack_summary_includes_review_metrics():
     summary = build_review_pack_summary(package, view_model)
 
     assert summary["candidate_count"] >= 30
+    assert summary["coating_spallation_relevant_candidate_count"] > 0
     assert summary["exporter_status"] == "review_pack_created"
     assert summary["recommendation_narrative_status"] == "controlled_narrative_no_final_recommendation"
     assert summary["optimisation_status"] == "skeleton_no_variants_generated"
@@ -73,6 +75,7 @@ def test_split_full_report_into_expected_sections():
     assert set(sections) == set(SECTION_FILENAMES)
     assert "Surface Function Coverage" in sections["surface_function_coverage"]
     assert "Process Route, Inspection and Repairability" in sections["process_route_inspection_repair"]
+    assert "Coating Spallation, Adhesion and Repair" in sections["coating_spallation_adhesion"]
     assert "Deterministic Optimisation Skeleton" in sections["deterministic_optimisation_trace"]
     assert "Coating vs Gradient Diagnostic" in sections["coating_vs_gradient_diagnostic"]
     assert "Decision Readiness" in sections["decision_readiness"]
@@ -106,7 +109,9 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
 
     assert summary["candidate_count"] >= 30
     assert package["candidate_systems"]
+    assert package["coating_spallation_adhesion_summary"]
     assert view_model["candidate_cards"]
+    assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
     assert result["candidate_count"] >= 30
     assert result["generated_candidate_count"] == 0
     assert result["live_model_calls_made"] is False
@@ -124,6 +129,8 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     assert "required primary service functions" in full_report
     assert "support / lifecycle considerations" in full_report
     assert "shared coating/gradient primary service functions" in full_report
+    assert "coating spallation, adhesion and repair" in full_report
+    assert "not a life prediction" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename
         assert section.is_file()

@@ -141,6 +141,7 @@ def derive_candidate_readiness_constraints(candidate: Mapping[str, Any]) -> list
     inspection = _mapping(candidate.get("inspection_plan"))
     repairability = _mapping(candidate.get("repairability"))
     qualification = _mapping(candidate.get("qualification_route"))
+    coating_profile = _mapping(candidate.get("coating_spallation_adhesion"))
 
     if maturity in {"E"}:
         constraints.append(
@@ -248,6 +249,57 @@ def derive_candidate_readiness_constraints(candidate: Mapping[str, Any]) -> list
                 source_field="repairability.repairability_level",
             )
         )
+
+    coating_constraint_fields = (
+        (
+            "adhesion_or_spallation_risk",
+            "coating_adhesion_spallation",
+            "coating_interface",
+            "High coating adhesion/spallation risk is visible.",
+        ),
+        (
+            "cte_mismatch_risk",
+            "coating_cte_mismatch",
+            "coating_interface",
+            "High coating CTE mismatch risk is visible.",
+        ),
+        (
+            "thermal_cycling_damage_risk",
+            "coating_thermal_cycling",
+            "coating_durability",
+            "High coating thermal cycling damage risk is visible.",
+        ),
+        (
+            "environmental_attack_risk",
+            "coating_environmental_attack",
+            "coating_environment",
+            "High coating environmental attack risk is visible.",
+        ),
+        (
+            "inspection_difficulty",
+            "coating_inspection_difficulty",
+            "inspection",
+            "High coating inspection difficulty is visible.",
+        ),
+        (
+            "repairability_constraint",
+            "coating_repairability_constraint",
+            "repairability",
+            "High coating repairability constraint is visible.",
+        ),
+    )
+    for field, constraint_id, category, reason in coating_constraint_fields:
+        if _text(coating_profile.get(field)) == "high":
+            constraints.append(
+                _constraint(
+                    candidate,
+                    constraint_id=constraint_id,
+                    category=category,
+                    severity="high",
+                    reason=reason,
+                    source_field=f"coating_spallation_adhesion.{field}",
+                )
+            )
 
     route_id = _text(candidate.get("process_route_template_id"), "unknown_route")
     if route_id == "unknown_route" or not candidate.get("process_route_details"):
@@ -378,6 +430,10 @@ def determine_decision_readiness(
         required_next_evidence.append("repairability and disposition evidence")
     if any(item["category"] == "validation_gap" for item in constraints):
         required_next_evidence.append("route validation gap closure evidence")
+    coating_validation = [
+        _text(item) for item in _as_list(_mapping(candidate.get("coating_spallation_adhesion")).get("required_validation_evidence")) if _text(item)
+    ]
+    required_next_evidence.extend(coating_validation[:4])
     if any(item["category"] in {"evidence", "maturity", "research_mode"} for item in constraints):
         required_next_evidence.append("higher maturity evidence package")
     if not required_next_evidence:

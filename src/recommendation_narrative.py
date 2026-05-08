@@ -111,11 +111,21 @@ def _inspection_repair_notes(candidate: Mapping[str, Any]) -> list[str]:
     inspection = _mapping(candidate.get("inspection_plan"))
     repair = _mapping(candidate.get("repairability"))
     qualification = _mapping(candidate.get("qualification_route"))
-    return [
+    coating = _mapping(candidate.get("coating_spallation_adhesion"))
+    notes = [
         f"Inspection burden: {_text(inspection.get('inspection_burden'), 'unknown')}.",
         f"Repairability: {_text(repair.get('repairability_level'), 'unknown')}.",
         f"Qualification burden: {_text(qualification.get('qualification_burden'), 'unknown')}.",
     ]
+    if coating:
+        notes.append(
+            "Coating diagnostic: "
+            f"{_text(coating.get('coating_system_label'), 'coating system')}; "
+            f"adhesion/spallation risk {_text(coating.get('adhesion_or_spallation_risk'), 'unknown')}; "
+            f"inspection difficulty {_text(coating.get('inspection_difficulty'), 'unknown')}; "
+            f"repairability constraint {_text(coating.get('repairability_constraint'), 'unknown')}."
+        )
+    return notes
 
 
 def _strengths(candidate: Mapping[str, Any]) -> list[str]:
@@ -152,6 +162,10 @@ def build_candidate_narrative_card(
     role = classify_narrative_role(candidate)
     trace = _find_trace(candidate_id, package_context)
     gaps = [_text(item) for item in _as_list(candidate.get("route_validation_gaps")) if _text(item)]
+    coating = _mapping(candidate.get("coating_spallation_adhesion"))
+    coating_evidence = [
+        _text(item) for item in _as_list(coating.get("required_validation_evidence")) if _text(item)
+    ]
     required_evidence = [
         _text(item) for item in _as_list(readiness.get("required_next_evidence")) if _text(item)
     ]
@@ -174,7 +188,7 @@ def build_candidate_narrative_card(
         "responsible_use": _text(readiness.get("allowed_use"), "Use only as decision-support context."),
         "main_strengths": _strengths(candidate),
         "main_cautions": _cautions(candidate),
-        "evidence_gaps": list(dict.fromkeys(gaps + required_evidence))[:5],
+        "evidence_gaps": list(dict.fromkeys(gaps + coating_evidence + required_evidence))[:5],
         "process_route_notes": _route_notes(candidate),
         "inspection_repair_notes": _inspection_repair_notes(candidate),
         "surface_function_notes": _surface_notes(candidate),
@@ -194,6 +208,12 @@ def _diagnostic_notes(package: Mapping[str, Any]) -> list[str]:
     if shared:
         notes.append("Shared coating/gradient surface-function themes: " + ", ".join(shared[:6]) + ".")
     notes.append("Coating-vs-gradient comparison is diagnostic only; no winner selected.")
+    coating_summary = _mapping(package.get("coating_spallation_adhesion_summary"))
+    if coating_summary:
+        notes.append(
+            "Coating spallation/adhesion diagnostic relevant candidates: "
+            f"{coating_summary.get('relevant_candidate_count', 0)}."
+        )
     return list(dict.fromkeys(notes))[:6]
 
 
@@ -202,6 +222,7 @@ def build_recommendation_narrative(package: Mapping[str, Any]) -> dict[str, Any]
     cards = [build_candidate_narrative_card(candidate, package) for candidate in candidates]
     readiness_summary = _mapping(package.get("decision_readiness_summary"))
     route_summary = _mapping(package.get("process_route_summary"))
+    coating_summary = _mapping(package.get("coating_spallation_adhesion_summary"))
     key_gaps = []
     for card in cards:
         key_gaps.extend(_as_list(card.get("evidence_gaps"))[:2])
@@ -237,6 +258,11 @@ def build_recommendation_narrative(package: Mapping[str, Any]) -> dict[str, Any]
             f"High inspection burden candidates: {len(_as_list(route_summary.get('high_inspection_burden_candidate_ids')))}.",
             f"Limited or poor repairability candidates: {len(_as_list(route_summary.get('limited_or_poor_repairability_candidate_ids')))}.",
             f"High or very high qualification burden candidates: {len(_as_list(route_summary.get('high_or_very_high_qualification_burden_candidate_ids')))}.",
+            "Coating adhesion/spallation high-risk candidates: "
+            f"{len(_as_list(coating_summary.get('high_spallation_risk_candidate_ids')))}.",
+            "Coating inspection/repair high-constraint candidates: "
+            f"{len(_as_list(coating_summary.get('high_inspection_difficulty_candidate_ids')))} inspection, "
+            f"{len(_as_list(coating_summary.get('high_repairability_constraint_candidate_ids')))} repair.",
         ],
         "decision_readiness_overview": {
             "readiness_category_counts": dict(_mapping(readiness_summary.get("readiness_category_counts"))),

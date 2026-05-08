@@ -530,6 +530,57 @@ def _process_route_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     return records
 
 
+def _coating_spallation_limits(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
+    profile = _mapping(candidate.get("coating_spallation_adhesion"))
+    if not profile:
+        return []
+    records: list[dict[str, Any]] = []
+    checks = (
+        (
+            "adhesion_or_spallation_risk",
+            "coating.adhesion_spallation_risk",
+            "High coating adhesion/spallation risk is visible.",
+        ),
+        ("cte_mismatch_risk", "coating.cte_mismatch_risk", "High coating CTE mismatch risk is visible."),
+        (
+            "thermal_cycling_damage_risk",
+            "coating.thermal_cycling_damage_risk",
+            "High coating thermal cycling damage risk is visible.",
+        ),
+        (
+            "environmental_attack_risk",
+            "coating.environmental_attack_risk",
+            "High coating environmental attack risk is visible.",
+        ),
+        (
+            "inspection_difficulty",
+            "coating.inspection_difficulty",
+            "High coating inspection difficulty is visible.",
+        ),
+        (
+            "repairability_constraint",
+            "coating.repairability_constraint",
+            "High coating repairability constraint is visible.",
+        ),
+    )
+    for field, factor, reason in checks:
+        if _text(profile.get(field)) == "high":
+            records.append(
+                _record(
+                    candidate=candidate,
+                    factor=factor,
+                    namespace="coating",
+                    severity="high",
+                    category="route_risk",
+                    reason=reason,
+                    related_warnings=profile.get("coating_concerns"),
+                    source_field=f"coating_spallation_adhesion.{field}",
+                    dedupe_key=f"{_candidate_id(candidate)}|coating_spallation|{field}",
+                )
+            )
+    return records
+
+
 def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Identify deterministic, transparent limiting factors for one existing candidate."""
     records: list[dict[str, Any]] = []
@@ -538,6 +589,7 @@ def identify_limiting_factors(candidate: Mapping[str, Any]) -> list[dict[str, An
     records.extend(_interface_limits(candidate))
     records.extend(_class_specific_limits(candidate))
     records.extend(_process_route_limits(candidate))
+    records.extend(_coating_spallation_limits(candidate))
     return dedupe_limiting_factors(records)
 
 

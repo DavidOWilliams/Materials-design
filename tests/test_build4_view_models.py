@@ -4,6 +4,7 @@ from pathlib import Path
 from src.recommendation_builder import build_recommendation_package
 from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic
 from src.decision_readiness import attach_decision_readiness
+from src.factor_models.coatings.spallation_adhesion import attach_coating_spallation_adhesion
 from src.optimisation.deterministic_optimizer import attach_deterministic_optimisation
 from src.process_route_enrichment import attach_process_route_enrichment
 from src.recommendation_narrative import attach_recommendation_narrative
@@ -106,7 +107,11 @@ def _package():
 
 def _optimised_package():
     return attach_recommendation_narrative(attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
-        attach_deterministic_optimisation(attach_surface_function_profiles(attach_process_route_enrichment(_package())))
+        attach_deterministic_optimisation(
+            attach_coating_spallation_adhesion(
+                attach_surface_function_profiles(attach_process_route_enrichment(_package()))
+            )
+        )
     )))
 
 
@@ -167,6 +172,7 @@ def test_package_summary_returns_candidate_count_and_mix_fields():
     assert summary["generated_candidate_count"] == 0
     assert summary["coating_vs_gradient_comparison_required"] is True
     assert summary["process_route_summary"]["enriched_candidate_count"] == 3
+    assert summary["coating_spallation_adhesion_summary"]["relevant_candidate_count"] > 0
 
 
 def test_markdown_report_includes_not_final_recommendation():
@@ -194,6 +200,8 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "decision readiness" in report
     assert "certification approval" in report
     assert "process route, inspection and repairability" in report
+    assert "coating spallation, adhesion and repair" in report
+    assert "not a life prediction" in report
 
 
 def test_markdown_report_mentions_research_adapters_disabled():
@@ -255,6 +263,7 @@ def test_view_model_includes_optimisation_summary_and_trace_cards():
     assert len(view_model["optimisation_trace_cards"][0]["top_limiting_factors"]) <= 8
     assert len(view_model["optimisation_trace_cards"][0]["top_refinement_options"]) <= 6
     assert view_model["coating_vs_gradient_diagnostic_view"]["diagnostic_status"] == "comparison_only_no_winner"
+    assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
     assert view_model["coating_vs_gradient_diagnostic_view"]["pairwise_comparisons"]
     assert view_model["surface_function_coverage_view"]["required_surface_functions"]
     assert view_model["surface_function_coverage_view"]["shared_coating_gradient_functions"]

@@ -17,12 +17,16 @@ from src.recommendation_builder import (  # noqa: E402
     summarize_recommendation_package,
 )
 from src.application_requirement_fit import attach_application_requirement_fit  # noqa: E402
+from src.optimisation.application_aware_limiting_factors import (  # noqa: E402
+    attach_application_aware_limiting_factor_analysis,
+)
 from src.optimisation.deterministic_optimizer import (  # noqa: E402
     attach_deterministic_optimisation,
 )
 from src.coating_vs_gradient_diagnostics import (  # noqa: E402
     attach_coating_vs_gradient_diagnostic,
 )
+from src.controlled_shortlist import attach_controlled_application_shortlist  # noqa: E402
 from src.factor_models.coatings.spallation_adhesion import (  # noqa: E402
     attach_coating_spallation_adhesion,
 )
@@ -80,6 +84,8 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     recommendation_package = attach_graded_am_transition_zone_risk(recommendation_package)
     recommendation_package = attach_application_requirement_fit(recommendation_package)
     recommendation_package = attach_deterministic_optimisation(recommendation_package)
+    recommendation_package = attach_application_aware_limiting_factor_analysis(recommendation_package)
+    recommendation_package = attach_controlled_application_shortlist(recommendation_package)
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     recommendation_package = attach_decision_readiness(recommendation_package)
     recommendation_package = attach_recommendation_narrative(recommendation_package)
@@ -105,9 +111,11 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
     readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
     narrative = recommendation_package.get("recommendation_narrative") or {}
+    controlled_shortlist = recommendation_package.get("controlled_application_shortlist") or {}
     coating_spallation_summary = recommendation_package.get("coating_spallation_adhesion_summary") or {}
     graded_am_summary = recommendation_package.get("graded_am_transition_zone_summary") or {}
     application_fit = recommendation_package.get("application_requirement_fit") or {}
+    application_aware = recommendation_package.get("application_aware_limiting_factor_analysis") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
         "report_path": str(report_path),
@@ -166,6 +174,9 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         ),
         "application_profile_id": (recommendation_package.get("application_profile") or {}).get("profile_id"),
         "application_fit_status_counts": application_fit.get("fit_status_counts", {}),
+        "application_aware_analysis_status_counts": application_aware.get("analysis_status_counts", {}),
+        "controlled_shortlist_bucket_counts": controlled_shortlist.get("bucket_counts", {}),
+        "controlled_shortlist_candidate_ids_by_bucket": controlled_shortlist.get("candidate_ids_by_bucket", {}),
         "decision_readiness_category_counts": readiness_summary.get("readiness_category_counts", {}),
         "decision_readiness_status_counts": readiness_summary.get("readiness_status_counts", {}),
         "research_only_candidate_count": len(readiness_summary.get("research_only_candidate_ids", [])),
@@ -235,6 +246,14 @@ def _print_summary(summary: dict[str, Any]) -> None:
     )
     print(f"Application profile ID: {summary['application_profile_id']}")
     print(f"Application fit status counts: {json.dumps(summary['application_fit_status_counts'], sort_keys=True)}")
+    print(
+        "Application-aware analysis status counts: "
+        f"{json.dumps(summary['application_aware_analysis_status_counts'], sort_keys=True)}"
+    )
+    print(
+        "Controlled shortlist bucket counts: "
+        f"{json.dumps(summary['controlled_shortlist_bucket_counts'], sort_keys=True)}"
+    )
     print(
         "Decision-readiness category counts: "
         f"{json.dumps(summary['decision_readiness_category_counts'], sort_keys=True)}"

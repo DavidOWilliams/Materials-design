@@ -274,6 +274,56 @@ def _summarize_application_fit(candidate: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _summarize_application_aware_limiting_factors(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    record = _mapping(candidate.get("application_aware_limiting_factors"))
+    if not record:
+        return {"present": False}
+    return {
+        "present": True,
+        "analysis_status": _text(record.get("analysis_status"), "unknown"),
+        "application_fit_status": _text(record.get("application_fit_status"), "unknown"),
+        "architecture_path": _text(record.get("architecture_path"), "unknown_path"),
+        "application_blockers": [_text(item) for item in _as_list(record.get("application_blockers")) if _text(item)],
+        "application_major_cautions": [
+            _text(item) for item in _as_list(record.get("application_major_cautions")) if _text(item)
+        ],
+        "top_application_limiting_factors": [
+            _text(item) for item in _as_list(record.get("top_application_limiting_factors")) if _text(item)
+        ],
+        "required_next_evidence": [
+            _text(item) for item in _as_list(record.get("required_next_evidence")) if _text(item)
+        ],
+        "suggested_validation_or_refinement_actions": [
+            _text(item)
+            for item in _as_list(record.get("suggested_validation_or_refinement_actions"))
+            if _text(item)
+        ],
+    }
+
+
+def _summarize_controlled_shortlist_record(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    record = _mapping(candidate.get("controlled_shortlist_record"))
+    if not record:
+        return {"present": False}
+    return {
+        "present": True,
+        "shortlist_bucket": _text(record.get("shortlist_bucket"), "insufficient_information"),
+        "application_fit_status": _text(record.get("application_fit_status"), "unknown"),
+        "architecture_path": _text(record.get("architecture_path"), "unknown_path"),
+        "why_in_bucket": _text(record.get("why_in_bucket")),
+        "key_blockers": [_text(item) for item in _as_list(record.get("key_blockers")) if _text(item)],
+        "key_cautions": [_text(item) for item in _as_list(record.get("key_cautions")) if _text(item)],
+        "required_next_evidence": [
+            _text(item) for item in _as_list(record.get("required_next_evidence")) if _text(item)
+        ],
+        "suggested_next_actions": [
+            _text(item) for item in _as_list(record.get("suggested_next_actions")) if _text(item)
+        ],
+        "responsible_use": _text(record.get("responsible_use")),
+        "disallowed_use": _text(record.get("disallowed_use")),
+    }
+
+
 def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, Any]:
     maturity = _evidence_maturity(candidate)
     evidence = _evidence(candidate)
@@ -284,6 +334,8 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
     coating_spallation = _summarize_coating_spallation(candidate)
     graded_am_transition = _summarize_graded_am_transition(candidate)
     application_fit = _summarize_application_fit(candidate)
+    application_aware = _summarize_application_aware_limiting_factors(candidate)
+    controlled_shortlist = _summarize_controlled_shortlist_record(candidate)
     constraints = [
         _mapping(item) for item in _as_list(readiness.get("constraints")) if _mapping(item)
     ]
@@ -348,6 +400,13 @@ def build_candidate_card_view_model(candidate: Mapping[str, Any]) -> dict[str, A
             [],
         ),
         "application_architecture_path": application_fit.get("architecture_path", ""),
+        "application_aware_limiting_factors": application_aware,
+        "application_aware_analysis_status": application_aware.get("analysis_status", ""),
+        "application_aware_blockers": application_aware.get("application_blockers", []),
+        "application_aware_cautions": application_aware.get("application_major_cautions", []),
+        "application_aware_actions": application_aware.get("suggested_validation_or_refinement_actions", []),
+        "controlled_shortlist_record": controlled_shortlist,
+        "controlled_shortlist_bucket": controlled_shortlist.get("shortlist_bucket", ""),
         "application_major_cautions": application_fit.get("major_cautions", []),
         "application_required_next_evidence": application_fit.get("required_next_evidence", []),
         "primary_surface_functions": [
@@ -429,6 +488,9 @@ def build_package_summary_view_model(package: Mapping[str, Any]) -> dict[str, An
         ),
         "graded_am_transition_zone_summary": dict(_mapping(package.get("graded_am_transition_zone_summary"))),
         "application_requirement_fit": dict(_mapping(package.get("application_requirement_fit"))),
+        "application_aware_limiting_factor_analysis": dict(
+            _mapping(package.get("application_aware_limiting_factor_analysis"))
+        ),
         "application_profile": dict(_mapping(package.get("application_profile"))),
         "surface_function_coverage_summary": dict(_mapping(package.get("surface_function_coverage_summary"))),
         "surface_function_required_coverage": dict(_mapping(package.get("surface_function_required_coverage"))),
@@ -697,6 +759,33 @@ def build_application_requirement_fit_view_model(package: Mapping[str, Any]) -> 
     }
 
 
+def build_application_aware_limiting_factor_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    analysis = _mapping(package.get("application_aware_limiting_factor_analysis"))
+    profile = _mapping(analysis.get("profile") or package.get("application_profile"))
+    return {
+        "profile": dict(profile),
+        "profile_id": _text(profile.get("profile_id"), "unknown_profile"),
+        "display_name": _text(profile.get("display_name"), "Unknown application profile"),
+        "candidate_count": analysis.get("candidate_count", 0),
+        "analysis_status_counts": dict(_mapping(analysis.get("analysis_status_counts"))),
+        "candidate_ids_by_analysis_status": {
+            key: [_text(item) for item in _as_list(value) if _text(item)]
+            for key, value in _mapping(analysis.get("candidate_ids_by_analysis_status")).items()
+        },
+        "blocker_theme_counts": dict(_mapping(analysis.get("blocker_theme_counts"))),
+        "caution_theme_counts": dict(_mapping(analysis.get("caution_theme_counts"))),
+        "required_next_evidence_themes": dict(_mapping(analysis.get("required_next_evidence_themes"))),
+        "suggested_action_theme_counts": dict(_mapping(analysis.get("suggested_action_theme_counts"))),
+        "concise_summary": [_text(item) for item in _as_list(analysis.get("concise_summary")) if _text(item)],
+        "records": [dict(item) for item in _as_list(analysis.get("records")) if isinstance(item, Mapping)],
+        "warnings": [_text(item) for item in _as_list(analysis.get("warnings")) if _text(item)],
+        "no_ranking_applied": analysis.get("no_ranking_applied") is True,
+        "no_pareto_optimisation": analysis.get("no_pareto_optimisation") is True,
+        "no_variants_generated": analysis.get("no_variants_generated") is True,
+        "not_final_selection": analysis.get("not_final_selection") is True,
+    }
+
+
 def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
     summary = _mapping(package.get("surface_function_coverage_summary"))
     required_coverage = _mapping(package.get("surface_function_required_coverage"))
@@ -777,6 +866,40 @@ def build_surface_function_coverage_view_model(package: Mapping[str, Any]) -> di
             for item in _as_list(required_coverage.get("covered_required_support_consideration_ids"))
             if _text(item)
         ],
+    }
+
+
+def build_controlled_application_shortlist_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    shortlist = _mapping(package.get("controlled_application_shortlist"))
+    profile = _mapping(shortlist.get("profile") or package.get("application_profile"))
+    return {
+        "profile": dict(profile),
+        "profile_id": _text(profile.get("profile_id"), "unknown_profile"),
+        "display_name": _text(profile.get("display_name"), "Unknown application profile"),
+        "candidate_count": shortlist.get("candidate_count", 0),
+        "records": [dict(item) for item in _as_list(shortlist.get("records")) if isinstance(item, Mapping)],
+        "bucket_counts": dict(_mapping(shortlist.get("bucket_counts"))),
+        "candidate_ids_by_bucket": {
+            key: [_text(item) for item in _as_list(value) if _text(item)]
+            for key, value in _mapping(shortlist.get("candidate_ids_by_bucket")).items()
+        },
+        "shortlist_summary": [_text(item) for item in _as_list(shortlist.get("shortlist_summary")) if _text(item)],
+        "bucket_rationales": dict(_mapping(shortlist.get("bucket_rationales"))),
+        "cross_bucket_evidence_themes": [
+            _text(item) for item in _as_list(shortlist.get("cross_bucket_evidence_themes")) if _text(item)
+        ],
+        "cross_bucket_caution_themes": [
+            _text(item) for item in _as_list(shortlist.get("cross_bucket_caution_themes")) if _text(item)
+        ],
+        "suggested_review_sequence": [
+            _text(item) for item in _as_list(shortlist.get("suggested_review_sequence")) if _text(item)
+        ],
+        "warnings": [_text(item) for item in _as_list(shortlist.get("warnings")) if _text(item)],
+        "not_a_final_recommendation": shortlist.get("not_a_final_recommendation") is True,
+        "no_ranking_applied": shortlist.get("no_ranking_applied") is True,
+        "no_selection_made": shortlist.get("no_selection_made") is True,
+        "no_variants_generated": shortlist.get("no_variants_generated") is True,
+        "no_pareto_optimisation": shortlist.get("no_pareto_optimisation") is True,
     }
 
 
@@ -909,6 +1032,8 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "coating_spallation_adhesion_summary_view": build_coating_spallation_adhesion_summary_view_model(package),
         "graded_am_transition_zone_summary_view": build_graded_am_transition_zone_summary_view_model(package),
         "application_requirement_fit_view": build_application_requirement_fit_view_model(package),
+        "application_aware_limiting_factor_view": build_application_aware_limiting_factor_view_model(package),
+        "controlled_application_shortlist_view": build_controlled_application_shortlist_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
         "recommendation_narrative_view": build_recommendation_narrative_view_model(package),
@@ -1376,6 +1501,109 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 "- Major cautions: " + ("; ".join(_as_list(record.get("major_cautions"))[:3]) or "none visible"),
                 "- Required next evidence: "
                 + ("; ".join(_as_list(record.get("required_next_evidence"))[:3]) or "not specified"),
+            ]
+        )
+    app_aware = view_model["application_aware_limiting_factor_view"]
+    lines.extend(
+        [
+            "",
+            "## Application-Aware Limiting Factors",
+            "- No ranking has been applied.",
+            "- No variants were generated.",
+            "- This is not an optimised design.",
+            "- This is not final material selection.",
+            f"- Selected application profile: {app_aware.get('display_name')} ({app_aware.get('profile_id')})",
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Analysis status counts", app_aware.get("analysis_status_counts", {})))
+    lines.extend(_markdown_table_from_mix("Blocker theme counts", app_aware.get("blocker_theme_counts", {})))
+    lines.extend(_markdown_table_from_mix("Caution theme counts", app_aware.get("caution_theme_counts", {})))
+    lines.extend(
+        _markdown_table_from_mix(
+            "Required next evidence themes",
+            app_aware.get("required_next_evidence_themes", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Suggested action themes",
+            app_aware.get("suggested_action_theme_counts", {}),
+        )
+    )
+    for status, candidate_ids in app_aware.get("candidate_ids_by_analysis_status", {}).items():
+        lines.append(f"- {status}: {', '.join(candidate_ids) or 'none'}")
+    for note in app_aware.get("concise_summary", [])[:4]:
+        lines.append(f"- {note}")
+    for record in app_aware.get("records", [])[:12]:
+        lines.extend(
+            [
+                f"### Application-Aware Factors: {record.get('candidate_id')}",
+                f"- Fit status: {record.get('application_fit_status')}",
+                f"- Architecture path: {record.get('architecture_path')}",
+                f"- Analysis status: {record.get('analysis_status')}",
+                "- Top blockers: " + ("; ".join(_as_list(record.get("application_blockers"))[:3]) or "none visible"),
+                "- Top cautions: "
+                + ("; ".join(_as_list(record.get("application_major_cautions"))[:3]) or "none visible"),
+                "- Required evidence: "
+                + ("; ".join(_as_list(record.get("required_next_evidence"))[:3]) or "not specified"),
+                "- Suggested actions: "
+                + (
+                    "; ".join(_as_list(record.get("suggested_validation_or_refinement_actions"))[:3])
+                    or "not specified"
+                ),
+            ]
+        )
+    controlled_shortlist = view_model["controlled_application_shortlist_view"]
+    lines.extend(
+        [
+            "",
+            "## Controlled Application Shortlist",
+            "- This is not final material selection.",
+            "- No ranking has been applied.",
+            "- No selection has been made.",
+            "- No variants were generated.",
+            f"- Selected application profile: {controlled_shortlist.get('display_name')} ({controlled_shortlist.get('profile_id')})",
+        ]
+    )
+    lines.extend(_markdown_table_from_mix("Shortlist bucket counts", controlled_shortlist.get("bucket_counts", {})))
+    for bucket, candidate_ids in controlled_shortlist.get("candidate_ids_by_bucket", {}).items():
+        lines.append(f"- {bucket}: {', '.join(candidate_ids) or 'none'}")
+    for note in controlled_shortlist.get("shortlist_summary", [])[:4]:
+        lines.append(f"- {note}")
+    for bucket, rationale in controlled_shortlist.get("bucket_rationales", {}).items():
+        lines.append(f"- {bucket} rationale: {rationale}")
+    lines.append(
+        "- Cross-bucket evidence themes: "
+        + (", ".join(controlled_shortlist.get("cross_bucket_evidence_themes", [])[:8]) or "none visible")
+    )
+    lines.append(
+        "- Cross-bucket caution themes: "
+        + (", ".join(controlled_shortlist.get("cross_bucket_caution_themes", [])[:8]) or "none visible")
+    )
+    lines.extend(["### Suggested Review Sequence"])
+    for index, item in enumerate(controlled_shortlist.get("suggested_review_sequence", []), start=1):
+        lines.append(f"{index}. {item}")
+    for record in controlled_shortlist.get("records", [])[:18]:
+        lines.extend(
+            [
+                f"### Shortlist: {record.get('candidate_id')}",
+                f"- Shortlist bucket: {record.get('shortlist_bucket')}",
+                f"- Fit status: {record.get('application_fit_status')}",
+                f"- Architecture path: {record.get('architecture_path')}",
+                f"- Why in bucket: {record.get('why_in_bucket')}",
+                "- Top blockers/cautions: "
+                + (
+                    "; ".join(
+                        (_as_list(record.get("key_blockers")) + _as_list(record.get("key_cautions")))[:4]
+                    )
+                    or "none visible"
+                ),
+                "- Top required evidence: "
+                + ("; ".join(_as_list(record.get("required_next_evidence"))[:4]) or "not specified"),
+                "- Suggested next actions: "
+                + ("; ".join(_as_list(record.get("suggested_next_actions"))[:3]) or "not specified"),
+                f"- Responsible use: {record.get('responsible_use') or 'not specified'}",
+                f"- Disallowed use: {record.get('disallowed_use') or 'not specified'}",
             ]
         )
     optimisation = view_model["optimisation_summary_view"]

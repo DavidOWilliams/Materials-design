@@ -903,6 +903,40 @@ def build_controlled_application_shortlist_view_model(package: Mapping[str, Any]
     }
 
 
+def build_validation_plan_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
+    plan = _mapping(package.get("validation_plan"))
+    profile = _mapping(plan.get("profile") or package.get("application_profile"))
+    return {
+        "profile": dict(profile),
+        "profile_id": _text(profile.get("profile_id"), "unknown_profile"),
+        "display_name": _text(profile.get("display_name"), "Unknown application profile"),
+        "candidate_count": plan.get("candidate_count", 0),
+        "records": [dict(item) for item in _as_list(plan.get("records")) if isinstance(item, Mapping)],
+        "validation_plan_status_counts": dict(_mapping(plan.get("validation_plan_status_counts"))),
+        "candidate_ids_by_validation_plan_status": {
+            key: [_text(item) for item in _as_list(value) if _text(item)]
+            for key, value in _mapping(plan.get("candidate_ids_by_validation_plan_status")).items()
+        },
+        "validation_activity_theme_counts": dict(_mapping(plan.get("validation_activity_theme_counts"))),
+        "evidence_gap_theme_counts": dict(_mapping(plan.get("evidence_gap_theme_counts"))),
+        "sme_review_theme_counts": dict(_mapping(plan.get("sme_review_theme_counts"))),
+        "bucket_level_validation_plans": {
+            key: dict(_mapping(value))
+            for key, value in _mapping(plan.get("bucket_level_validation_plans")).items()
+        },
+        "suggested_validation_workflow": [
+            _text(item) for item in _as_list(plan.get("suggested_validation_workflow")) if _text(item)
+        ],
+        "warnings": [_text(item) for item in _as_list(plan.get("warnings")) if _text(item)],
+        "not_final_selection": plan.get("not_final_selection") is True,
+        "no_ranking_applied": plan.get("no_ranking_applied") is True,
+        "no_selection_made": plan.get("no_selection_made") is True,
+        "no_variants_generated": plan.get("no_variants_generated") is True,
+        "not_certification_approval": plan.get("not_certification_approval") is True,
+        "not_qualification_approval": plan.get("not_qualification_approval") is True,
+    }
+
+
 def build_decision_readiness_summary_view_model(package: Mapping[str, Any]) -> dict[str, Any]:
     summary = _mapping(package.get("decision_readiness_summary"))
     return {
@@ -1034,6 +1068,7 @@ def build_recommendation_package_view_model(package: Mapping[str, Any]) -> dict[
         "application_requirement_fit_view": build_application_requirement_fit_view_model(package),
         "application_aware_limiting_factor_view": build_application_aware_limiting_factor_view_model(package),
         "controlled_application_shortlist_view": build_controlled_application_shortlist_view_model(package),
+        "validation_plan_view": build_validation_plan_view_model(package),
         "surface_function_coverage_view": build_surface_function_coverage_view_model(package),
         "decision_readiness_summary_view": build_decision_readiness_summary_view_model(package),
         "recommendation_narrative_view": build_recommendation_narrative_view_model(package),
@@ -1604,6 +1639,69 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
                 + ("; ".join(_as_list(record.get("suggested_next_actions"))[:3]) or "not specified"),
                 f"- Responsible use: {record.get('responsible_use') or 'not specified'}",
                 f"- Disallowed use: {record.get('disallowed_use') or 'not specified'}",
+            ]
+        )
+    validation_plan = view_model["validation_plan_view"]
+    lines.extend(
+        [
+            "",
+            "## Validation Plan",
+            "- This is a validation-planning scaffold only.",
+            "- This is not final material selection.",
+            "- This is not qualification approval.",
+            "- This is not certification approval.",
+            "- No ranking has been applied.",
+            "- No selection has been made.",
+            "- No variants were generated.",
+            f"- Selected application profile: {validation_plan.get('display_name')} ({validation_plan.get('profile_id')})",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Validation plan status counts",
+            validation_plan.get("validation_plan_status_counts", {}),
+        )
+    )
+    for status, candidate_ids in validation_plan.get("candidate_ids_by_validation_plan_status", {}).items():
+        lines.append(f"- {status}: {', '.join(candidate_ids) or 'none'}")
+    lines.extend(
+        _markdown_table_from_mix(
+            "Validation activity themes",
+            validation_plan.get("validation_activity_theme_counts", {}),
+        )
+    )
+    lines.extend(_markdown_table_from_mix("Evidence gap themes", validation_plan.get("evidence_gap_theme_counts", {})))
+    lines.extend(_markdown_table_from_mix("SME review themes", validation_plan.get("sme_review_theme_counts", {})))
+    for bucket, bucket_plan in validation_plan.get("bucket_level_validation_plans", {}).items():
+        lines.append(f"- {bucket}: {bucket_plan.get('objective')}")
+        lines.append("- Activities: " + ("; ".join(_as_list(bucket_plan.get("activities"))[:4]) or "none"))
+    lines.extend(["### Suggested Validation Workflow"])
+    for index, item in enumerate(validation_plan.get("suggested_validation_workflow", []), start=1):
+        lines.append(f"{index}. {item}")
+    for record in validation_plan.get("records", [])[:18]:
+        lines.extend(
+            [
+                f"### Validation: {record.get('candidate_id')}",
+                f"- Shortlist bucket: {record.get('shortlist_bucket')}",
+                f"- Validation plan status: {record.get('validation_plan_status')}",
+                f"- Validation objective: {record.get('validation_objective')}",
+                "- Top evidence gaps: " + ("; ".join(_as_list(record.get("evidence_gaps"))[:3]) or "none visible"),
+                "- Top required validation activities: "
+                + ("; ".join(_as_list(record.get("required_validation_activities"))[:3]) or "none visible"),
+                "- Top inspection/NDI items: "
+                + ("; ".join(_as_list(record.get("inspection_and_ndi_plan_items"))[:3]) or "none visible"),
+                "- Top repair/disposition items: "
+                + ("; ".join(_as_list(record.get("repair_and_disposition_plan_items"))[:3]) or "none visible"),
+                "- Top certification/airworthiness review items: "
+                + (
+                    "; ".join(_as_list(record.get("certification_or_airworthiness_review_items"))[:3])
+                    or "none visible"
+                ),
+                "- SME reviews: " + ("; ".join(_as_list(record.get("sme_review_items"))[:4]) or "none visible"),
+                "- Exit criteria before next gate: "
+                + ("; ".join(_as_list(record.get("exit_criteria_before_next_gate"))[:3]) or "none visible"),
+                f"- Responsible use: {record.get('responsible_use')}",
+                "- Do not use for: " + (", ".join(_as_list(record.get("do_not_use_for"))) or "not specified"),
             ]
         )
     optimisation = view_model["optimisation_summary_view"]

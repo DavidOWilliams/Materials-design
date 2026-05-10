@@ -29,6 +29,8 @@ def test_build_full_build4_package_returns_enriched_candidate_package():
     assert package["application_profile"]
     assert package["application_requirement_fit"]
     assert package["application_aware_limiting_factor_analysis"]
+    assert package["validation_plan"]
+    assert all("validation_plan_record" in candidate for candidate in package["candidate_systems"])
     assert package["optimisation_summary"]
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
@@ -47,6 +49,7 @@ def test_build_review_pack_summary_includes_review_metrics():
     assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
     assert summary["application_fit_status_counts"]
     assert summary["application_aware_analysis_status_counts"]
+    assert summary["validation_plan_status_counts"]
     assert summary["exporter_status"] == "review_pack_created"
     assert summary["recommendation_narrative_status"] == "controlled_narrative_no_final_recommendation"
     assert summary["optimisation_status"] == "skeleton_no_variants_generated"
@@ -92,6 +95,7 @@ def test_split_full_report_into_expected_sections():
     assert "Coating vs Gradient Diagnostic" in sections["coating_vs_gradient_diagnostic"]
     assert "Decision Readiness" in sections["decision_readiness"]
     assert "Controlled Recommendation Narrative" in sections["controlled_recommendation_narrative"]
+    assert "Validation Plan" in sections["validation_plan"]
     assert "Warnings And Deferred Capabilities" in sections["warnings_and_deferred_capabilities"]
 
 
@@ -126,8 +130,10 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert package["application_profile"]
     assert package["application_requirement_fit"]
     assert package["application_aware_limiting_factor_analysis"]
+    assert package["validation_plan"]
     assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
     assert all("application_aware_limiting_factors" in candidate for candidate in package["candidate_systems"])
+    assert all("validation_plan_record" in candidate for candidate in package["candidate_systems"])
     assert package["application_requirement_fit"]["architecture_path_counts"]
     assert package["application_aware_limiting_factor_analysis"]["analysis_status_counts"]
     assert view_model["candidate_cards"]
@@ -135,6 +141,7 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert view_model["graded_am_transition_zone_summary_view"]["relevant_candidate_count"] > 0
     assert view_model["application_requirement_fit_view"]["fit_status_counts"]
     assert view_model["application_aware_limiting_factor_view"]["analysis_status_counts"]
+    assert view_model["validation_plan_view"]["validation_plan_status_counts"]
     assert result["candidate_count"] >= 30
     assert result["generated_candidate_count"] == 0
     assert result["live_model_calls_made"] is False
@@ -161,6 +168,9 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     assert "no ranking has been applied" in full_report
     assert "architecture path" in full_report
     assert "application-aware limiting factors" in full_report
+    assert "validation plan" in full_report
+    assert "not qualification approval" in full_report
+    assert "not certification approval" in full_report
     assert "no variants were generated" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename

@@ -18,6 +18,10 @@ from src.application_requirement_fit import attach_application_requirement_fit  
 from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic  # noqa: E402
 from src.controlled_shortlist import attach_controlled_application_shortlist  # noqa: E402
 from src.decision_readiness import attach_decision_readiness  # noqa: E402
+try:  # noqa: E402
+    from src.factor_models.cmcs.environmental_durability import attach_cmc_ebc_environmental_durability
+except ImportError:  # noqa: E402
+    attach_cmc_ebc_environmental_durability = None  # type: ignore[assignment]
 from src.factor_models.coatings.spallation_adhesion import attach_coating_spallation_adhesion  # noqa: E402
 from src.factor_models.graded_am.transition_zone_risk import attach_graded_am_transition_zone_risk  # noqa: E402
 from src.optimisation.application_aware_limiting_factors import (  # noqa: E402
@@ -33,6 +37,7 @@ from src.ui_view_models import (  # noqa: E402
     package_to_json_safe_dict,
     render_markdown_report,
 )
+from src.validation_plan import attach_validation_plan  # noqa: E402
 from src.vertical_slices.ceramics_first import build_ceramics_first_candidate_package  # noqa: E402
 
 
@@ -51,11 +56,12 @@ SECTION_FILENAMES = {
     "application_requirement_fit": "06_application_requirement_fit.md",
     "application_aware_limiting_factors": "07_application_aware_limiting_factors.md",
     "controlled_application_shortlist": "08_controlled_application_shortlist.md",
-    "deterministic_optimisation_trace": "09_deterministic_optimisation_trace.md",
-    "coating_vs_gradient_diagnostic": "10_coating_vs_gradient_diagnostic.md",
-    "decision_readiness": "11_decision_readiness.md",
-    "controlled_recommendation_narrative": "12_controlled_recommendation_narrative.md",
-    "warnings_and_deferred_capabilities": "13_warnings_and_deferred_capabilities.md",
+    "validation_plan": "09_validation_plan.md",
+    "deterministic_optimisation_trace": "10_deterministic_optimisation_trace.md",
+    "coating_vs_gradient_diagnostic": "11_coating_vs_gradient_diagnostic.md",
+    "decision_readiness": "12_decision_readiness.md",
+    "controlled_recommendation_narrative": "13_controlled_recommendation_narrative.md",
+    "warnings_and_deferred_capabilities": "14_warnings_and_deferred_capabilities.md",
 }
 
 GENERATED_FILES = [
@@ -103,12 +109,15 @@ def build_full_build4_package() -> dict[str, Any]:
     )
     package = attach_process_route_enrichment(package)
     package = attach_surface_function_profiles(package)
+    if attach_cmc_ebc_environmental_durability is not None:
+        package = attach_cmc_ebc_environmental_durability(package)
     package = attach_coating_spallation_adhesion(package)
     package = attach_graded_am_transition_zone_risk(package)
     package = attach_application_requirement_fit(package)
     package = attach_deterministic_optimisation(package)
     package = attach_application_aware_limiting_factor_analysis(package)
     package = attach_controlled_application_shortlist(package)
+    package = attach_validation_plan(package)
     package = attach_coating_vs_gradient_diagnostic(package)
     package = attach_decision_readiness(package)
     package = attach_recommendation_narrative(package)
@@ -126,6 +135,7 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
     application_fit = _mapping(package.get("application_requirement_fit"))
     application_aware = _mapping(package.get("application_aware_limiting_factor_analysis"))
     controlled_shortlist = _mapping(package.get("controlled_application_shortlist"))
+    validation_plan = _mapping(package.get("validation_plan"))
     diagnostic = _mapping(package.get("coating_vs_gradient_diagnostic"))
     readiness_summary = _mapping(package.get("decision_readiness_summary"))
     narrative = _mapping(package.get("recommendation_narrative"))
@@ -149,6 +159,7 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
             _mapping(application_aware.get("analysis_status_counts"))
         ),
         "controlled_shortlist_bucket_counts": dict(_mapping(controlled_shortlist.get("bucket_counts"))),
+        "validation_plan_status_counts": dict(_mapping(validation_plan.get("validation_plan_status_counts"))),
         "coating_vs_gradient_diagnostic_status": diagnostic.get("diagnostic_status", "unknown"),
         "coating_vs_gradient_pairwise_count": _count(diagnostic.get("pairwise_comparisons")),
         "decision_readiness_category_counts": dict(_mapping(readiness_summary.get("readiness_category_counts"))),
@@ -194,6 +205,7 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
         f"- Application profile ID: {summary.get('application_profile_id')}",
         f"- Application fit status counts: {summary.get('application_fit_status_counts')}",
         f"- Application-aware analysis status counts: {summary.get('application_aware_analysis_status_counts')}",
+        f"- Validation plan status counts: {summary.get('validation_plan_status_counts')}",
         f"- Coating-vs-gradient diagnostic status: {summary.get('coating_vs_gradient_diagnostic_status')}",
         f"- Coating-vs-gradient pairwise comparisons: {summary.get('coating_vs_gradient_pairwise_count')}",
         f"- Decision readiness categories: {summary.get('decision_readiness_category_counts')}",
@@ -221,11 +233,12 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
             "6. Review application requirement fit.",
             "7. Review application-aware limiting factors.",
             "8. Review the controlled application shortlist.",
-            "9. Review deterministic optimisation trace boundaries.",
-            "10. Review coating-vs-gradient diagnostics.",
-            "11. Review decision readiness.",
-            "12. Review the controlled recommendation narrative.",
-            "13. Review warnings and deferred capabilities.",
+            "9. Review validation-plan scaffolds.",
+            "10. Review deterministic optimisation trace boundaries.",
+            "11. Review coating-vs-gradient diagnostics.",
+            "12. Review decision readiness.",
+            "13. Review the controlled recommendation narrative.",
+            "14. Review warnings and deferred capabilities.",
             "",
             "## Deferred Capabilities",
             "- final ranking",
@@ -269,6 +282,8 @@ def _section_key_for_heading(heading: str) -> str | None:
         return "application_aware_limiting_factors"
     if "controlled application shortlist" in normalised:
         return "controlled_application_shortlist"
+    if "validation plan" in normalised:
+        return "validation_plan"
     if "deterministic optimisation" in normalised or "limiting factors and refinement options" in normalised:
         return "deterministic_optimisation_trace"
     if "coating vs gradient diagnostic" in normalised:

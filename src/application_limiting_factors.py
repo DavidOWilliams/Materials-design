@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from src.application_requirement_fit import (
     assess_candidate_application_requirement_fit,
+    attach_application_requirement_fit,
     classify_architecture_path,
 )
 
@@ -267,3 +269,92 @@ def analyze_candidate_application_limiting_factors(
         _insufficient_information_analysis(analysis, fit)
 
     return analysis
+
+
+def summarize_application_limiting_factors(
+    candidates: Sequence[Mapping[str, Any]],
+    profile: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    candidate_list = [candidate for candidate in candidates if isinstance(candidate, Mapping)]
+    analyses = [
+        analyze_candidate_application_limiting_factors(candidate, profile)
+        for candidate in candidate_list
+    ]
+    profile_id = _text(profile.get("profile_id") if isinstance(profile, Mapping) else "")
+    if not profile_id and analyses:
+        profile_id = _text(analyses[0].get("profile_id"))
+
+    return {
+        "profile_id": profile_id,
+        "assessment_status": "application_limiting_factors_attached",
+        "candidate_count": len(candidate_list),
+        "assessed_candidate_count": len(analyses),
+        "analysis_status_counts": dict(
+            Counter(_text(analysis.get("analysis_status"), "insufficient_information") for analysis in analyses)
+        ),
+        "fit_status_counts": dict(
+            Counter(_text(analysis.get("fit_status"), "insufficient_information") for analysis in analyses)
+        ),
+        "architecture_path_counts": dict(
+            Counter(_text(analysis.get("architecture_path"), "unclassified_application_path") for analysis in analyses)
+        ),
+        "candidate_filtering_performed": False,
+        "ranking_performed": False,
+        "pareto_analysis_performed": False,
+        "controlled_shortlist_created": False,
+        "validation_plan_created": False,
+        "generated_candidate_count": 0,
+        "live_model_calls_made": False,
+    }
+
+
+def _candidate_has_application_fit(candidate: Mapping[str, Any]) -> bool:
+    return bool(_mapping(candidate.get("application_requirement_fit")))
+
+
+def attach_application_limiting_factors(package: Mapping[str, Any]) -> dict[str, Any]:
+    source_candidates = [
+        candidate
+        for candidate in _as_list(package.get("candidate_systems"))
+        if isinstance(candidate, Mapping)
+    ]
+    if any(not _candidate_has_application_fit(candidate) for candidate in source_candidates):
+        working_package = attach_application_requirement_fit(package)
+    else:
+        working_package = dict(package)
+
+    candidates_with_fit = [
+        candidate
+        for candidate in _as_list(working_package.get("candidate_systems"))
+        if isinstance(candidate, Mapping)
+    ]
+    source_candidate_ids = [_candidate_id(candidate) for candidate in candidates_with_fit]
+    profile = _mapping(working_package.get("application_profile")) or None
+    candidate_systems = []
+    for candidate in candidates_with_fit:
+        enriched = dict(candidate)
+        enriched["application_limiting_factor_analysis"] = analyze_candidate_application_limiting_factors(
+            candidate,
+            profile,
+        )
+        candidate_systems.append(enriched)
+
+    output = dict(working_package)
+    output["candidate_systems"] = candidate_systems
+    output["application_limiting_factor_summary"] = summarize_application_limiting_factors(
+        candidate_systems,
+        profile,
+    )
+
+    diagnostics = dict(_mapping(working_package.get("diagnostics")))
+    diagnostics.update(
+        {
+            "application_limiting_factors_attached": True,
+            "application_limiting_factor_candidate_count": len(candidate_systems),
+            "application_limiting_factor_candidate_order_preserved": source_candidate_ids
+            == [_candidate_id(candidate) for candidate in candidate_systems],
+        }
+    )
+    output["diagnostics"] = diagnostics
+
+    return output

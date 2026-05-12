@@ -3,7 +3,10 @@ from copy import deepcopy
 from src.application_limiting_factors import (
     ANALYSIS_STATUSES,
     analyze_candidate_application_limiting_factors,
+    attach_application_limiting_factors,
+    summarize_application_limiting_factors,
 )
+from src.application_requirement_fit import assess_candidate_application_requirement_fit
 
 
 def _candidate(**overrides):
@@ -190,3 +193,130 @@ def test_no_package_or_downstream_outputs_are_created():
     assert "optimisation_summary" not in analysis
     assert "generated_candidates" not in analysis
     assert analysis["assessment_boundaries"]["live_model_calls_made"] is False
+
+
+def _package(with_application_fit=True):
+    candidates = [
+        _candidate(candidate_id="candidate-1"),
+        _poor_fit_candidate(),
+        _candidate(candidate_id="candidate-3", evidence_maturity="D"),
+    ]
+    if with_application_fit:
+        candidates = [
+            {
+                **candidate,
+                "application_requirement_fit": assess_candidate_application_requirement_fit(candidate),
+            }
+            for candidate in candidates
+        ]
+    return {
+        "candidate_systems": candidates,
+        "application_profile": {"profile_id": "hot_section_thermal_cycling_oxidation"},
+        "application_requirement_fit_summary": {"assessment_status": "preexisting"},
+        "diagnostics": {"existing_diagnostic": "preserved"},
+        "ranked_recommendations": [{"candidate_id": "preexisting-rank"}],
+        "pareto_front": [{"candidate_id": "preexisting-pareto"}],
+        "optimisation_summary": {
+            "generated_candidate_count": 0,
+            "live_model_calls_made": False,
+        },
+    }
+
+
+def test_attach_application_limiting_factors_attaches_analysis_to_every_candidate():
+    package = attach_application_limiting_factors(_package())
+
+    assert all("application_limiting_factor_analysis" in candidate for candidate in package["candidate_systems"])
+
+
+def test_attach_application_limiting_factors_preserves_candidate_count_and_order():
+    source = _package()
+    package = attach_application_limiting_factors(source)
+
+    assert len(package["candidate_systems"]) == len(source["candidate_systems"])
+    assert [candidate["candidate_id"] for candidate in package["candidate_systems"]] == [
+        candidate["candidate_id"] for candidate in source["candidate_systems"]
+    ]
+
+
+def test_attach_application_limiting_factors_adds_summary_with_candidate_counts():
+    package = attach_application_limiting_factors(_package())
+    summary = package["application_limiting_factor_summary"]
+
+    assert summary["candidate_count"] == 3
+    assert summary["assessed_candidate_count"] == 3
+
+
+def test_summary_includes_analysis_fit_and_architecture_counts():
+    summary = summarize_application_limiting_factors(_package()["candidate_systems"])
+
+    assert summary["analysis_status_counts"]
+    assert summary["fit_status_counts"]
+    assert summary["architecture_path_counts"]
+    assert summary["assessment_status"] == "application_limiting_factors_attached"
+
+
+def test_attach_application_limiting_factors_updates_diagnostics_and_preserves_existing_values():
+    package = attach_application_limiting_factors(_package())
+
+    assert package["diagnostics"]["existing_diagnostic"] == "preserved"
+    assert package["diagnostics"]["application_limiting_factors_attached"] is True
+    assert package["diagnostics"]["application_limiting_factor_candidate_count"] == 3
+    assert package["diagnostics"]["application_limiting_factor_candidate_order_preserved"] is True
+
+
+def test_attach_application_limiting_factors_preserves_ranked_pareto_and_optimisation_outputs():
+    source = _package()
+    package = attach_application_limiting_factors(source)
+
+    assert package["ranked_recommendations"] == source["ranked_recommendations"]
+    assert package["pareto_front"] == source["pareto_front"]
+    assert package["optimisation_summary"] == source["optimisation_summary"]
+
+
+def test_attach_application_limiting_factors_does_not_create_shortlist_or_validation_plan():
+    package = attach_application_limiting_factors(_package())
+
+    assert "controlled_shortlist" not in package
+    assert "validation_plan" not in package
+    assert package["application_limiting_factor_summary"]["controlled_shortlist_created"] is False
+    assert package["application_limiting_factor_summary"]["validation_plan_created"] is False
+
+
+def test_attach_application_limiting_factors_summary_records_no_filtering_or_live_calls():
+    package = attach_application_limiting_factors(_package())
+    summary = package["application_limiting_factor_summary"]
+
+    assert summary["candidate_filtering_performed"] is False
+    assert summary["ranking_performed"] is False
+    assert summary["pareto_analysis_performed"] is False
+    assert summary["generated_candidate_count"] == 0
+    assert summary["live_model_calls_made"] is False
+
+
+def test_attach_application_limiting_factors_uses_and_preserves_existing_application_fit():
+    source = _package(with_application_fit=True)
+    original_fits = [candidate["application_requirement_fit"] for candidate in source["candidate_systems"]]
+
+    package = attach_application_limiting_factors(source)
+
+    assert [candidate["application_requirement_fit"] for candidate in package["candidate_systems"]] == original_fits
+    assert package["application_profile"] == source["application_profile"]
+    assert package["application_requirement_fit_summary"] == source["application_requirement_fit_summary"]
+
+
+def test_attach_application_limiting_factors_attaches_application_fit_when_missing():
+    package = attach_application_limiting_factors(_package(with_application_fit=False))
+
+    assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
+    assert all("application_limiting_factor_analysis" in candidate for candidate in package["candidate_systems"])
+    assert package["diagnostics"]["application_requirement_fit_attached"] is True
+
+
+def test_attach_application_limiting_factors_does_not_create_ranking_or_pareto_when_absent():
+    package = attach_application_limiting_factors({"candidate_systems": [_candidate()]})
+
+    assert "ranked_recommendations" not in package
+    assert "pareto_front" not in package
+    assert "controlled_shortlist" not in package
+    assert "validation_plan" not in package

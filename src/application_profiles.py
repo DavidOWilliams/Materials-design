@@ -34,7 +34,44 @@ _DEFAULT_APPLICATION_PROFILE = {
     },
 }
 
+_APPLICATION_PROFILE_REGISTRY = {
+    DEFAULT_APPLICATION_PROFILE_ID: _DEFAULT_APPLICATION_PROFILE,
+}
+
+
+def _available_profile_ids():
+    return sorted(_APPLICATION_PROFILE_REGISTRY)
+
 
 def default_application_profile():
     """Return the default Build 4 application profile."""
     return deepcopy(_DEFAULT_APPLICATION_PROFILE)
+
+
+def list_application_profiles():
+    """Return metadata for available Build 4 application profiles."""
+    return [
+        {
+            "profile_id": profile["profile_id"],
+            "profile_name": profile["profile_name"],
+        }
+        for profile in (
+            _APPLICATION_PROFILE_REGISTRY[profile_id]
+            for profile_id in _available_profile_ids()
+        )
+    ]
+
+
+def get_application_profile(profile_id):
+    """Return a defensive copy of a registered Build 4 application profile."""
+    if profile_id not in _APPLICATION_PROFILE_REGISTRY:
+        available = ", ".join(_available_profile_ids())
+        raise ValueError(
+            f"Unknown application profile ID '{profile_id}'. Available profile IDs: {available}."
+        )
+    return deepcopy(_APPLICATION_PROFILE_REGISTRY[profile_id])
+
+
+def resolve_application_profile(profile_id=None):
+    """Resolve an application profile ID, defaulting to the default Build 4 profile."""
+    return get_application_profile(profile_id or DEFAULT_APPLICATION_PROFILE_ID)

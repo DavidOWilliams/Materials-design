@@ -300,8 +300,10 @@ def _package():
 
 
 def test_attach_application_requirement_fit_attaches_fit_to_every_candidate():
-    package = attach_application_requirement_fit(_package())
+    source = _package()
+    package = attach_application_requirement_fit(source)
 
+    assert package is not source
     assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
 
 
@@ -356,8 +358,10 @@ def test_attach_application_requirement_fit_does_not_change_ranked_recommendatio
 
 
 def test_attach_application_requirement_fit_preserves_optimisation_generated_count_and_live_model_flag():
-    package = attach_application_requirement_fit(_package())
+    source = _package()
+    package = attach_application_requirement_fit(source)
 
+    assert package["optimisation_summary"] == source["optimisation_summary"]
     assert package["optimisation_summary"]["generated_candidate_count"] == 0
     assert package["optimisation_summary"]["live_model_calls_made"] is False
     assert package["application_requirement_fit_summary"]["generated_candidate_count"] == 0
@@ -380,6 +384,13 @@ def test_attach_application_requirement_fit_summary_records_no_filtering_ranking
     assert summary["candidate_filtering_performed"] is False
     assert summary["ranking_performed"] is False
     assert summary["pareto_analysis_performed"] is False
+
+
+def test_attach_application_requirement_fit_does_not_create_ranking_or_pareto_when_absent():
+    package = attach_application_requirement_fit({"candidate_systems": [_candidate()]})
+
+    assert "ranked_recommendations" not in package
+    assert "pareto_front" not in package
 
 
 def test_attach_application_requirement_fit_keeps_support_and_risk_tags_out_of_required_matches():

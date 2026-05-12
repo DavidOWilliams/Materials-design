@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.application_profiles import DEFAULT_APPLICATION_PROFILE_ID, resolve_application_profile  # noqa: E402
 from src.coating_vs_gradient_diagnostics import attach_coating_vs_gradient_diagnostic  # noqa: E402
 from src.decision_readiness import attach_decision_readiness  # noqa: E402
 from src.factor_models.coatings.spallation_adhesion import attach_coating_spallation_adhesion  # noqa: E402
@@ -85,8 +86,13 @@ def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def build_full_build4_package() -> dict[str, Any]:
+def _resolve_selected_profile(profile_id: str | None) -> dict[str, Any]:
+    return resolve_application_profile(profile_id or DEFAULT_APPLICATION_PROFILE_ID)
+
+
+def build_full_build4_package(profile_id: str | None = None) -> dict[str, Any]:
     """Build the deterministic Build 4 ceramics-first package for review export."""
+    _resolve_selected_profile(profile_id)
     source_package = build_ceramics_first_candidate_package()
     package = build_package_from_candidate_source_package(
         source_package,
@@ -294,6 +300,7 @@ def write_review_pack(
     output_dir: str | Path = "outputs/build4_review_pack",
     *,
     clean_output_dir: bool = False,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     output_path = Path(output_dir)
     if clean_output_dir:
@@ -301,7 +308,7 @@ def write_review_pack(
     sections_path = output_path / "sections"
     sections_path.mkdir(parents=True, exist_ok=True)
 
-    package = build_full_build4_package()
+    package = build_full_build4_package(profile_id=profile_id)
     view_model = build_recommendation_package_view_model(package)
     full_report = render_markdown_report(package)
     summary = build_review_pack_summary(package, view_model)
@@ -334,6 +341,7 @@ def write_review_pack(
         "output_dir": str(output_path),
         "files_written": files_written,
         "summary": summary,
+        "application_profile_id": package.get("application_profile", {}).get("profile_id"),
         "candidate_count": summary["candidate_count"],
         "warning_count": summary["warning_count"],
         "generated_candidate_count": summary["generated_candidate_count"],
@@ -361,11 +369,15 @@ def _print_summary(result: Mapping[str, Any]) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export deterministic Build 4 review-pack artifacts.")
     parser.add_argument("--output-dir", default="outputs/build4_review_pack", help="Review pack output directory.")
+    parser.add_argument("--profile", default=None, help="Application profile ID.")
     parser.add_argument("--clean", action="store_true", help="Remove old files inside the output directory first.")
     parser.add_argument("--quiet", action="store_true", help="Suppress console summary.")
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    result = write_review_pack(args.output_dir, clean_output_dir=args.clean)
+    try:
+        result = write_review_pack(args.output_dir, clean_output_dir=args.clean, profile_id=args.profile)
+    except ValueError as exc:
+        parser.error(str(exc))
     if not args.quiet:
         _print_summary(result)
     return 0

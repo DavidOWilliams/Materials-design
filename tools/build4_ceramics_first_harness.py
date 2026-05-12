@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.application_profiles import DEFAULT_APPLICATION_PROFILE_ID, resolve_application_profile  # noqa: E402
 from src.recommendation_builder import (  # noqa: E402
     build_package_from_candidate_source_package,
     summarize_recommendation_package,
@@ -61,8 +62,13 @@ def _write_json(path: Path, payload: Any) -> None:
     )
 
 
-def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
+def _resolve_selected_profile(profile_id: str | None) -> dict[str, Any]:
+    return resolve_application_profile(profile_id or DEFAULT_APPLICATION_PROFILE_ID)
+
+
+def build_outputs(output_dir: str | Path = "outputs", profile_id: str | None = None) -> dict[str, Any]:
     """Build Build 4 ceramics-first package/view/report artifacts on disk."""
+    selected_profile = _resolve_selected_profile(profile_id)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -111,6 +117,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "report_path": str(report_path),
         "package_json_path": str(package_json_path),
         "view_model_json_path": str(view_model_json_path),
+        "application_profile_id": selected_profile["profile_id"],
         "candidate_count": summary["candidate_count"],
         "candidate_class_mix": summary["candidate_class_mix"],
         "system_architecture_mix": summary["system_architecture_mix"],
@@ -243,10 +250,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Build deterministic Build 4 ceramics-first inspection artifacts.",
     )
     parser.add_argument("--output-dir", default="outputs", help="Directory for markdown and JSON outputs.")
+    parser.add_argument("--profile", default=None, help="Application profile ID.")
     parser.add_argument("--quiet", action="store_true", help="Suppress console summary.")
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    summary = build_outputs(args.output_dir)
+    try:
+        summary = build_outputs(args.output_dir, profile_id=args.profile)
+    except ValueError as exc:
+        parser.error(str(exc))
     if not args.quiet:
         _print_summary(summary)
     return 0

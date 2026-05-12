@@ -38,6 +38,30 @@ def test_build_full_build4_package_returns_enriched_candidate_package():
     assert all("application_limiting_factor_analysis" in candidate for candidate in package["candidate_systems"])
 
 
+def test_exporter_default_run_uses_default_application_profile():
+    package = build_full_build4_package()
+
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_exporter_profile_argument_for_default_profile_succeeds():
+    package = build_full_build4_package(profile_id="hot_section_thermal_cycling_oxidation")
+
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_exporter_unknown_profile_fails_clearly():
+    try:
+        build_full_build4_package(profile_id="unknown_profile")
+    except ValueError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unknown profile.")
+
+    assert "unknown_profile" in message
+    assert "hot_section_thermal_cycling_oxidation" in message
+
+
 def test_build_review_pack_summary_includes_review_metrics():
     package = build_full_build4_package()
     view_model = build_recommendation_package_view_model(package)
@@ -133,6 +157,13 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert result["live_model_calls_made"] is False
     assert result["ranked_recommendations_count"] == 0
     assert result["pareto_front_count"] == 0
+    assert result["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_write_review_pack_profile_argument_for_default_profile_succeeds(tmp_path):
+    result = write_review_pack(tmp_path, profile_id="hot_section_thermal_cycling_oxidation")
+
+    assert result["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
 
 
 def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
@@ -163,6 +194,24 @@ def test_main_quiet_returns_zero_and_writes_pack(tmp_path):
 
     assert (tmp_path / INDEX_FILENAME).is_file()
     assert (tmp_path / SUMMARY_FILENAME).is_file()
+
+
+def test_exporter_main_profile_argument_succeeds(tmp_path):
+    assert main(["--output-dir", str(tmp_path), "--profile", "hot_section_thermal_cycling_oxidation", "--quiet"]) == 0
+    assert (tmp_path / PACKAGE_FILENAME).is_file()
+
+
+def test_exporter_main_unknown_profile_exits_clearly(tmp_path, capsys):
+    try:
+        main(["--output-dir", str(tmp_path), "--profile", "unknown_profile", "--quiet"])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Expected SystemExit for unknown profile.")
+
+    captured = capsys.readouterr()
+    assert "unknown_profile" in captured.err
+    assert "hot_section_thermal_cycling_oxidation" in captured.err
 
 
 def test_clean_output_dir_only_removes_files_inside_output_dir(tmp_path):

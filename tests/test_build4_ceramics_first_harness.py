@@ -21,6 +21,51 @@ def test_build_outputs_creates_all_expected_files(tmp_path):
     assert (tmp_path / VIEW_MODEL_JSON_FILENAME).is_file()
 
 
+def test_harness_default_run_uses_default_application_profile(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_harness_profile_argument_for_default_profile_succeeds(tmp_path):
+    summary = build_outputs(tmp_path, profile_id="hot_section_thermal_cycling_oxidation")
+
+    assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+    with Path(summary["package_json_path"]).open(encoding="utf-8") as handle:
+        package = json.load(handle)
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_harness_unknown_profile_fails_clearly(tmp_path):
+    try:
+        build_outputs(tmp_path, profile_id="unknown_profile")
+    except ValueError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unknown profile.")
+
+    assert "unknown_profile" in message
+    assert "hot_section_thermal_cycling_oxidation" in message
+
+
+def test_harness_main_profile_argument_succeeds(tmp_path):
+    assert main(["--output-dir", str(tmp_path), "--profile", "hot_section_thermal_cycling_oxidation", "--quiet"]) == 0
+    assert (tmp_path / PACKAGE_JSON_FILENAME).is_file()
+
+
+def test_harness_main_unknown_profile_exits_clearly(tmp_path, capsys):
+    try:
+        main(["--output-dir", str(tmp_path), "--profile", "unknown_profile", "--quiet"])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Expected SystemExit for unknown profile.")
+
+    captured = capsys.readouterr()
+    assert "unknown_profile" in captured.err
+    assert "hot_section_thermal_cycling_oxidation" in captured.err
+
+
 def test_json_files_can_be_loaded_by_json_load(tmp_path):
     summary = build_outputs(tmp_path)
 
@@ -134,6 +179,11 @@ def test_application_workflow_preserves_candidate_count_and_order(tmp_path):
     assert package["application_limiting_factor_summary"]["candidate_count"] == summary["candidate_count"]
     assert package["controlled_shortlist_summary"]["candidate_count"] == summary["candidate_count"]
     assert package["validation_plan_summary"]["candidate_count"] == summary["candidate_count"]
+    assert package["ranked_recommendations"] == []
+    assert package["pareto_front"] == []
+    assert package["optimisation_summary"]["generated_candidate_count"] == 0
+    assert package["validation_plan_summary"]["qualification_approval_granted"] is False
+    assert package["validation_plan_summary"]["certification_approval_granted"] is False
 
 
 def test_returned_summary_includes_required_optimisation_console_fields(tmp_path):

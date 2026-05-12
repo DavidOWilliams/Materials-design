@@ -5,7 +5,7 @@ from typing import Any
 
 from src.application_profiles import default_application_profile
 from src.contracts import EVIDENCE_MATURITY_LEVELS
-from src.surface_function_model import build_candidate_surface_function_profile
+from src.surface_function_model import build_candidate_surface_function_profile, classify_function_kind
 
 
 _MATURITY_RANK = {level: index for index, level in enumerate(EVIDENCE_MATURITY_LEVELS)}
@@ -47,6 +47,39 @@ def _candidate_id(candidate: Mapping[str, Any]) -> str:
     return _text(candidate.get("candidate_id"), "unknown_candidate")
 
 
+def _architecture_path(candidate: Mapping[str, Any]) -> str:
+    return _text(
+        candidate.get("architecture_path")
+        or candidate.get("application_architecture_path")
+        or candidate.get("architecture_path_classification")
+        or candidate.get("application_path"),
+    )
+
+
+def _is_cmc_ebc_environmental_protection_path(candidate: Mapping[str, Any]) -> bool:
+    if _architecture_path(candidate) == "cmc_ebc_environmental_protection_path":
+        return True
+    candidate_class = _text(candidate.get("candidate_class") or candidate.get("system_class"))
+    text = _blob(candidate)
+    return candidate_class == "ceramic_matrix_composite" and (
+        "environmental_barrier_coating" in text
+        or "environmental barrier coating" in text
+        or "environmental barrier" in text
+        or "ebc" in text
+    )
+
+
+def _is_research_mode(candidate: Mapping[str, Any]) -> bool:
+    text = _blob(
+        [
+            candidate.get("source_type"),
+            candidate.get("research_mode"),
+            candidate.get("candidate_classification"),
+        ]
+    )
+    return candidate.get("generated_candidate_flag") is True or "research" in text
+
+
 def _candidate_surface_profile(candidate: Mapping[str, Any]) -> Mapping[str, Any]:
     profile = _mapping(candidate.get("surface_function_profile"))
     if profile:
@@ -60,14 +93,13 @@ def _candidate_functions(candidate: Mapping[str, Any]) -> set[str]:
     for field in (
         "primary_service_functions",
         "secondary_service_functions",
-        "primary_surface_functions",
-        "secondary_surface_functions",
     ):
         function_ids.update(_text(item) for item in _as_list(profile.get(field)) if _text(item))
     for item in _as_list(profile.get("surface_functions")):
         record = _mapping(item)
         function_id = _text(record.get("function_id"))
-        if function_id:
+        function_kind = _text(record.get("function_kind"), classify_function_kind(function_id))
+        if function_id and function_kind in {"primary_service_function", "secondary_service_function"}:
             function_ids.add(function_id)
     return function_ids
 
@@ -193,14 +225,45 @@ def _constraint_checks(
 
 
 def _fit_status(
+    candidate: Mapping[str, Any],
     missing_required_functions: list[str],
     constraint_checks: list[Mapping[str, Any]],
 ) -> str:
+    maturity = _evidence_maturity(candidate)
+    if maturity == "F" or _is_research_mode(candidate):
+        return "research_only_for_profile"
+    if _is_cmc_ebc_environmental_protection_path(candidate):
+        if maturity in {"D", "E"}:
+            return "exploratory_only_for_profile"
+        if maturity in {"B", "C"} and missing_required_functions == ["thermal_barrier"]:
+            return "plausible_with_validation"
     if missing_required_functions:
-        return "does_not_meet_core_requirements"
+        return "poor_fit_for_profile"
     if all(_text(check.get("status")) in _PASSING_STATUSES for check in constraint_checks):
         return "meets_core_requirements"
     return "partially_meets_core_requirements"
+
+
+def _validation_issues(
+    candidate: Mapping[str, Any],
+    missing_required_functions: list[str],
+) -> list[dict[str, str]]:
+    if (
+        _is_cmc_ebc_environmental_protection_path(candidate)
+        and "thermal_barrier" in missing_required_functions
+        and _evidence_maturity(candidate) in {"B", "C"}
+    ):
+        return [
+            {
+                "issue_id": "cmc_ebc_missing_literal_thermal_barrier_tag",
+                "severity": "validation_required",
+                "message": (
+                    "CMC/EBC environmental-protection path lacks a literal thermal_barrier tag "
+                    "but remains plausible as an architecture-path difference requiring validation."
+                ),
+            }
+        ]
+    return []
 
 
 def assess_application_requirement_fit(
@@ -218,12 +281,15 @@ def assess_application_requirement_fit(
     missing_desired = [function for function in desired if function not in functions]
     checks = _constraint_checks(candidate, profile, functions)
     gap_constraints = [dict(check) for check in checks if _text(check.get("status")) not in _PASSING_STATUSES]
+    fit_status = _fit_status(candidate, missing_required, checks)
+    validation_issues = _validation_issues(candidate, missing_required)
 
     return {
         "candidate_id": _candidate_id(candidate),
         "profile_id": _text(profile.get("profile_id")),
         "profile_name": _text(profile.get("profile_name")),
-        "fit_status": _fit_status(missing_required, checks),
+        "fit_status": fit_status,
+        "application_fit_status": fit_status,
         "required_primary_service_functions": required,
         "matched_required_primary_service_functions": matched_required,
         "missing_required_primary_service_functions": missing_required,
@@ -232,5 +298,6 @@ def assess_application_requirement_fit(
         "missing_desired_secondary_service_functions": missing_desired,
         "constraint_checks": checks,
         "gap_constraints": gap_constraints,
+        "validation_issues": validation_issues,
         "assessment_boundaries": dict(_mapping(profile.get("assessment_boundaries"))),
     }

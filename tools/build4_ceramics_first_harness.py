@@ -31,6 +31,7 @@ from src.decision_readiness import (  # noqa: E402
 from src.recommendation_narrative import (  # noqa: E402
     attach_recommendation_narrative,
 )
+from src.validation_plan import build_validation_plan  # noqa: E402
 from src.process_route_enrichment import (  # noqa: E402
     attach_process_route_enrichment,
 )
@@ -77,6 +78,7 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     recommendation_package = attach_coating_vs_gradient_diagnostic(recommendation_package)
     recommendation_package = attach_decision_readiness(recommendation_package)
     recommendation_package = attach_recommendation_narrative(recommendation_package)
+    recommendation_package = build_validation_plan(recommendation_package)
     view_model = build_recommendation_package_view_model(recommendation_package)
     markdown_report = render_markdown_report(recommendation_package)
 
@@ -99,6 +101,10 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
     surface_summary = recommendation_package.get("surface_function_coverage_summary") or {}
     readiness_summary = recommendation_package.get("decision_readiness_summary") or {}
     narrative = recommendation_package.get("recommendation_narrative") or {}
+    application_fit_summary = recommendation_package.get("application_requirement_fit_summary") or {}
+    limiting_factor_summary = recommendation_package.get("application_limiting_factor_summary") or {}
+    controlled_shortlist_summary = recommendation_package.get("controlled_shortlist_summary") or {}
+    validation_plan_summary = recommendation_package.get("validation_plan_summary") or {}
     coating_spallation_summary = recommendation_package.get("coating_spallation_adhesion_summary") or {}
     required_coverage = compare_required_surface_functions_to_candidates(recommendation_package)
     return {
@@ -154,6 +160,11 @@ def build_outputs(output_dir: str | Path = "outputs") -> dict[str, Any]:
         "usable_as_reference_count": len(readiness_summary.get("usable_as_reference_candidate_ids", [])),
         "not_decision_ready_count": len(readiness_summary.get("not_decision_ready_candidate_ids", [])),
         "recommendation_narrative_status": narrative.get("narrative_status", "unknown"),
+        "application_fit_status_counts": application_fit_summary.get("application_fit_status_counts", {}),
+        "application_architecture_path_counts": application_fit_summary.get("architecture_path_counts", {}),
+        "application_limiting_factor_analysis_status_counts": limiting_factor_summary.get("analysis_status_counts", {}),
+        "controlled_shortlist_bucket_counts": controlled_shortlist_summary.get("bucket_counts", {}),
+        "validation_plan_category_counts": validation_plan_summary.get("validation_category_counts", {}),
         "mature_comparison_reference_count": len(narrative.get("mature_comparison_references", [])),
         "engineering_analogue_option_count": len(narrative.get("engineering_analogue_options", [])),
         "exploratory_option_count": len(narrative.get("exploratory_options", [])),

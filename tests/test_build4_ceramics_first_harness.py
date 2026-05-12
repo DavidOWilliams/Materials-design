@@ -40,6 +40,13 @@ def test_json_files_can_be_loaded_by_json_load(tmp_path):
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
     assert package["recommendation_narrative"]
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert package["application_requirement_fit_summary"]
+    assert package["application_limiting_factor_summary"]
+    assert package["controlled_shortlist_summary"]
+    assert package["validation_plan_summary"]
+    assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
+    assert all("application_limiting_factor_analysis" in candidate for candidate in package["candidate_systems"])
     assert view_model["optimisation_summary_view"]["status"] == "skeleton_no_variants_generated"
     assert view_model["optimisation_trace_cards"]
     assert view_model["summary"]["process_route_summary"]
@@ -65,6 +72,11 @@ def test_markdown_report_contains_not_final_recommendation(tmp_path):
     assert "surface function coverage" in report
     assert "decision readiness" in report
     assert "controlled recommendation narrative" in report
+    assert "application requirement fit" in report
+    assert "application limiting factors" in report
+    assert "controlled shortlist" in report
+    assert "validation plan" in report
+    assert "validation plan is not qualification approval or certification approval" in report
     assert "not final recommendation" in report
     assert "process route, inspection and repairability" in report
     assert "coating spallation, adhesion and repair" in report
@@ -102,7 +114,26 @@ def test_optimisation_outputs_preserve_deferred_decision_fields(tmp_path):
     assert package["optimisation_summary"]["live_model_calls_made"] is False
     assert package["ranked_recommendations"] == []
     assert package["pareto_front"] == []
+    assert package["controlled_shortlist_summary"]["candidate_filtering_performed"] is False
+    assert package["validation_plan_summary"]["candidate_filtering_performed"] is False
+    assert package["validation_plan_summary"]["qualification_approval_granted"] is False
+    assert package["validation_plan_summary"]["certification_approval_granted"] is False
     json.dumps(package)
+
+
+def test_application_workflow_preserves_candidate_count_and_order(tmp_path):
+    summary = build_outputs(tmp_path)
+
+    with Path(summary["package_json_path"]).open(encoding="utf-8") as handle:
+        package = json.load(handle)
+
+    candidate_ids = [candidate["candidate_id"] for candidate in package["candidate_systems"]]
+    assert len(candidate_ids) == summary["candidate_count"]
+    assert candidate_ids == [candidate["candidate_id"] for candidate in package["candidate_systems"]]
+    assert package["application_requirement_fit_summary"]["candidate_count"] == summary["candidate_count"]
+    assert package["application_limiting_factor_summary"]["candidate_count"] == summary["candidate_count"]
+    assert package["controlled_shortlist_summary"]["candidate_count"] == summary["candidate_count"]
+    assert package["validation_plan_summary"]["candidate_count"] == summary["candidate_count"]
 
 
 def test_returned_summary_includes_required_optimisation_console_fields(tmp_path):

@@ -756,6 +756,77 @@ def render_markdown_report(package: Mapping[str, Any]) -> str:
     lines.extend(_markdown_table_from_mix("System architectures", summary.get("system_architecture_mix", {})))
     lines.extend(["", "## Evidence Maturity"])
     lines.extend(_markdown_table_from_mix("Evidence maturity mix", summary.get("evidence_maturity_mix", {})))
+    application_fit_summary = _mapping(package.get("application_requirement_fit_summary"))
+    limiting_factor_summary = _mapping(package.get("application_limiting_factor_summary"))
+    controlled_shortlist_summary = _mapping(package.get("controlled_shortlist_summary"))
+    validation_plan_summary = _mapping(package.get("validation_plan_summary"))
+    validation_plan = _mapping(package.get("validation_plan"))
+    lines.extend(
+        [
+            "",
+            "## Application Requirement Fit",
+            "- Application fit is not a ranking, shortlist, validation plan, or final recommendation.",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Application fit status counts",
+            application_fit_summary.get("application_fit_status_counts", {}),
+        )
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Application architecture path counts",
+            application_fit_summary.get("architecture_path_counts", {}),
+        )
+    )
+    lines.extend(
+        [
+            "",
+            "## Application Limiting Factors",
+            "- Application limiting-factor analysis is not optimisation, ranking, or candidate generation.",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Application limiting-factor analysis status counts",
+            limiting_factor_summary.get("analysis_status_counts", {}),
+        )
+    )
+    lines.extend(
+        [
+            "",
+            "## Controlled Shortlist",
+            "- Controlled shortlist is not a ranking or final recommendation.",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Controlled shortlist bucket counts",
+            controlled_shortlist_summary.get("bucket_counts", {}),
+        )
+    )
+    lines.extend(
+        [
+            "",
+            "## Validation Plan",
+            "- Validation plan is not qualification approval or certification approval.",
+        ]
+    )
+    lines.extend(
+        _markdown_table_from_mix(
+            "Validation plan category counts",
+            validation_plan_summary.get("validation_category_counts", {}),
+        )
+    )
+    boundaries = _mapping(validation_plan.get("boundaries"))
+    if boundaries:
+        lines.extend(
+            [
+                f"- Qualification approval granted: {boundaries.get('is_qualification_approval') is True}",
+                f"- Certification approval granted: {boundaries.get('is_certification_approval') is True}",
+            ]
+        )
     readiness_view = view_model["decision_readiness_summary_view"]
     narrative_view = view_model["recommendation_narrative_view"]
     narrative_markdown = render_recommendation_narrative_markdown(narrative_view)

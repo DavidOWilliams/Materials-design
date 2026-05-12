@@ -22,6 +22,7 @@ from src.process_route_enrichment import attach_process_route_enrichment  # noqa
 from src.recommendation_builder import build_package_from_candidate_source_package  # noqa: E402
 from src.recommendation_narrative import attach_recommendation_narrative  # noqa: E402
 from src.surface_function_model import attach_surface_function_profiles  # noqa: E402
+from src.validation_plan import build_validation_plan  # noqa: E402
 from src.ui_view_models import (  # noqa: E402
     build_recommendation_package_view_model,
     package_to_json_safe_dict,
@@ -98,6 +99,7 @@ def build_full_build4_package() -> dict[str, Any]:
     package = attach_coating_vs_gradient_diagnostic(package)
     package = attach_decision_readiness(package)
     package = attach_recommendation_narrative(package)
+    package = build_validation_plan(package)
     return dict(package)
 
 
@@ -111,6 +113,10 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
     diagnostic = _mapping(package.get("coating_vs_gradient_diagnostic"))
     readiness_summary = _mapping(package.get("decision_readiness_summary"))
     narrative = _mapping(package.get("recommendation_narrative"))
+    application_fit_summary = _mapping(package.get("application_requirement_fit_summary"))
+    limiting_factor_summary = _mapping(package.get("application_limiting_factor_summary"))
+    controlled_shortlist_summary = _mapping(package.get("controlled_shortlist_summary"))
+    validation_plan_summary = _mapping(package.get("validation_plan_summary"))
     diagnostics = _mapping(package.get("diagnostics"))
     return {
         "run_id": summary.get("run_id") or package.get("run_id"),
@@ -128,6 +134,13 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
         "decision_readiness_category_counts": dict(_mapping(readiness_summary.get("readiness_category_counts"))),
         "decision_readiness_status_counts": dict(_mapping(readiness_summary.get("readiness_status_counts"))),
         "recommendation_narrative_status": narrative.get("narrative_status", "unknown"),
+        "application_fit_status_counts": dict(_mapping(application_fit_summary.get("application_fit_status_counts"))),
+        "application_architecture_path_counts": dict(_mapping(application_fit_summary.get("architecture_path_counts"))),
+        "application_limiting_factor_analysis_status_counts": dict(
+            _mapping(limiting_factor_summary.get("analysis_status_counts"))
+        ),
+        "controlled_shortlist_bucket_counts": dict(_mapping(controlled_shortlist_summary.get("bucket_counts"))),
+        "validation_plan_category_counts": dict(_mapping(validation_plan_summary.get("validation_category_counts"))),
         "optimisation_status": optimisation_summary.get("status", "unknown"),
         "generated_candidate_count": optimisation_summary.get("generated_candidate_count", 0),
         "live_model_calls_made": diagnostics.get("live_model_calls_made") is True,
@@ -168,6 +181,11 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
         f"- Decision readiness categories: {summary.get('decision_readiness_category_counts')}",
         f"- Decision readiness statuses: {summary.get('decision_readiness_status_counts')}",
         f"- Recommendation narrative status: {summary.get('recommendation_narrative_status')}",
+        f"- Application fit statuses: {summary.get('application_fit_status_counts')}",
+        f"- Application architecture paths: {summary.get('application_architecture_path_counts')}",
+        f"- Application limiting-factor statuses: {summary.get('application_limiting_factor_analysis_status_counts')}",
+        f"- Controlled shortlist buckets: {summary.get('controlled_shortlist_bucket_counts')}",
+        f"- Validation plan categories: {summary.get('validation_plan_category_counts')}",
         f"- Optimisation status: {summary.get('optimisation_status')}",
         f"- Generated candidate count: {summary.get('generated_candidate_count')}",
         f"- Live model calls made: {summary.get('live_model_calls_made')}",

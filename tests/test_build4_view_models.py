@@ -9,6 +9,7 @@ from src.optimisation.deterministic_optimizer import attach_deterministic_optimi
 from src.process_route_enrichment import attach_process_route_enrichment
 from src.recommendation_narrative import attach_recommendation_narrative
 from src.surface_function_model import attach_surface_function_profiles
+from src.validation_plan import build_validation_plan
 import src.ui_view_models as ui_view_models
 from src.ui_view_models import (
     build_candidate_card_view_model,
@@ -106,13 +107,13 @@ def _package():
 
 
 def _optimised_package():
-    return attach_recommendation_narrative(attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
+    return build_validation_plan(attach_recommendation_narrative(attach_decision_readiness(attach_coating_vs_gradient_diagnostic(
         attach_deterministic_optimisation(
             attach_coating_spallation_adhesion(
                 attach_surface_function_profiles(attach_process_route_enrichment(_package()))
             )
         )
-    )))
+    ))))
 
 
 def test_candidate_card_preserves_candidate_class_and_system_architecture_type():
@@ -199,6 +200,10 @@ def test_markdown_report_mentions_deterministic_optimisation_skeleton_boundaries
     assert "surface function coverage" in report
     assert "decision readiness" in report
     assert "certification approval" in report
+    assert "application requirement fit" in report
+    assert "application limiting factors" in report
+    assert "controlled shortlist" in report
+    assert "validation plan is not qualification approval or certification approval" in report
     assert "process route, inspection and repairability" in report
     assert "coating spallation, adhesion and repair" in report
     assert "not a life prediction" in report

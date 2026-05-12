@@ -29,6 +29,13 @@ def test_build_full_build4_package_returns_enriched_candidate_package():
     assert package["coating_vs_gradient_diagnostic"]
     assert package["decision_readiness_summary"]
     assert package["recommendation_narrative"]
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert package["application_requirement_fit_summary"]
+    assert package["application_limiting_factor_summary"]
+    assert package["controlled_shortlist_summary"]
+    assert package["validation_plan_summary"]
+    assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
+    assert all("application_limiting_factor_analysis" in candidate for candidate in package["candidate_systems"])
 
 
 def test_build_review_pack_summary_includes_review_metrics():
@@ -45,6 +52,11 @@ def test_build_review_pack_summary_includes_review_metrics():
     assert summary["live_model_calls_made"] is False
     assert summary["ranked_recommendations_count"] == 0
     assert summary["pareto_front_count"] == 0
+    assert summary["application_fit_status_counts"]
+    assert summary["application_architecture_path_counts"]
+    assert summary["application_limiting_factor_analysis_status_counts"]
+    assert summary["controlled_shortlist_bucket_counts"]
+    assert summary["validation_plan_category_counts"]
 
 
 def test_render_review_pack_index_contains_required_disclaimers():
@@ -110,6 +122,10 @@ def test_write_review_pack_creates_all_expected_files_and_json_loads(tmp_path):
     assert summary["candidate_count"] >= 30
     assert package["candidate_systems"]
     assert package["coating_spallation_adhesion_summary"]
+    assert package["application_requirement_fit_summary"]
+    assert package["application_limiting_factor_summary"]
+    assert package["controlled_shortlist_summary"]
+    assert package["validation_plan_summary"]
     assert view_model["candidate_cards"]
     assert view_model["coating_spallation_adhesion_summary_view"]["relevant_candidate_count"] > 0
     assert result["candidate_count"] >= 30
@@ -131,6 +147,11 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     assert "shared coating/gradient primary service functions" in full_report
     assert "coating spallation, adhesion and repair" in full_report
     assert "not a life prediction" in full_report
+    assert "application requirement fit" in full_report
+    assert "application limiting factors" in full_report
+    assert "controlled shortlist" in full_report
+    assert "validation plan" in full_report
+    assert "validation plan is not qualification approval or certification approval" in full_report
     for filename in SECTION_FILENAMES.values():
         section = tmp_path / "sections" / filename
         assert section.is_file()

@@ -1,4 +1,8 @@
-from src.application_requirement_fit import assess_application_requirement_fit
+from src.application_requirement_fit import (
+    assess_application_requirement_fit,
+    attach_application_requirement_fit,
+    summarize_application_requirement_fit,
+)
 
 
 def _candidate(**overrides):
@@ -269,3 +273,141 @@ def test_support_and_risk_tags_do_not_satisfy_required_or_desired_service_functi
     assert fit["missing_required_primary_service_functions"] == ["thermal_barrier"]
     assert fit["matched_desired_secondary_service_functions"] == []
     assert fit["missing_desired_secondary_service_functions"] == ["thermal_cycling_tolerance"]
+
+
+def _package():
+    return {
+        "candidate_systems": [
+            _candidate(candidate_id="candidate-1"),
+            _cmc_ebc_candidate(candidate_id="candidate-2", maturity="B"),
+            _candidate(
+                candidate_id="candidate-3",
+                architecture_path="oxidation_protection_only_path",
+                surface_function_profile={
+                    "primary_service_functions": ["oxidation_resistance"],
+                    "secondary_service_functions": ["thermal_cycling_tolerance"],
+                },
+            ),
+        ],
+        "diagnostics": {"existing_diagnostic": "preserved"},
+        "ranked_recommendations": [{"candidate_id": "preexisting-rank"}],
+        "pareto_front": [{"candidate_id": "preexisting-pareto"}],
+        "optimisation_summary": {
+            "generated_candidate_count": 0,
+            "live_model_calls_made": False,
+        },
+    }
+
+
+def test_attach_application_requirement_fit_attaches_fit_to_every_candidate():
+    package = attach_application_requirement_fit(_package())
+
+    assert all("application_requirement_fit" in candidate for candidate in package["candidate_systems"])
+
+
+def test_attach_application_requirement_fit_preserves_candidate_count_and_order():
+    source = _package()
+    package = attach_application_requirement_fit(source)
+
+    assert len(package["candidate_systems"]) == len(source["candidate_systems"])
+    assert [candidate["candidate_id"] for candidate in package["candidate_systems"]] == [
+        candidate["candidate_id"] for candidate in source["candidate_systems"]
+    ]
+
+
+def test_attach_application_requirement_fit_adds_default_application_profile():
+    package = attach_application_requirement_fit(_package())
+
+    assert package["application_profile"]["profile_id"] == "hot_section_thermal_cycling_oxidation"
+
+
+def test_attach_application_requirement_fit_adds_summary_with_candidate_counts():
+    package = attach_application_requirement_fit(_package())
+    summary = package["application_requirement_fit_summary"]
+
+    assert summary["candidate_count"] == 3
+    assert summary["assessed_candidate_count"] == 3
+
+
+def test_summary_includes_status_and_architecture_path_counts():
+    summary = summarize_application_requirement_fit(_package()["candidate_systems"])
+
+    assert summary["application_fit_status_counts"]
+    assert summary["architecture_path_counts"]
+    assert summary["assessment_status"] == "application_requirement_fit_attached"
+
+
+def test_attach_application_requirement_fit_updates_diagnostics_and_preserves_existing_values():
+    package = attach_application_requirement_fit(_package())
+
+    assert package["diagnostics"]["existing_diagnostic"] == "preserved"
+    assert package["diagnostics"]["application_requirement_fit_attached"] is True
+    assert package["diagnostics"]["application_requirement_fit_profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert package["diagnostics"]["application_requirement_fit_candidate_count"] == 3
+    assert package["diagnostics"]["application_requirement_fit_candidate_order_preserved"] is True
+
+
+def test_attach_application_requirement_fit_does_not_change_ranked_recommendations_or_pareto_front():
+    source = _package()
+    package = attach_application_requirement_fit(source)
+
+    assert package["ranked_recommendations"] == source["ranked_recommendations"]
+    assert package["pareto_front"] == source["pareto_front"]
+
+
+def test_attach_application_requirement_fit_preserves_optimisation_generated_count_and_live_model_flag():
+    package = attach_application_requirement_fit(_package())
+
+    assert package["optimisation_summary"]["generated_candidate_count"] == 0
+    assert package["optimisation_summary"]["live_model_calls_made"] is False
+    assert package["application_requirement_fit_summary"]["generated_candidate_count"] == 0
+    assert package["application_requirement_fit_summary"]["live_model_calls_made"] is False
+
+
+def test_attach_application_requirement_fit_does_not_create_shortlist_or_validation_plan():
+    package = attach_application_requirement_fit(_package())
+
+    assert "controlled_shortlist" not in package
+    assert "validation_plan" not in package
+    assert package["application_requirement_fit_summary"]["controlled_shortlist_created"] is False
+    assert package["application_requirement_fit_summary"]["validation_plan_created"] is False
+
+
+def test_attach_application_requirement_fit_summary_records_no_filtering_ranking_or_pareto():
+    package = attach_application_requirement_fit(_package())
+    summary = package["application_requirement_fit_summary"]
+
+    assert summary["candidate_filtering_performed"] is False
+    assert summary["ranking_performed"] is False
+    assert summary["pareto_analysis_performed"] is False
+
+
+def test_attach_application_requirement_fit_keeps_support_and_risk_tags_out_of_required_matches():
+    package = attach_application_requirement_fit(
+        {
+            "candidate_systems": [
+                _candidate(
+                    candidate_id="support-risk-only",
+                    surface_function_profile={
+                        "primary_service_functions": ["oxidation_resistance"],
+                        "secondary_service_functions": [],
+                        "surface_functions": [
+                            {
+                                "function_id": "thermal_barrier",
+                                "function_kind": "support_or_lifecycle_consideration",
+                            },
+                            {
+                                "function_id": "thermal_cycling_tolerance",
+                                "function_kind": "risk_or_interface_consideration",
+                            },
+                        ],
+                    },
+                )
+            ],
+        }
+    )
+    fit = package["candidate_systems"][0]["application_requirement_fit"]
+
+    assert fit["matched_required_primary_service_functions"] == ["oxidation_resistance"]
+    assert fit["missing_required_primary_service_functions"] == ["thermal_barrier"]
+    assert fit["matched_desired_secondary_service_functions"] == []

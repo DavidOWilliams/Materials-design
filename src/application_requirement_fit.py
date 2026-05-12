@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from src.application_profiles import default_application_profile
@@ -54,6 +55,18 @@ def _architecture_path(candidate: Mapping[str, Any]) -> str:
         or candidate.get("architecture_path_classification")
         or candidate.get("application_path"),
     )
+
+
+def classify_architecture_path(candidate: Mapping[str, Any]) -> str:
+    explicit_path = _architecture_path(candidate)
+    if explicit_path:
+        return explicit_path
+    if _is_cmc_ebc_environmental_protection_path(candidate):
+        return "cmc_ebc_environmental_protection_path"
+    functions = _candidate_functions(candidate)
+    if "oxidation_resistance" in functions and "thermal_barrier" not in functions:
+        return "oxidation_protection_only_path"
+    return "unclassified_application_path"
 
 
 def _is_cmc_ebc_environmental_protection_path(candidate: Mapping[str, Any]) -> bool:
@@ -288,6 +301,7 @@ def assess_application_requirement_fit(
         "candidate_id": _candidate_id(candidate),
         "profile_id": _text(profile.get("profile_id")),
         "profile_name": _text(profile.get("profile_name")),
+        "architecture_path": classify_architecture_path(candidate),
         "fit_status": fit_status,
         "application_fit_status": fit_status,
         "required_primary_service_functions": required,
@@ -301,3 +315,83 @@ def assess_application_requirement_fit(
         "validation_issues": validation_issues,
         "assessment_boundaries": dict(_mapping(profile.get("assessment_boundaries"))),
     }
+
+
+def assess_candidate_application_requirement_fit(
+    candidate: Mapping[str, Any],
+    profile: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    return assess_application_requirement_fit(candidate, profile)
+
+
+def summarize_application_requirement_fit(
+    candidates: Sequence[Mapping[str, Any]],
+    profile: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    application_profile = dict(profile or default_application_profile())
+    candidate_list = [candidate for candidate in candidates if isinstance(candidate, Mapping)]
+    assessments = [
+        assess_candidate_application_requirement_fit(candidate, application_profile)
+        for candidate in candidate_list
+    ]
+
+    return {
+        "profile_id": _text(application_profile.get("profile_id")),
+        "profile_name": _text(application_profile.get("profile_name")),
+        "assessment_status": "application_requirement_fit_attached",
+        "candidate_count": len(candidate_list),
+        "assessed_candidate_count": len(assessments),
+        "application_fit_status_counts": dict(
+            Counter(_text(assessment.get("application_fit_status"), "unknown") for assessment in assessments)
+        ),
+        "architecture_path_counts": dict(
+            Counter(_text(assessment.get("architecture_path"), "unclassified_application_path") for assessment in assessments)
+        ),
+        "candidate_filtering_performed": False,
+        "ranking_performed": False,
+        "pareto_analysis_performed": False,
+        "controlled_shortlist_created": False,
+        "validation_plan_created": False,
+        "generated_candidate_count": 0,
+        "live_model_calls_made": False,
+    }
+
+
+def attach_application_requirement_fit(package: Mapping[str, Any]) -> dict[str, Any]:
+    application_profile = default_application_profile()
+    source_candidates = [
+        candidate
+        for candidate in _as_list(package.get("candidate_systems"))
+        if isinstance(candidate, Mapping)
+    ]
+    source_candidate_ids = [_candidate_id(candidate) for candidate in source_candidates]
+    candidate_systems = []
+    for candidate in source_candidates:
+        enriched = dict(candidate)
+        enriched["application_requirement_fit"] = assess_candidate_application_requirement_fit(
+            candidate,
+            application_profile,
+        )
+        candidate_systems.append(enriched)
+
+    output = dict(package)
+    output["candidate_systems"] = candidate_systems
+    output["application_profile"] = application_profile
+    output["application_requirement_fit_summary"] = summarize_application_requirement_fit(
+        candidate_systems,
+        application_profile,
+    )
+
+    diagnostics = dict(_mapping(package.get("diagnostics")))
+    diagnostics.update(
+        {
+            "application_requirement_fit_attached": True,
+            "application_requirement_fit_profile_id": application_profile["profile_id"],
+            "application_requirement_fit_candidate_count": len(candidate_systems),
+            "application_requirement_fit_candidate_order_preserved": source_candidate_ids
+            == [_candidate_id(candidate) for candidate in candidate_systems],
+        }
+    )
+    output["diagnostics"] = diagnostics
+
+    return output

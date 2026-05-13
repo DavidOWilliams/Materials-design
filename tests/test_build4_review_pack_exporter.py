@@ -67,6 +67,8 @@ def test_build_review_pack_summary_includes_review_metrics():
     view_model = build_recommendation_package_view_model(package)
     summary = build_review_pack_summary(package, view_model)
 
+    assert summary["application_profile_id"] == "hot_section_thermal_cycling_oxidation"
+    assert summary["application_profile_name"] == "Hot-section thermal cycling and oxidation"
     assert summary["candidate_count"] >= 30
     assert summary["coating_spallation_relevant_candidate_count"] > 0
     assert summary["exporter_status"] == "review_pack_created"
@@ -87,6 +89,8 @@ def test_render_review_pack_index_contains_required_disclaimers():
     index = render_review_pack_index(
         {
             "exporter_status": "review_pack_created",
+            "application_profile_id": "hot_section_thermal_cycling_oxidation",
+            "application_profile_name": "Hot-section thermal cycling and oxidation",
             "candidate_count": 1,
             "generated_candidate_count": 0,
             "live_model_calls_made": False,
@@ -96,12 +100,54 @@ def test_render_review_pack_index_contains_required_disclaimers():
     ).lower()
 
     assert "build 4 material-system review pack" in index
+    assert "not a ranking" in index
     assert "not a final recommendation" in index
-    assert "no final ranking" in index
-    assert "no pareto optimisation" in index
-    assert "no generated variants" in index
+    assert "not pareto optimisation" in index
+    assert "not generated candidate variants" in index
     assert "no live model calls" in index
-    assert "not qualification or certification approval" in index
+    assert "not qualification approval" in index
+    assert "not certification approval" in index
+
+
+def test_render_review_pack_index_includes_profile_and_reviewer_guidance():
+    package = build_full_build4_package()
+    view_model = build_recommendation_package_view_model(package)
+    summary = build_review_pack_summary(package, view_model)
+    index = render_review_pack_index(summary).lower()
+
+    assert "selected application profile" in index
+    assert "profile id: `hot_section_thermal_cycling_oxidation`" in index
+    assert "profile name: hot-section thermal cycling and oxidation" in index
+    assert "how to use this pack" in index
+    assert "start with `build4_review_pack_summary.json` and `build4_full_report.md`" in index
+    assert "use controlled shortlist buckets for review triage" in index
+    assert "use validation-plan categories to understand evidence needs" in index
+    assert "use candidate-level json and markdown sections for traceability" in index
+    assert "decision-support artefacts, not final recommendations" in index
+
+
+def test_render_review_pack_index_includes_definitions_and_compact_counts():
+    package = build_full_build4_package()
+    view_model = build_recommendation_package_view_model(package)
+    summary = build_review_pack_summary(package, view_model)
+    index = render_review_pack_index(summary).lower()
+
+    assert "application fit status definitions" in index
+    assert "`plausible_with_validation`" in index
+    assert "could fit the profile after targeted validation closes evidence gaps" in index
+    assert "limiting-factor status definitions" in index
+    assert "`poor_fit_suppressed`" in index
+    assert "deeper application analysis is suppressed" in index
+    assert "controlled shortlist bucket definitions" in index
+    assert "`validation_needed_options`" in index
+    assert "need validation before engineering use" in index
+    assert "validation plan category definitions" in index
+    assert "`parked_no_validation_for_this_profile`" in index
+    assert "no validation proposed for this profile because fit is poor" in index
+    assert "controlled shortlist bucket counts" in index
+    assert "`poor_fit_for_profile`: 20" in index
+    assert "validation plan category counts" in index
+    assert "`validation_required_before_engineering_use`: 3" in index
 
 
 def test_split_full_report_into_expected_sections():
@@ -172,7 +218,16 @@ def test_write_review_pack_index_and_sections_are_utf8_markdown(tmp_path):
     index = (tmp_path / INDEX_FILENAME).read_text(encoding="utf-8").lower()
     full_report = (tmp_path / FULL_REPORT_FILENAME).read_text(encoding="utf-8").lower()
     assert "not a final recommendation" in index
-    assert "not qualification or certification approval" in index
+    assert "not qualification approval" in index
+    assert "not certification approval" in index
+    assert "hot_section_thermal_cycling_oxidation" in index
+    assert "how to use this pack" in index
+    assert "application fit status definitions" in index
+    assert "limiting-factor status definitions" in index
+    assert "controlled shortlist bucket definitions" in index
+    assert "validation plan category definitions" in index
+    assert "controlled shortlist bucket counts" in index
+    assert "validation plan category counts" in index
     assert "required primary service functions" in full_report
     assert "support / lifecycle considerations" in full_report
     assert "shared coating/gradient primary service functions" in full_report

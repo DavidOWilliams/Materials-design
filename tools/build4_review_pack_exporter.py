@@ -59,6 +59,40 @@ GENERATED_FILES = [
     *[f"sections/{filename}" for filename in SECTION_FILENAMES.values()],
 ]
 
+APPLICATION_FIT_STATUS_DEFINITIONS = {
+    "partially_meets_core_requirements": "matches core profile needs with explicit gaps or caveats.",
+    "plausible_with_validation": "could fit the profile after targeted validation closes evidence gaps.",
+    "exploratory_only_for_profile": "use only as profile context until maturity and evidence improve.",
+    "research_only_for_profile": "research context only; not ready for engineering review.",
+    "poor_fit_for_profile": "does not currently fit the selected application profile.",
+}
+
+LIMITING_FACTOR_STATUS_DEFINITIONS = {
+    "analysed_for_application": "application-specific limiting factors were assessed.",
+    "insufficient_information": "available data is too sparse for a confident limiting-factor assessment.",
+    "poor_fit_suppressed": "candidate is a poor profile fit, so deeper application analysis is suppressed.",
+    "exploratory_context_only": "limiting factors are retained as exploratory context only.",
+    "research_context_only": "limiting factors are retained as research context only.",
+}
+
+CONTROLLED_SHORTLIST_BUCKET_DEFINITIONS = {
+    "near_term_comparison_references": "near-term references for comparison, not selected recommendations.",
+    "validation_needed_options": "potentially relevant options that need validation before engineering use.",
+    "exploratory_context_only": "contextual concepts for exploration, not engineering options.",
+    "research_only_context": "research-only concepts outside near-term engineering use.",
+    "poor_fit_for_profile": "candidates parked because they do not fit this profile.",
+    "insufficient_information": "cases needing more information before triage is meaningful.",
+}
+
+VALIDATION_PLAN_CATEGORY_DEFINITIONS = {
+    "baseline_reference_validation": "baseline reference checks for mature comparison records.",
+    "validation_required_before_engineering_use": "validation required before any engineering use.",
+    "exploratory_validation_only": "validation suitable only for exploratory learning.",
+    "research_validation_only": "validation suitable only for research context.",
+    "parked_no_validation_for_this_profile": "no validation proposed for this profile because fit is poor.",
+    "insufficient_information": "follow-up needed to gather enough information before validation planning.",
+}
+
 
 def _as_list(value: Any) -> list[Any]:
     if value is None:
@@ -111,6 +145,7 @@ def build_full_build4_package(profile_id: str | None = None) -> dict[str, Any]:
 
 def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[str, Any]) -> dict[str, Any]:
     summary = _mapping(view_model.get("summary"))
+    application_profile = _mapping(package.get("application_profile"))
     optimisation_summary = _mapping(package.get("optimisation_summary"))
     process_route_summary = _mapping(package.get("process_route_summary"))
     surface_summary = _mapping(package.get("surface_function_coverage_summary"))
@@ -127,6 +162,8 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
     return {
         "run_id": summary.get("run_id") or package.get("run_id"),
         "package_status": summary.get("package_status") or package.get("package_status"),
+        "application_profile_id": application_profile.get("profile_id"),
+        "application_profile_name": application_profile.get("profile_name"),
         "candidate_count": summary.get("candidate_count", _count(package.get("candidate_systems"))),
         "candidate_class_mix": dict(_mapping(summary.get("candidate_class_mix"))),
         "evidence_maturity_mix": dict(_mapping(summary.get("evidence_maturity_mix"))),
@@ -160,17 +197,39 @@ def build_review_pack_summary(package: Mapping[str, Any], view_model: Mapping[st
     }
 
 
+def _format_count_items(counts: Mapping[str, Any]) -> list[str]:
+    if not counts:
+        return ["- No count data available."]
+    return [f"- `{key}`: {value}" for key, value in sorted(counts.items())]
+
+
+def _format_definition_items(definitions: Mapping[str, str]) -> list[str]:
+    return [f"- `{key}`: {description}" for key, description in definitions.items()]
+
+
 def render_review_pack_index(summary: Mapping[str, Any]) -> str:
     lines = [
         "# Build 4 Material-System Review Pack",
         "",
         "## Status Disclaimer",
+        "- This review pack is not a ranking.",
         "- This review pack is not a final recommendation.",
-        "- No final ranking was produced.",
-        "- No Pareto optimisation was performed.",
-        "- No generated variants were created.",
+        "- This review pack is not Pareto optimisation.",
+        "- This review pack is not generated candidate variants.",
+        "- This review pack is not qualification approval.",
+        "- This review pack is not certification approval.",
         "- No live model calls were made.",
-        "- This is not qualification or certification approval.",
+        "",
+        "## Selected Application Profile",
+        f"- Profile ID: `{summary.get('application_profile_id') or 'unknown'}`",
+        f"- Profile name: {summary.get('application_profile_name') or 'unknown'}",
+        "",
+        "## How to Use This Pack",
+        "- Start with `build4_review_pack_summary.json` and `build4_full_report.md`.",
+        "- Use controlled shortlist buckets for review triage.",
+        "- Use validation-plan categories to understand evidence needs.",
+        "- Use candidate-level JSON and markdown sections for traceability.",
+        "- Treat outputs as decision-support artefacts, not final recommendations.",
         "",
         "## Summary Metrics",
         f"- Exporter status: {summary.get('exporter_status')}",
@@ -198,6 +257,24 @@ def render_review_pack_index(summary: Mapping[str, Any]) -> str:
         f"- Ranked recommendations count: {summary.get('ranked_recommendations_count')}",
         f"- Pareto front count: {summary.get('pareto_front_count')}",
         f"- Warning count: {summary.get('warning_count')}",
+        "",
+        "## Application Fit Status Definitions",
+        *_format_definition_items(APPLICATION_FIT_STATUS_DEFINITIONS),
+        "",
+        "## Limiting-Factor Status Definitions",
+        *_format_definition_items(LIMITING_FACTOR_STATUS_DEFINITIONS),
+        "",
+        "## Controlled Shortlist Bucket Definitions",
+        *_format_definition_items(CONTROLLED_SHORTLIST_BUCKET_DEFINITIONS),
+        "",
+        "## Validation Plan Category Definitions",
+        *_format_definition_items(VALIDATION_PLAN_CATEGORY_DEFINITIONS),
+        "",
+        "## Controlled Shortlist Bucket Counts",
+        *_format_count_items(_mapping(summary.get("controlled_shortlist_bucket_counts"))),
+        "",
+        "## Validation Plan Category Counts",
+        *_format_count_items(_mapping(summary.get("validation_plan_category_counts"))),
         "",
         "## Generated Files",
     ]

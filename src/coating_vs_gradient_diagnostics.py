@@ -2,14 +2,265 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from typing import Any
+from copy import deepcopy
+from typing import Any, TypedDict
 
 from src.contracts import evidence_maturity_label
+from src.gradient_templates import GradientTemplate, match_gradient_templates
 from src.surface_function_model import classify_function_kind
 
 
 PAIRWISE_COMPARISON_LIMIT = 12
 _LOW_MATURITY = {"D", "E", "F"}
+EVIDENCE_MATURITY_LEVELS: tuple[str, ...] = ("A", "B", "C", "D", "E", "F", "unknown")
+
+REQUIRED_COATING_OPTION_FIELDS: tuple[str, ...] = (
+    "option_id",
+    "option_name",
+    "coating_family",
+    "activation_failure_modes",
+    "applicable_candidate_classes",
+    "applicable_substrate_families",
+    "expected_benefits",
+    "known_risks",
+    "evidence_maturity_default",
+    "inspection_burden",
+    "repair_burden",
+    "applicability_guardrails",
+)
+
+LIST_COATING_OPTION_FIELDS: tuple[str, ...] = (
+    "activation_failure_modes",
+    "applicable_candidate_classes",
+    "applicable_substrate_families",
+    "expected_benefits",
+    "known_risks",
+    "applicability_guardrails",
+)
+
+
+class CoatingOption(TypedDict, total=False):
+    option_id: str
+    option_name: str
+    coating_family: str
+    activation_failure_modes: list[str]
+    applicable_candidate_classes: list[str]
+    applicable_substrate_families: list[str]
+    expected_benefits: list[str]
+    known_risks: list[str]
+    evidence_maturity_default: str
+    inspection_burden: str
+    repair_burden: str
+    applicability_guardrails: list[str]
+
+
+class CoatingVsGradientDiagnostic(TypedDict, total=False):
+    limiting_factors: list[str]
+    candidate_class: str | None
+    substrate_family: str | None
+    process_routes: list[str]
+    research_mode_enabled: bool
+    coating_options_considered: list[CoatingOption]
+    gradient_templates_considered: list[GradientTemplate]
+    coating_option_count: int
+    gradient_template_count: int
+    comparison_status: str
+    notes: list[str]
+    warnings: list[str]
+
+
+DEFAULT_COATING_OPTIONS: tuple[CoatingOption, ...] = (
+    {
+        "option_id": "thermal_barrier_coating",
+        "option_name": "Thermal Barrier Coating",
+        "coating_family": "tbc",
+        "activation_failure_modes": [
+            "thermal_barrier",
+            "thermal_gradient",
+            "surface_temperature_limit",
+        ],
+        "applicable_candidate_classes": [
+            "metallic",
+            "coating_enabled",
+        ],
+        "applicable_substrate_families": [
+            "nickel_alloy",
+            "cobalt_alloy",
+            "refractory_alloy",
+        ],
+        "expected_benefits": [
+            "reduced substrate surface temperature",
+            "mature coating reference path for hot-section comparison",
+        ],
+        "known_risks": [
+            "coating spallation",
+            "CTE mismatch",
+            "inspection burden",
+            "repair burden",
+        ],
+        "evidence_maturity_default": "B",
+        "inspection_burden": "medium",
+        "repair_burden": "medium",
+        "applicability_guardrails": [
+            "Review substrate and bond-coat compatibility.",
+            "Do not treat coating maturity as certification approval.",
+        ],
+    },
+    {
+        "option_id": "environmental_barrier_coating",
+        "option_name": "Environmental Barrier Coating",
+        "coating_family": "ebc",
+        "activation_failure_modes": [
+            "oxidation",
+            "steam_exposure",
+            "recession",
+            "water_vapour_recession",
+        ],
+        "applicable_candidate_classes": [
+            "cmc",
+            "ceramic",
+            "coating_enabled",
+        ],
+        "applicable_substrate_families": [
+            "cmc",
+            "sic_sic_cmc",
+            "ceramic",
+        ],
+        "expected_benefits": [
+            "environmental protection for ceramic or CMC hot-section systems",
+            "reduced recession sensitivity where evidence supports the architecture",
+        ],
+        "known_risks": [
+            "recession",
+            "coating spallation",
+            "interface degradation",
+            "repair burden",
+        ],
+        "evidence_maturity_default": "B",
+        "inspection_burden": "medium",
+        "repair_burden": "high",
+        "applicability_guardrails": [
+            "Review CMC/EBC interface evidence and recession exposure.",
+            "Do not present as qualification approval without programme evidence.",
+        ],
+    },
+    {
+        "option_id": "oxidation_protection_coating",
+        "option_name": "Oxidation Protection Coating",
+        "coating_family": "oxidation_protection",
+        "activation_failure_modes": [
+            "oxidation",
+            "hot_corrosion",
+            "steam_exposure",
+        ],
+        "applicable_candidate_classes": [
+            "metallic",
+            "refractory",
+            "coating_enabled",
+        ],
+        "applicable_substrate_families": [
+            "nickel_alloy",
+            "cobalt_alloy",
+            "refractory_alloy",
+            "titanium_alloy",
+        ],
+        "expected_benefits": [
+            "surface oxidation and hot-corrosion protection",
+            "reviewable coating path for oxidation-limited systems",
+        ],
+        "known_risks": [
+            "coating spallation",
+            "substrate compatibility",
+            "inspection burden",
+            "repair burden",
+        ],
+        "evidence_maturity_default": "C",
+        "inspection_burden": "medium",
+        "repair_burden": "medium",
+        "applicability_guardrails": [
+            "Check substrate compatibility and thermal-cycle exposure.",
+            "Retain validation needs for the specific environment.",
+        ],
+    },
+    {
+        "option_id": "wear_resistant_coating",
+        "option_name": "Wear Resistant Coating",
+        "coating_family": "wear_resistant",
+        "activation_failure_modes": [
+            "wear",
+            "sliding_contact",
+            "erosion",
+            "fretting",
+        ],
+        "applicable_candidate_classes": [
+            "metallic",
+            "ceramic",
+            "coating_enabled",
+        ],
+        "applicable_substrate_families": [
+            "titanium_alloy",
+            "cobalt_alloy",
+            "nickel_alloy",
+            "steel",
+            "ceramic",
+        ],
+        "expected_benefits": [
+            "improved surface wear resistance",
+            "separable surface treatment path for wear-limited systems",
+        ],
+        "known_risks": [
+            "cracking",
+            "adhesion loss",
+            "surface preparation burden",
+            "repair burden",
+        ],
+        "evidence_maturity_default": "C",
+        "inspection_burden": "medium",
+        "repair_burden": "medium",
+        "applicability_guardrails": [
+            "Check adhesion and surface preparation sensitivity.",
+            "Do not hide fatigue or repair penalties behind wear benefits.",
+        ],
+    },
+    {
+        "option_id": "bond_coat_interface_system",
+        "option_name": "Bond Coat Interface System",
+        "coating_family": "bond_coat_interface",
+        "activation_failure_modes": [
+            "coating_spallation",
+            "interface_mismatch",
+            "cte_mismatch",
+        ],
+        "applicable_candidate_classes": [
+            "metallic",
+            "coating_enabled",
+            "hybrid",
+        ],
+        "applicable_substrate_families": [
+            "nickel_alloy",
+            "cobalt_alloy",
+            "refractory_alloy",
+            "ceramic",
+        ],
+        "expected_benefits": [
+            "improved coating/substrate interface management",
+            "explicit review path for thermal-expansion and adhesion concerns",
+        ],
+        "known_risks": [
+            "CTE mismatch",
+            "interdiffusion",
+            "interface degradation",
+            "inspection burden",
+        ],
+        "evidence_maturity_default": "C",
+        "inspection_burden": "high",
+        "repair_burden": "medium",
+        "applicability_guardrails": [
+            "Review interface chemistry, interdiffusion and thermal-cycle evidence.",
+            "Treat as decision support rather than approval for service.",
+        ],
+    },
+)
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -41,6 +292,178 @@ def _blob(value: Any) -> str:
     if isinstance(value, (list, tuple, set)):
         return " ".join(_blob(item) for item in value).lower()
     return _text(value).lower()
+
+
+def _caller_safe_option(option: Mapping[str, Any]) -> CoatingOption:
+    return deepcopy(dict(option))
+
+
+def _normalise(value: str) -> str:
+    return str(value).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _normalised_values(values: list[str]) -> set[str]:
+    return {_normalise(value) for value in values}
+
+
+def get_coating_options() -> tuple[CoatingOption, ...]:
+    return tuple(_caller_safe_option(option) for option in DEFAULT_COATING_OPTIONS)
+
+
+def get_coating_option(option_id: str) -> CoatingOption | None:
+    normalised_id = _normalise(option_id)
+    for option in DEFAULT_COATING_OPTIONS:
+        if _normalise(option["option_id"]) == normalised_id:
+            return _caller_safe_option(option)
+    return None
+
+
+def validate_coating_option(option: Mapping[str, Any]) -> list[str]:
+    if not isinstance(option, Mapping):
+        return ["coating option must be a mapping"]
+
+    errors: list[str] = []
+
+    for field in REQUIRED_COATING_OPTION_FIELDS:
+        if field not in option:
+            errors.append(f"{field} is required")
+
+    for field in LIST_COATING_OPTION_FIELDS:
+        if field in option and not isinstance(option.get(field), list):
+            errors.append(f"{field} must be a list")
+
+    maturity = option.get("evidence_maturity_default")
+    if maturity is not None and maturity not in EVIDENCE_MATURITY_LEVELS:
+        errors.append(
+            "evidence_maturity_default must be one of "
+            f"{', '.join(EVIDENCE_MATURITY_LEVELS)}; got {maturity!r}"
+        )
+
+    return errors
+
+
+def validate_default_coating_options() -> list[str]:
+    errors: list[str] = []
+
+    if len(DEFAULT_COATING_OPTIONS) != 5:
+        errors.append(
+            f"DEFAULT_COATING_OPTIONS must contain exactly 5 options; got {len(DEFAULT_COATING_OPTIONS)}"
+        )
+
+    seen_option_ids: set[str] = set()
+    for index, option in enumerate(DEFAULT_COATING_OPTIONS):
+        option_id = (
+            str(option.get("option_id"))
+            if isinstance(option, Mapping) and option.get("option_id")
+            else f"option_{index}"
+        )
+
+        for error in validate_coating_option(option):
+            errors.append(f"{option_id}: {error}")
+
+        if option_id in seen_option_ids:
+            errors.append(f"{option_id}: option_id must be unique")
+        seen_option_ids.add(option_id)
+
+    return errors
+
+
+def match_coating_options(
+    limiting_factors: list[str],
+    *,
+    candidate_class: str | None = None,
+    substrate_family: str | None = None,
+) -> list[CoatingOption]:
+    normalised_limiting_factors = _normalised_values(limiting_factors)
+    normalised_candidate_class = _normalise(candidate_class) if candidate_class else None
+    normalised_substrate_family = _normalise(substrate_family) if substrate_family else None
+
+    matches: list[CoatingOption] = []
+    for option in DEFAULT_COATING_OPTIONS:
+        activation_modes = _normalised_values(option["activation_failure_modes"])
+        if not activation_modes.intersection(normalised_limiting_factors):
+            continue
+
+        if normalised_candidate_class is not None:
+            candidate_classes = _normalised_values(option["applicable_candidate_classes"])
+            if normalised_candidate_class not in candidate_classes:
+                continue
+
+        if normalised_substrate_family is not None:
+            substrate_families = _normalised_values(option["applicable_substrate_families"])
+            if normalised_substrate_family not in substrate_families:
+                continue
+
+        matches.append(_caller_safe_option(option))
+
+    return matches
+
+
+def _build_template_coating_vs_gradient_diagnostic(
+    limiting_factors: list[str],
+    *,
+    candidate_class: str | None = None,
+    substrate_family: str | None = None,
+    process_routes: list[str] | None = None,
+    research_mode_enabled: bool = False,
+) -> CoatingVsGradientDiagnostic:
+    copied_limiting_factors = list(limiting_factors)
+    copied_process_routes = list(process_routes) if process_routes is not None else []
+
+    coating_options = match_coating_options(
+        copied_limiting_factors,
+        candidate_class=candidate_class,
+        substrate_family=substrate_family,
+    )
+    gradient_templates = match_gradient_templates(
+        copied_limiting_factors,
+        candidate_class=candidate_class,
+        substrate_family=substrate_family,
+        process_routes=copied_process_routes if process_routes is not None else None,
+        research_mode_enabled=research_mode_enabled,
+    )
+
+    if not copied_limiting_factors:
+        comparison_status = "no_surface_driver_found"
+    elif coating_options and gradient_templates:
+        comparison_status = "coating_and_gradient_options_available"
+    elif coating_options:
+        comparison_status = "coating_options_only"
+    elif gradient_templates:
+        comparison_status = "gradient_templates_only"
+    else:
+        comparison_status = "no_options_after_filters"
+
+    notes = [
+        "Diagnostic only: coating options and spatial-gradient templates are alternatives for review.",
+        "No score, rank, optimisation move or winner is selected.",
+    ]
+    warnings: list[str] = []
+    if research_mode_enabled:
+        warnings.append("Research-mode gradient templates remain exploratory and require gated review.")
+    if gradient_templates:
+        warnings.append(
+            "Gradient alternatives require feasibility, inspection, repair and maturity review."
+        )
+    if coating_options:
+        warnings.append(
+            "Coating options require substrate/interface, inspection and repair review."
+        )
+
+    return {
+        "limiting_factors": copied_limiting_factors,
+        "candidate_class": candidate_class,
+        "substrate_family": substrate_family,
+        "process_routes": copied_process_routes,
+        "research_mode_enabled": research_mode_enabled,
+        "coating_options_considered": coating_options,
+        "gradient_templates_considered": gradient_templates,
+        "coating_option_count": len(coating_options),
+        "gradient_template_count": len(gradient_templates),
+        "comparison_status": comparison_status,
+        "notes": notes,
+        "warnings": warnings,
+    }
 
 
 def _candidate_id(candidate: Mapping[str, Any]) -> str:
@@ -442,7 +865,7 @@ def _build_pairwise(coating_profiles: list[Mapping[str, Any]], gradient_profiles
     ]
 
 
-def build_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str, Any]:
+def _build_package_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str, Any]:
     candidates = [candidate for candidate in _as_list(package.get("candidate_systems")) if isinstance(candidate, Mapping)]
     design_space = _mapping(package.get("design_space"))
     coating_candidates = [candidate for candidate in candidates if is_coating_enabled_candidate(candidate)]
@@ -544,6 +967,26 @@ def build_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str
         "summary_notes": summary_notes,
         "warnings": warnings,
     }
+
+
+def build_coating_vs_gradient_diagnostic(
+    limiting_factors: list[str] | Mapping[str, Any],
+    *,
+    candidate_class: str | None = None,
+    substrate_family: str | None = None,
+    process_routes: list[str] | None = None,
+    research_mode_enabled: bool = False,
+) -> dict[str, Any]:
+    if isinstance(limiting_factors, Mapping):
+        return _build_package_coating_vs_gradient_diagnostic(limiting_factors)
+
+    return _build_template_coating_vs_gradient_diagnostic(
+        limiting_factors,
+        candidate_class=candidate_class,
+        substrate_family=substrate_family,
+        process_routes=process_routes,
+        research_mode_enabled=research_mode_enabled,
+    )
 
 
 def attach_coating_vs_gradient_diagnostic(package: Mapping[str, Any]) -> dict[str, Any]:

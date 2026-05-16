@@ -150,6 +150,321 @@ def find_metric(metrics: list[dict], metric_id: str, default: str = "0") -> str:
     return default
 
 
+def short_label(value: object, *, max_length: int = 28) -> str:
+    text = str(value).replace("_", " ").strip()
+    if text:
+        text = text[0].upper() + text[1:]
+    if max_length >= 0 and len(text) > max_length:
+        return f"{text[:max_length]}..."
+    return text
+
+
+def badge_tone_class(tone: str) -> str:
+    return {
+        "positive": "badge-positive",
+        "neutral": "badge-neutral",
+        "caution": "badge-caution",
+        "high_caution": "badge-high-caution",
+        "info": "badge-info",
+    }.get(tone, "badge-info")
+
+
+def priority_tone(priority: str) -> str:
+    return {
+        "high": "high_caution",
+        "medium": "caution",
+        "low": "neutral",
+    }.get(priority, "info")
+
+
+def _mapping_rows(value: Any) -> list[dict]:
+    if isinstance(value, list):
+        return [dict(row) for row in value if isinstance(row, Mapping)]
+    return []
+
+
+def _metric_value(metrics: list[dict], metric_id: str) -> int:
+    value = find_metric(metrics, metric_id)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _yes_no(value: object) -> str:
+    return "Yes" if value is True else "No"
+
+
+def build_metric_card_models(view_model: dict) -> list[dict]:
+    cards: list[dict] = []
+    for metric in _mapping_rows(view_model.get("overview_metrics")):
+        cards.append(
+            {
+                "metric_id": str(metric.get("metric_id", "")),
+                "label": str(metric.get("label", "")),
+                "value": str(metric.get("value", "")),
+                "tone": str(metric.get("tone", "info")),
+                "help_text": str(metric.get("help_text", "")),
+            }
+        )
+    return cards
+
+
+def build_candidate_board_cards(view_model: dict) -> list[dict]:
+    board_cards: list[dict] = []
+    for card in _mapping_rows(view_model.get("cards")):
+        metrics = _mapping_rows(card.get("metrics"))
+        board_cards.append(
+            {
+                "candidate_id": str(card.get("candidate_id", "")),
+                "system_name": str(card.get("system_name", "")),
+                "tier_label": str(card.get("tier_label", "")),
+                "frontier_status": short_label(card.get("frontier_status", "")),
+                "evidence_band": short_label(card.get("evidence_band", "")),
+                "plan_status": short_label(card.get("plan_status", "")),
+                "validation_need_count": _metric_value(metrics, "validation_need_count"),
+                "high_priority_need_count": _metric_value(metrics, "high_priority_need_count"),
+                "medium_priority_need_count": _metric_value(metrics, "medium_priority_need_count"),
+                "low_priority_need_count": _metric_value(metrics, "low_priority_need_count"),
+                "research_mode_exposure": bool(card.get("research_mode_exposure") is True),
+                "badges": [
+                    str(badge.get("label", ""))
+                    for badge in _mapping_rows(card.get("badges"))
+                    if str(badge.get("label", ""))
+                ],
+                "top_review_actions": [str(action) for action in card.get("review_actions", [])[:3]],
+                "caution_summary": [str(caution) for caution in card.get("caution_summary", [])[:3]],
+            }
+        )
+    return board_cards
+
+
+def build_candidate_comparison_matrix(view_model: dict) -> list[dict]:
+    rows: list[dict] = []
+    for card in build_candidate_board_cards(view_model):
+        rows.append(
+            {
+                "Candidate": card["system_name"],
+                "Tier": card["tier_label"],
+                "Frontier": card["frontier_status"],
+                "Evidence": card["evidence_band"],
+                "Validation needs": card["validation_need_count"],
+                "High priority": card["high_priority_need_count"],
+                "Research mode": _yes_no(card["research_mode_exposure"]),
+            }
+        )
+    return rows
+
+
+def build_validation_burden_rows(view_model: dict) -> list[dict]:
+    rows: list[dict] = []
+    for card in build_candidate_board_cards(view_model):
+        high = int(card["high_priority_need_count"])
+        medium = int(card["medium_priority_need_count"])
+        low = int(card["low_priority_need_count"])
+        rows.append(
+            {
+                "Candidate": card["system_name"],
+                "High": high,
+                "Medium": medium,
+                "Low": low,
+                "Total": high + medium + low,
+            }
+        )
+    return rows
+
+
+def build_chart_display_models(view_model: dict) -> list[dict]:
+    chart_models: list[dict] = []
+    for chart in _mapping_rows(view_model.get("charts")):
+        chart_models.append(
+            {
+                "chart_id": str(chart.get("chart_id", "")),
+                "title": str(chart.get("title", chart.get("chart_id", "Chart"))),
+                "rows": [
+                    {
+                        "label": short_label(row.get("label", "")),
+                        "value": row.get("value", 0),
+                    }
+                    for row in flatten_chart_data(chart)
+                ],
+            }
+        )
+    return chart_models
+
+
+def build_review_export_summary(export_package: dict) -> dict:
+    manifest = export_package.get("manifest", {})
+    if not isinstance(manifest, Mapping):
+        manifest = {}
+    return {
+        "export_type": str(manifest.get("export_type", "")),
+        "schema_version": str(manifest.get("schema_version", "")),
+        "candidate_count": int(manifest.get("candidate_count", 0)),
+        "card_count": int(manifest.get("card_count", 0)),
+        "chart_count": int(manifest.get("chart_count", 0)),
+        "limitation_count": len(manifest.get("limitations", []))
+        if isinstance(manifest.get("limitations"), list)
+        else 0,
+        "warning_count": len(manifest.get("warnings", []))
+        if isinstance(manifest.get("warnings"), list)
+        else 0,
+    }
+
+
+def build_feedback_summary_rows(feedback_package: dict) -> list[dict]:
+    rows: list[dict] = []
+    for summary in _mapping_rows(feedback_package.get("feedback_summaries")):
+        records = _mapping_rows(summary.get("feedback_records"))
+        rows.append(
+            {
+                "Candidate": str(summary.get("system_name", "")),
+                "Feedback records": int(summary.get("feedback_count", len(records))),
+                "Follow-up required": _yes_no(bool(summary.get("follow_up_count", 0))),
+                "Review state": short_label(summary.get("review_state", "")),
+                "Draft template count": len(records),
+            }
+        )
+    return rows
+
+
+def build_adapter_summary_rows(adapter_review: dict) -> list[dict]:
+    registry = adapter_review.get("registry", {})
+    adapters = registry.get("adapters", []) if isinstance(registry, Mapping) else []
+    rows: list[dict] = []
+    for adapter in _mapping_rows(adapters):
+        rows.append(
+            {
+                "Adapter": str(adapter.get("adapter_label", adapter.get("adapter_id", ""))),
+                "Model family": short_label(adapter.get("model_family", "")),
+                "Tasks": ", ".join(short_label(task) for task in adapter.get("supported_tasks", [])),
+                "Status": short_label(adapter.get("adapter_status", "")),
+                "Live calls": "Disabled" if adapter.get("live_calls_enabled") is False else "Enabled",
+                "Generated candidates allowed": _yes_no(adapter.get("generated_candidates_allowed")),
+                "Mature evidence allowed": _yes_no(adapter.get("mature_evidence_allowed")),
+            }
+        )
+    return rows
+
+
+def css_styles() -> str:
+    return """
+<style>
+.cockpit-card {
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0.35rem 0 1rem 0;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+.metric-card {
+  min-height: 8.5rem;
+}
+.candidate-card {
+  min-height: 20rem;
+}
+.candidate-card h3, .metric-card h3 {
+  margin: 0 0 0.4rem 0;
+  line-height: 1.25;
+}
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  margin: 0.1rem 0.2rem 0.1rem 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.badge-positive { background: #e6f4ea; color: #137333; }
+.badge-neutral { background: #eef2f7; color: #344054; }
+.badge-caution { background: #fff4d6; color: #8a5a00; }
+.badge-high-caution { background: #fde7e9; color: #b42318; }
+.badge-info { background: #e8f1ff; color: #175cd3; }
+.safety-box {
+  border-left: 5px solid #175cd3;
+  background: #f3f7ff;
+  padding: 0.9rem 1rem;
+  margin: 0.75rem 0 1.2rem 0;
+  border-radius: 6px;
+  color: #1d2939;
+}
+.muted-text {
+  color: #667085;
+  font-size: 0.9rem;
+}
+.section-header {
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+  color: #101828;
+}
+ul.compact-list {
+  margin-top: 0.25rem;
+  padding-left: 1.1rem;
+}
+</style>
+"""
+
+
+def _escape_html(value: object) -> str:
+    return str(value).replace("<", "&lt;").replace(">", "&gt;")
+
+
+def render_badges_html(labels: list[str], *, tone: str = "info") -> str:
+    css_class = badge_tone_class(tone)
+    return "".join(
+        f'<span class="badge {css_class}">{_escape_html(label)}</span>'
+        for label in labels
+    )
+
+
+def _list_html(values: Sequence[str]) -> str:
+    if not values:
+        return '<p class="muted-text">None listed</p>'
+    items = "".join(f"<li>{_escape_html(value)}</li>" for value in values)
+    return f'<ul class="compact-list">{items}</ul>'
+
+
+def build_candidate_card_html(card_model: dict) -> str:
+    counts = (
+        f'{card_model.get("validation_need_count", 0)} total | '
+        f'{card_model.get("high_priority_need_count", 0)} high | '
+        f'{card_model.get("medium_priority_need_count", 0)} medium | '
+        f'{card_model.get("low_priority_need_count", 0)} low'
+    )
+    return f"""
+<div class="cockpit-card candidate-card">
+  <h3>{_escape_html(card_model.get("system_name", ""))}</h3>
+  {render_badges_html([str(card_model.get("tier_label", ""))], tone="positive")}
+  {render_badges_html(card_model.get("badges", [])[:3], tone="info")}
+  <p class="muted-text">
+    Frontier: {_escape_html(card_model.get("frontier_status", ""))} |
+    Evidence: {_escape_html(card_model.get("evidence_band", ""))} |
+    Plan: {_escape_html(card_model.get("plan_status", ""))}
+  </p>
+  <p><strong>Validation needs:</strong> {_escape_html(counts)}</p>
+  <div class="section-header">Review actions</div>
+  {_list_html(card_model.get("top_review_actions", []))}
+  <div class="section-header">Caution summary</div>
+  {_list_html(card_model.get("caution_summary", []))}
+  <p class="muted-text"><strong>Decision-support only</strong></p>
+</div>
+"""
+
+
+def build_metric_card_html(metric: dict) -> str:
+    tone_class = badge_tone_class(str(metric.get("tone", "info")))
+    return f"""
+<div class="cockpit-card metric-card">
+  <span class="badge {tone_class}">{_escape_html(metric.get("metric_id", ""))}</span>
+  <h3>{_escape_html(metric.get("value", ""))}</h3>
+  <p><strong>{_escape_html(metric.get("label", ""))}</strong></p>
+  <p class="muted-text">{_escape_html(metric.get("help_text", ""))}</p>
+</div>
+"""
+
+
 def collect_forbidden_decision_fields(value: object) -> list[str]:
     hits: list[str] = []
 
@@ -222,16 +537,23 @@ def _show_bullets(st: Any, title: str, values: Sequence[str]) -> None:
 def main() -> None:
     import streamlit as st
 
-    st.set_page_config(page_title="Phase 6.1 Decision Cockpit Prototype", layout="wide")
-    st.title("Phase 6.1 Decision Cockpit Prototype")
-    st.info(
-        "Standalone prototype viewer only. This is not the production app, does not "
-        "change analysis outputs, and does not provide approval."
+    st.set_page_config(page_title="Phase 6.2 Decision Cockpit Prototype", layout="wide")
+    st.markdown(css_styles(), unsafe_allow_html=True)
+    st.title("Material-System Decision Cockpit")
+    st.caption("Standalone Phase 6 prototype using Phase 5 decision-support outputs")
+    st.markdown(
+        """
+<div class="safety-box">
+Prototype viewer only. No final recommendation, ranking, qualification approval
+or certification approval is implied.
+</div>
+""",
+        unsafe_allow_html=True,
     )
 
     research_mode_enabled = st.sidebar.checkbox("Enable research-mode view", value=False)
-    st.sidebar.write(
-        "Research mode remains gated. It does not enable live model calls or approval paths."
+    st.sidebar.caption(
+        "Research mode remains gated and does not enable live specialist-model calls."
     )
 
     view_model = build_demo_cockpit_view_model(
@@ -243,72 +565,190 @@ def main() -> None:
 
     tabs = st.tabs(
         [
-            "Overview",
-            "Candidate cards",
-            "Charts",
-            "Review export",
-            "Feedback records",
+            "Cockpit overview",
+            "Candidate board",
+            "Trade-offs and validation",
+            "Candidate drilldown",
+            "Review package",
+            "Feedback",
             "Specialist adapters",
         ]
     )
 
     with tabs[0]:
-        st.subheader("Overview metrics")
-        st.table(_table_rows(view_model.get("overview_metrics")))
-        _show_bullets(st, "Global notes", view_model.get("global_notes", []))
-        _show_bullets(st, "Global warnings", view_model.get("global_warnings", []))
-        _show_bullets(st, "Prototype safety notes", prototype_safety_notes())
+        st.subheader("Cockpit overview")
+        metric_columns = st.columns(3)
+        for index, metric in enumerate(build_metric_card_models(view_model)):
+            with metric_columns[index % 3]:
+                st.markdown(build_metric_card_html(metric), unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="section-header">Candidate comparison</div>',
+            unsafe_allow_html=True,
+        )
+        st.table(build_candidate_comparison_matrix(view_model))
+
+        with st.expander("Safety notes", expanded=False):
+            _show_bullets(st, "Prototype boundaries", prototype_safety_notes())
+            _show_bullets(st, "Global notes", view_model.get("global_notes", []))
+            _show_bullets(st, "Global warnings", view_model.get("global_warnings", []))
 
     with tabs[1]:
-        for card in _table_rows(view_model.get("cards")):
-            with st.expander(str(card.get("headline", card.get("candidate_id", "Candidate")))):
-                st.table(build_candidate_card_display_rows(card))
-                st.write("Badges")
-                st.write(", ".join(str(badge.get("label", "")) for badge in _table_rows(card.get("badges"))))
-                st.write("Metrics")
-                st.table(_table_rows(card.get("metrics")))
-                st.write("Priority validation needs")
-                st.table(_table_rows(card.get("priority_validation_needs")))
-                _show_bullets(st, "Review actions", card.get("review_actions", []))
-                _show_bullets(st, "Caution summary", card.get("caution_summary", []))
-                st.write("Detail sections")
-                for section in _table_rows(card.get("detail_sections")):
-                    st.write(str(section.get("title", "")))
-                    st.table(_table_rows(section.get("rows")))
+        st.subheader("Candidate board")
+        columns = st.columns(2)
+        for index, card_model in enumerate(build_candidate_board_cards(view_model)):
+            with columns[index % 2]:
+                st.markdown(build_candidate_card_html(card_model), unsafe_allow_html=True)
 
     with tabs[2]:
-        for chart in _table_rows(view_model.get("charts")):
-            st.subheader(str(chart.get("title", chart.get("chart_id", "Chart"))))
-            rows = flatten_chart_data(chart)
+        st.subheader("Trade-offs and validation")
+        validation_rows = build_validation_burden_rows(view_model)
+        st.markdown(
+            '<div class="section-header">Validation burden by candidate</div>',
+            unsafe_allow_html=True,
+        )
+        st.table(validation_rows)
+        if validation_rows:
+            st.bar_chart(validation_rows, x="Candidate", y=["High", "Medium", "Low"])
+
+        for chart_model in build_chart_display_models(view_model):
+            st.markdown(
+                f'<div class="section-header">{_escape_html(chart_model["title"])}</div>',
+                unsafe_allow_html=True,
+            )
+            rows = chart_model["rows"]
             st.table(rows)
             if rows:
-                st.bar_chart({row["label"]: row["value"] for row in rows})
+                st.bar_chart(rows, x="label", y="value")
 
     with tabs[3]:
-        st.subheader("Manifest")
-        st.json(export_package.get("manifest", {}))
-        st.subheader("Candidate summaries")
-        st.table(_table_rows(export_package.get("candidate_summaries")))
-        st.subheader("Markdown report")
-        st.code(str(export_package.get("markdown_report", "")), language="markdown")
+        st.subheader("Candidate drilldown")
+        cards = _table_rows(view_model.get("cards"))
+        names = [
+            str(card.get("system_name", card.get("candidate_id", "Candidate")))
+            for card in cards
+        ]
+        selected_name = st.selectbox("Candidate", names)
+        selected_card = cards[names.index(selected_name)] if selected_name in names else {}
+        selected_board_card = build_candidate_board_cards({"cards": [selected_card]})[0]
+
+        st.markdown(build_candidate_card_html(selected_board_card), unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-header">Card fields</div>',
+            unsafe_allow_html=True,
+        )
+        st.table(build_candidate_card_display_rows(selected_card))
+        st.markdown('<div class="section-header">Badges</div>', unsafe_allow_html=True)
+        st.markdown(
+            render_badges_html(selected_board_card.get("badges", []), tone="info"),
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="section-header">Metrics</div>', unsafe_allow_html=True)
+        st.table(
+            [
+                {
+                    "Metric": metric.get("label", ""),
+                    "Value": metric.get("value", ""),
+                    "Tone": short_label(metric.get("tone", "")),
+                    "Help": metric.get("help_text", ""),
+                }
+                for metric in _table_rows(selected_card.get("metrics"))
+            ]
+        )
+        st.markdown(
+            '<div class="section-header">Priority validation needs</div>',
+            unsafe_allow_html=True,
+        )
+        st.table(
+            [
+                {
+                    "Priority": short_label(need.get("priority", "")),
+                    "Category": short_label(need.get("category", "")),
+                    "Activity": need.get("validation_activity", ""),
+                    "Status": short_label(need.get("status", "")),
+                }
+                for need in _table_rows(selected_card.get("priority_validation_needs"))
+            ]
+        )
+        _show_bullets(st, "Review actions", selected_card.get("review_actions", []))
+        _show_bullets(st, "Caution summary", selected_card.get("caution_summary", []))
+
+        for section in _table_rows(selected_card.get("detail_sections")):
+            with st.expander(str(section.get("title", "Detail section")), expanded=False):
+                st.table(_table_rows(section.get("rows")))
 
     with tabs[4]:
-        st.subheader("Feedback summaries")
-        st.table(_table_rows(feedback_package.get("feedback_summaries")))
-        st.subheader("Draft feedback templates")
-        for summary in _table_rows(feedback_package.get("feedback_summaries")):
-            st.write(str(summary.get("candidate_id", "")))
-            st.table(_table_rows(summary.get("feedback_records")))
-        st.caption("Draft records are templates only and do not modify analysis outputs.")
+        st.subheader("Review package")
+        st.markdown(
+            '<div class="section-header">Compact export summary</div>',
+            unsafe_allow_html=True,
+        )
+        st.table([build_review_export_summary(export_package)])
+        st.markdown(
+            '<div class="section-header">Candidate summaries</div>',
+            unsafe_allow_html=True,
+        )
+        st.table(
+            [
+                {
+                    "candidate_id": summary.get("candidate_id", ""),
+                    "system_name": summary.get("system_name", ""),
+                    "tier_label": summary.get("tier_label", ""),
+                    "frontier_status": short_label(summary.get("frontier_status", "")),
+                    "evidence_band": short_label(summary.get("evidence_band", "")),
+                    "plan_status": short_label(summary.get("plan_status", "")),
+                    "validation_need_count": summary.get("validation_need_count", 0),
+                }
+                for summary in _table_rows(export_package.get("candidate_summaries"))
+            ]
+        )
+        with st.expander("Markdown report", expanded=False):
+            st.code(str(export_package.get("markdown_report", "")), language="markdown")
 
     with tabs[5]:
-        st.subheader("Disabled adapter registry summary")
-        st.json(adapter_review.get("summary", {}))
-        registry = adapter_review.get("registry", {})
-        adapters = registry.get("adapters", []) if isinstance(registry, Mapping) else []
-        st.subheader("Adapters")
-        st.table(_table_rows(adapters))
-        st.warning("Live calls are disabled. Specialist adapters are contract placeholders only.")
+        st.subheader("Feedback")
+        st.table(build_feedback_summary_rows(feedback_package))
+        st.caption("Draft records are templates only and do not modify analysis outputs.")
+        for summary in _table_rows(feedback_package.get("feedback_summaries")):
+            label = str(summary.get("system_name", summary.get("candidate_id", "Candidate")))
+            with st.expander(f"{label} draft templates", expanded=False):
+                st.caption("Templates only. They do not alter the analysis output.")
+                st.table(
+                    [
+                        {
+                            "Feedback type": short_label(record.get("feedback_type", "")),
+                            "Review state": short_label(record.get("record_status", "")),
+                            "Follow-up required": _yes_no(record.get("follow_up_required")),
+                            "Decision position": short_label(
+                                record.get("decision_position", "")
+                            ),
+                            "Warnings": "; ".join(record.get("warnings", [])),
+                        }
+                        for record in _table_rows(summary.get("feedback_records"))
+                    ]
+                )
+
+    with tabs[6]:
+        st.subheader("Specialist adapters")
+        st.warning("All specialist adapters are disabled. No live calls are available.")
+        summary = adapter_review.get("summary", {})
+        if isinstance(summary, Mapping):
+            st.table(
+                [
+                    {
+                        "Adapters": summary.get("adapter_count", 0),
+                        "Live enabled": summary.get("live_enabled_count", 0),
+                        "Generated candidates allowed": summary.get(
+                            "generated_candidates_allowed_count", 0
+                        ),
+                        "Mature evidence allowed": summary.get(
+                            "mature_evidence_allowed_count", 0
+                        ),
+                        "Registry safe": _yes_no(summary.get("registry_safe")),
+                    }
+                ]
+            )
+        st.table(build_adapter_summary_rows(adapter_review))
 
 
 if __name__ == "__main__":

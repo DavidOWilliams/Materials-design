@@ -4,6 +4,13 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
+from src.decision_language import (
+    display_value,
+    glossary_rows,
+    status_label,
+    term_label,
+    tooltip_text,
+)
 from src.phase5_cockpit_review_export import (
     build_cockpit_review_export_package_from_view_model,
 )
@@ -195,14 +202,29 @@ def _yes_no(value: object) -> str:
     return "Yes" if value is True else "No"
 
 
+def _boolish(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return False
+
+
+def display_field_value(field_name: str, value: object) -> str:
+    if isinstance(value, str) and value.strip().lower() in {"true", "false"}:
+        value = value.strip().lower() == "true"
+    return display_value(field_name, value)
+
+
 def build_metric_card_models(view_model: dict) -> list[dict]:
     cards: list[dict] = []
     for metric in _mapping_rows(view_model.get("overview_metrics")):
+        metric_id = str(metric.get("metric_id", ""))
         cards.append(
             {
-                "metric_id": str(metric.get("metric_id", "")),
+                "metric_id": metric_id,
                 "label": str(metric.get("label", "")),
-                "value": str(metric.get("value", "")),
+                "value": display_field_value(metric_id, metric.get("value", "")),
                 "tone": str(metric.get("tone", "info")),
                 "help_text": str(metric.get("help_text", "")),
             }
@@ -214,19 +236,25 @@ def build_candidate_board_cards(view_model: dict) -> list[dict]:
     board_cards: list[dict] = []
     for card in _mapping_rows(view_model.get("cards")):
         metrics = _mapping_rows(card.get("metrics"))
+        research_mode_exposure = _boolish(card.get("research_mode_exposure"))
         board_cards.append(
             {
                 "candidate_id": str(card.get("candidate_id", "")),
                 "system_name": str(card.get("system_name", "")),
                 "tier_label": str(card.get("tier_label", "")),
-                "frontier_status": short_label(card.get("frontier_status", "")),
-                "evidence_band": short_label(card.get("evidence_band", "")),
-                "plan_status": short_label(card.get("plan_status", "")),
+                "frontier_status": status_label(card.get("frontier_status", "")),
+                "evidence_band": display_field_value(
+                    "evidence_maturity", card.get("evidence_band", "")
+                ),
+                "plan_status": status_label(card.get("plan_status", "")),
                 "validation_need_count": _metric_value(metrics, "validation_need_count"),
                 "high_priority_need_count": _metric_value(metrics, "high_priority_need_count"),
                 "medium_priority_need_count": _metric_value(metrics, "medium_priority_need_count"),
                 "low_priority_need_count": _metric_value(metrics, "low_priority_need_count"),
-                "research_mode_exposure": bool(card.get("research_mode_exposure") is True),
+                "research_mode_exposure": research_mode_exposure,
+                "research_mode_exposure_label": display_field_value(
+                    "research_mode_exposure", research_mode_exposure
+                ),
                 "badges": [
                     str(badge.get("label", ""))
                     for badge in _mapping_rows(card.get("badges"))
@@ -246,11 +274,11 @@ def build_candidate_comparison_matrix(view_model: dict) -> list[dict]:
             {
                 "Candidate": card["system_name"],
                 "Tier": card["tier_label"],
-                "Frontier": card["frontier_status"],
-                "Evidence": card["evidence_band"],
-                "Validation needs": card["validation_need_count"],
+                "Trade-off boundary": card["frontier_status"],
+                "Evidence maturity": card["evidence_band"],
+                term_label("validation_needs"): card["validation_need_count"],
                 "High priority": card["high_priority_need_count"],
-                "Research mode": _yes_no(card["research_mode_exposure"]),
+                "Research-mode exposure": card["research_mode_exposure_label"],
             }
         )
     return rows
@@ -283,7 +311,7 @@ def build_chart_display_models(view_model: dict) -> list[dict]:
                 "title": str(chart.get("title", chart.get("chart_id", "Chart"))),
                 "rows": [
                     {
-                        "label": short_label(row.get("label", "")),
+                        "label": short_label(status_label(row.get("label", ""))),
                         "value": row.get("value", 0),
                     }
                     for row in flatten_chart_data(chart)
@@ -320,7 +348,9 @@ def build_feedback_summary_rows(feedback_package: dict) -> list[dict]:
             {
                 "Candidate": str(summary.get("system_name", "")),
                 "Feedback records": int(summary.get("feedback_count", len(records))),
-                "Follow-up required": _yes_no(bool(summary.get("follow_up_count", 0))),
+                "Follow-up required": display_field_value(
+                    "follow_up_required", bool(summary.get("follow_up_count", 0))
+                ),
                 "Review state": short_label(summary.get("review_state", "")),
                 "Draft template count": len(records),
             }
@@ -339,12 +369,37 @@ def build_adapter_summary_rows(adapter_review: dict) -> list[dict]:
                 "Model family": short_label(adapter.get("model_family", "")),
                 "Tasks": ", ".join(short_label(task) for task in adapter.get("supported_tasks", [])),
                 "Status": short_label(adapter.get("adapter_status", "")),
-                "Live calls": "Disabled" if adapter.get("live_calls_enabled") is False else "Enabled",
-                "Generated candidates allowed": _yes_no(adapter.get("generated_candidates_allowed")),
-                "Mature evidence allowed": _yes_no(adapter.get("mature_evidence_allowed")),
+                "Live calls": display_field_value(
+                    "live_calls_enabled", adapter.get("live_calls_enabled")
+                ),
+                "Generated candidates allowed": display_field_value(
+                    "generated_candidates_allowed",
+                    adapter.get("generated_candidates_allowed"),
+                ),
+                "Mature evidence allowed": display_field_value(
+                    "mature_evidence_allowed", adapter.get("mature_evidence_allowed")
+                ),
             }
         )
     return rows
+
+
+def cockpit_glossary_rows() -> list[dict]:
+    return glossary_rows(
+        [
+            "frontier",
+            "validation_needs",
+            "validation_burden",
+            "evidence_maturity",
+            "recommendation_tier",
+            "criterion_value",
+            "confidence",
+            "uncertainty",
+            "model_supported_estimate",
+            "optimisation_iteration",
+            "measurement_feedback",
+        ]
+    )
 
 
 def css_styles() -> str:
@@ -439,11 +494,14 @@ def build_candidate_card_html(card_model: dict) -> str:
   {render_badges_html([str(card_model.get("tier_label", ""))], tone="positive")}
   {render_badges_html(card_model.get("badges", [])[:3], tone="info")}
   <p class="muted-text">
-    Frontier: {_escape_html(card_model.get("frontier_status", ""))} |
-    Evidence: {_escape_html(card_model.get("evidence_band", ""))} |
-    Plan: {_escape_html(card_model.get("plan_status", ""))}
+    Trade-off boundary: {_escape_html(card_model.get("frontier_status", ""))} |
+    Evidence maturity: {_escape_html(card_model.get("evidence_band", ""))} |
+    Evidence/review plan: {_escape_html(card_model.get("plan_status", ""))}
   </p>
-  <p><strong>Validation needs:</strong> {_escape_html(counts)}</p>
+  <p class="muted-text">
+    Research-mode exposure: {_escape_html(card_model.get("research_mode_exposure_label", ""))}
+  </p>
+  <p><strong>Evidence still needed:</strong> {_escape_html(counts)}</p>
   <div class="section-header">Review actions</div>
   {_list_html(card_model.get("top_review_actions", []))}
   <div class="section-header">Caution summary</div>
@@ -490,20 +548,24 @@ def view_model_has_no_forbidden_decision_fields(view_model: dict) -> bool:
 
 def build_candidate_card_display_rows(card: dict) -> list[dict]:
     metrics = card.get("metrics") if isinstance(card.get("metrics"), list) else []
+    research_mode_exposure = _boolish(card.get("research_mode_exposure"))
     return [
-        {"field": "candidate_id", "value": str(card.get("candidate_id", ""))},
-        {"field": "system_name", "value": str(card.get("system_name", ""))},
-        {"field": "tier_label", "value": str(card.get("tier_label", ""))},
-        {"field": "frontier_status", "value": str(card.get("frontier_status", ""))},
-        {"field": "evidence_band", "value": str(card.get("evidence_band", ""))},
-        {"field": "plan_status", "value": str(card.get("plan_status", ""))},
+        {"field": "Candidate ID", "value": str(card.get("candidate_id", ""))},
+        {"field": "System name", "value": str(card.get("system_name", ""))},
+        {"field": term_label("recommendation_tier"), "value": str(card.get("tier_label", ""))},
+        {"field": "Trade-off boundary", "value": status_label(card.get("frontier_status", ""))},
         {
-            "field": "validation_need_count",
+            "field": term_label("evidence_maturity"),
+            "value": display_field_value("evidence_maturity", card.get("evidence_band", "")),
+        },
+        {"field": "Evidence/review plan", "value": status_label(card.get("plan_status", ""))},
+        {
+            "field": term_label("validation_needs"),
             "value": find_metric(metrics, "validation_need_count"),
         },
         {
-            "field": "research_mode_exposure",
-            "value": "true" if card.get("research_mode_exposure") is True else "false",
+            "field": "Research-mode exposure",
+            "value": display_field_value("research_mode_exposure", research_mode_exposure),
         },
     ]
 
@@ -544,8 +606,9 @@ def main() -> None:
     st.markdown(
         """
 <div class="safety-box">
-Prototype viewer only. No final recommendation, ranking, qualification approval
-or certification approval is implied.
+Prototype viewer only. No final recommendation is made. No ranking or winner
+selection is provided. No qualification approval is implied. No certification
+approval is implied. Engineering review is required before use.
 </div>
 """,
         unsafe_allow_html=True,
@@ -566,8 +629,8 @@ or certification approval is implied.
     tabs = st.tabs(
         [
             "Cockpit overview",
-            "Candidate board",
-            "Trade-offs and validation",
+            "Candidate options",
+            "Trade-off evidence",
             "Candidate drilldown",
             "Review package",
             "Feedback",
@@ -586,7 +649,13 @@ or certification approval is implied.
             '<div class="section-header">Candidate comparison</div>',
             unsafe_allow_html=True,
         )
+        st.caption(tooltip_text("frontier"))
+        st.caption(tooltip_text("criterion_value"))
+        st.caption(tooltip_text("model_supported_estimate"))
         st.table(build_candidate_comparison_matrix(view_model))
+
+        with st.expander("Guide to cockpit terms", expanded=False):
+            st.table(cockpit_glossary_rows())
 
         with st.expander("Safety notes", expanded=False):
             _show_bullets(st, "Prototype boundaries", prototype_safety_notes())
@@ -594,19 +663,20 @@ or certification approval is implied.
             _show_bullets(st, "Global warnings", view_model.get("global_warnings", []))
 
     with tabs[1]:
-        st.subheader("Candidate board")
+        st.subheader("Candidate options")
         columns = st.columns(2)
         for index, card_model in enumerate(build_candidate_board_cards(view_model)):
             with columns[index % 2]:
                 st.markdown(build_candidate_card_html(card_model), unsafe_allow_html=True)
 
     with tabs[2]:
-        st.subheader("Trade-offs and validation")
+        st.subheader("Trade-off evidence")
         validation_rows = build_validation_burden_rows(view_model)
         st.markdown(
-            '<div class="section-header">Validation burden by candidate</div>',
+            '<div class="section-header">Evidence and review effort by candidate</div>',
             unsafe_allow_html=True,
         )
+        st.caption(tooltip_text("validation_burden"))
         st.table(validation_rows)
         if validation_rows:
             st.bar_chart(validation_rows, x="Candidate", y=["High", "Medium", "Low"])
@@ -691,13 +761,21 @@ or certification approval is implied.
         st.table(
             [
                 {
-                    "candidate_id": summary.get("candidate_id", ""),
-                    "system_name": summary.get("system_name", ""),
-                    "tier_label": summary.get("tier_label", ""),
-                    "frontier_status": short_label(summary.get("frontier_status", "")),
-                    "evidence_band": short_label(summary.get("evidence_band", "")),
-                    "plan_status": short_label(summary.get("plan_status", "")),
-                    "validation_need_count": summary.get("validation_need_count", 0),
+                    "Candidate ID": summary.get("candidate_id", ""),
+                    "System name": summary.get("system_name", ""),
+                    term_label("recommendation_tier"): summary.get("tier_label", ""),
+                    "Trade-off boundary": status_label(
+                        summary.get("frontier_status", "")
+                    ),
+                    term_label("evidence_maturity"): display_field_value(
+                        "evidence_maturity", summary.get("evidence_band", "")
+                    ),
+                    "Evidence/review plan": status_label(
+                        summary.get("plan_status", "")
+                    ),
+                    term_label("validation_needs"): summary.get(
+                        "validation_need_count", 0
+                    ),
                 }
                 for summary in _table_rows(export_package.get("candidate_summaries"))
             ]
@@ -718,7 +796,10 @@ or certification approval is implied.
                         {
                             "Feedback type": short_label(record.get("feedback_type", "")),
                             "Review state": short_label(record.get("record_status", "")),
-                            "Follow-up required": _yes_no(record.get("follow_up_required")),
+                            "Follow-up required": display_field_value(
+                                "follow_up_required",
+                                record.get("follow_up_required"),
+                            ),
                             "Decision position": short_label(
                                 record.get("decision_position", "")
                             ),
@@ -744,7 +825,9 @@ or certification approval is implied.
                         "Mature evidence allowed": summary.get(
                             "mature_evidence_allowed_count", 0
                         ),
-                        "Registry safe": _yes_no(summary.get("registry_safe")),
+                        "Registry safe": display_field_value(
+                            "registry_safe", summary.get("registry_safe")
+                        ),
                     }
                 ]
             )

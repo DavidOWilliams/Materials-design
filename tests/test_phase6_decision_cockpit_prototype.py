@@ -20,6 +20,23 @@ def _imported_modules(source):
     return modules
 
 
+def _string_values(value):
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        strings = []
+        for key, nested in value.items():
+            strings.extend(_string_values(key))
+            strings.extend(_string_values(nested))
+        return strings
+    if isinstance(value, list):
+        strings = []
+        for nested in value:
+            strings.extend(_string_values(nested))
+        return strings
+    return []
+
+
 def test_build_demo_candidates_returns_four_candidates_in_order():
     candidates = prototype.build_demo_candidates()
 
@@ -104,14 +121,14 @@ def test_candidate_card_display_rows_include_required_fields():
     rows = prototype.build_candidate_card_display_rows(card)
 
     assert [row["field"] for row in rows] == [
-        "candidate_id",
-        "system_name",
-        "tier_label",
-        "frontier_status",
-        "evidence_band",
-        "plan_status",
-        "validation_need_count",
-        "research_mode_exposure",
+        "Candidate ID",
+        "System name",
+        "Recommendation category",
+        "Trade-off boundary",
+        "Evidence maturity",
+        "Evidence/review plan",
+        "Evidence still needed",
+        "Research-mode exposure",
     ]
 
 
@@ -146,6 +163,29 @@ def test_build_metric_card_models_preserves_overview_metric_order():
     assert {"metric_id", "label", "value", "tone", "help_text"} <= set(cards[0])
 
 
+def test_display_field_value_converts_boolean_like_strings():
+    assert (
+        prototype.display_field_value("research_mode_enabled", "false")
+        == "Research-only options hidden"
+    )
+    assert (
+        prototype.display_field_value("live_calls_enabled", "false")
+        == "Live specialist-model calls disabled"
+    )
+
+
+def test_build_metric_card_models_does_not_expose_raw_false_for_research_mode():
+    view_model = prototype.build_demo_cockpit_view_model()
+
+    cards = prototype.build_metric_card_models(view_model)
+    research_mode = next(
+        card for card in cards if card["metric_id"] == "research_mode_enabled"
+    )
+
+    assert research_mode["value"] == "Research-only options hidden"
+    assert research_mode["value"] != "false"
+
+
 def test_build_candidate_board_cards_limits_review_actions():
     view_model = prototype.build_demo_cockpit_view_model()
 
@@ -159,6 +199,13 @@ def test_build_candidate_board_cards_limits_review_actions():
     assert all(len(card["caution_summary"]) <= 3 for card in cards)
 
 
+def test_build_candidate_board_cards_include_research_mode_exposure_label():
+    cards = prototype.build_candidate_board_cards(prototype.build_demo_cockpit_view_model())
+
+    assert cards[0]["research_mode_exposure"] is False
+    assert cards[0]["research_mode_exposure_label"] == "No research-mode exposure"
+
+
 def test_build_candidate_comparison_matrix_includes_readable_candidate_rows():
     view_model = prototype.build_demo_cockpit_view_model()
 
@@ -166,8 +213,23 @@ def test_build_candidate_comparison_matrix_includes_readable_candidate_rows():
 
     assert rows[0]["Candidate"] == "Ni superalloy + TBC reference"
     assert rows[0]["Tier"] == "Mature reference option"
-    assert rows[0]["Frontier"] == "On frontier"
-    assert rows[0]["Research mode"] == "No"
+    assert rows[0]["Trade-off boundary"] == "Not clearly dominated"
+    assert rows[0]["Evidence maturity"] == "Mature"
+    assert rows[0]["Research-mode exposure"] == "No research-mode exposure"
+    assert rows[0]["Research-mode exposure"] not in {"Yes", "No", "True", "False"}
+
+
+def test_build_candidate_comparison_matrix_uses_research_mode_exposure_phrase():
+    view_model = prototype.build_demo_cockpit_view_model(research_mode_enabled=True)
+
+    rows = prototype.build_candidate_comparison_matrix(view_model)
+    research_mode_values = {row["Research-mode exposure"] for row in rows}
+
+    assert research_mode_values <= {
+        "No research-mode exposure",
+        "Includes research-only assumptions",
+    }
+    assert not research_mode_values.intersection({"Yes", "No", "True", "False"})
 
 
 def test_build_validation_burden_rows_includes_priority_counts_and_total():
@@ -186,7 +248,7 @@ def test_build_chart_display_models_shortens_labels_and_preserves_order():
         chart["chart_id"] for chart in view_model["charts"]
     ]
     labels = [row["label"] for chart in charts for row in chart["rows"]]
-    assert "Validation needs available" in labels
+    assert "Evidence review actions avai..." in labels
     assert any(label.endswith("...") for label in labels)
 
 
@@ -215,7 +277,7 @@ def test_build_feedback_summary_rows_returns_readable_feedback_rows():
     assert rows[0] == {
         "Candidate": "Ni superalloy + TBC reference",
         "Feedback records": 1,
-        "Follow-up required": "No",
+        "Follow-up required": "No follow-up currently required",
         "Review state": "Feedback recorded",
         "Draft template count": 1,
     }
@@ -225,9 +287,22 @@ def test_build_adapter_summary_rows_reports_live_calls_disabled():
     rows = prototype.build_adapter_summary_rows(prototype.build_demo_adapter_contract_review())
 
     assert rows
-    assert all(row["Live calls"] == "Disabled" for row in rows)
-    assert all(row["Generated candidates allowed"] == "No" for row in rows)
-    assert all(row["Mature evidence allowed"] == "No" for row in rows)
+    assert all(row["Live calls"] == "Live specialist-model calls disabled" for row in rows)
+    assert all(row["Generated candidates allowed"] == "Generated candidates blocked" for row in rows)
+    assert all(row["Mature evidence allowed"] == "Mature evidence claims blocked" for row in rows)
+
+
+def test_cockpit_glossary_rows_returns_term_meaning_and_help_rows():
+    rows = prototype.cockpit_glossary_rows()
+
+    assert rows
+    assert {"Term", "Meaning", "Help"} <= set(rows[0])
+
+
+def test_cockpit_glossary_rows_includes_model_supported_estimate():
+    rows = prototype.cockpit_glossary_rows()
+
+    assert "Model-supported estimate" in {row["Term"] for row in rows}
 
 
 def test_css_styles_includes_card_and_badge_classes():
@@ -255,6 +330,9 @@ def test_build_candidate_card_html_includes_identity_and_safety_note():
 
     assert "Ni superalloy + TBC reference" in html
     assert "Mature reference option" in html
+    assert "Trade-off boundary" in html
+    assert "Evidence maturity" in html
+    assert "Evidence/review plan" in html
     assert "Decision-support only" in html
 
 
@@ -284,6 +362,44 @@ def test_helper_outputs_do_not_contain_forbidden_decision_fields():
     }
 
     assert prototype.collect_forbidden_decision_fields(helper_outputs) == []
+
+
+def test_candidate_card_display_rows_do_not_expose_raw_boolean_text():
+    card = prototype.build_demo_cockpit_view_model()["cards"][0]
+
+    rows = prototype.build_candidate_card_display_rows(card)
+    values = {row["value"] for row in rows}
+
+    assert "No research-mode exposure" in values
+    assert not values.intersection({"True", "False", "true", "false"})
+
+
+def test_ui_facing_helper_outputs_do_not_contain_raw_boolean_strings():
+    view_model = prototype.build_demo_cockpit_view_model()
+    feedback_package = prototype.build_demo_feedback_package()
+    adapter_review = prototype.build_demo_adapter_contract_review()
+    helper_outputs = {
+        "metric_cards": prototype.build_metric_card_models(view_model),
+        "candidate_cards": prototype.build_candidate_board_cards(view_model),
+        "comparison": prototype.build_candidate_comparison_matrix(view_model),
+        "card_rows": [
+            prototype.build_candidate_card_display_rows(card)
+            for card in view_model["cards"]
+        ],
+        "feedback": prototype.build_feedback_summary_rows(feedback_package),
+        "adapters": prototype.build_adapter_summary_rows(adapter_review),
+        "glossary": prototype.cockpit_glossary_rows(),
+    }
+
+    assert not set(_string_values(helper_outputs)).intersection(
+        {"True", "False", "true", "false"}
+    )
+
+
+def test_prototype_imports_decision_language():
+    modules = _imported_modules(_prototype_source())
+
+    assert "src.decision_language" in modules
 
 
 def test_prototype_does_not_import_app_ui_or_exporter_modules():

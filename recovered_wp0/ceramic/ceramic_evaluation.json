@@ -1,0 +1,88 @@
+{
+  "source_id": "Li2018_CODE",
+  "designs": {
+    "type1": {
+      "mean_curling_deg": 2.6333333333333333,
+      "sample_sd_deg": 0.3055050463303894,
+      "observed_angles_deg": [
+        2.7,
+        2.3,
+        2.9
+      ],
+      "composition_changes": 10,
+      "calculated_purge_ml": 5.0,
+      "nominal_equal_layer_mean_zirconia_fraction": 0.25,
+      "failure_status": [
+        "not_reported",
+        "not_reported",
+        "not_reported"
+      ]
+    },
+    "type2": {
+      "mean_curling_deg": 3.7,
+      "sample_sd_deg": 0.09999999999999987,
+      "observed_angles_deg": [
+        3.6,
+        3.8,
+        3.7
+      ],
+      "composition_changes": 5,
+      "calculated_purge_ml": 2.5,
+      "nominal_equal_layer_mean_zirconia_fraction": 0.2727272727272727,
+      "failure_status": [
+        "not_reported",
+        "not_reported",
+        "not_reported"
+      ]
+    },
+    "type3": {
+      "mean_curling_deg": null,
+      "sample_sd_deg": null,
+      "observed_angles_deg": [
+        4.9,
+        null,
+        null
+      ],
+      "composition_changes": 1,
+      "calculated_purge_ml": 0.5,
+      "nominal_equal_layer_mean_zirconia_fraction": 0.2727272727272727,
+      "failure_status": [
+        "cracked",
+        "delaminated",
+        "delaminated"
+      ]
+    }
+  },
+  "comparison": {
+    "scope": "Retrospective observed outcome comparison, not predictive physical model validation",
+    "curling_mean_reduction_percent": 28.828828828828833,
+    "purge_increase_ml": 2.5,
+    "paired_group_differences_deg": [
+      0.8999999999999999,
+      1.5,
+      0.8000000000000003
+    ],
+    "composition_budget_equal": false
+  },
+  "rounded_label_composition_check": {
+    "mean_absolute_difference_pp": 1.0909090909090908,
+    "maximum_absolute_difference_pp": 2,
+    "interpretation": "Descriptive check of rounded labels, not a measurement uncertainty estimate"
+  },
+  "milestone_gate": {
+    "passed": false,
+    "missing_fields": [
+      "actual_gcode",
+      "timestamped_feed_rates",
+      "measured_extruded_volume_log",
+      "per_layer_achieved_geometry",
+      "specimen_specific_porosity"
+    ],
+    "additional_blockers": [
+      "measurement uncertainty",
+      "specimen-level joining of commands and all achieved fields",
+      "held-out predictive validation",
+      "original B4C-SiC revised specimen measurements"
+    ]
+  }
+}

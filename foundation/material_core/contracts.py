@@ -30,7 +30,8 @@ class Contract(BaseModel):
 UNITS = {'length':'m', 'temperature':'K', 'conductivity':'W/(m K)',
          'heat_flux':'W/m2', 'areal_mass':'kg/m2', 'density':'kg/m3',
          'stress':'Pa', 'fraction':'1', 'time':'s', 'energy':'J',
-         'mass':'kg', 'volume':'m3', 'expansion':'1/K'}
+         'mass':'kg', 'volume':'m3', 'expansion':'1/K',
+         'force':'N', 'force_per_length':'N/m'}
 
 class Quantity(Contract):
     dimension: Text
@@ -366,21 +367,37 @@ class ThermoelasticSettings(Contract):
         return self
 
 
+class MappedThermalSettings(Contract):
+    kind: Literal['mapped_steady_conduction'] = 'mapped_steady_conduction'
+    mesh: Discretisation
+    conductivity_mapping: Literal['parallel_voigt_upper_bound'] = 'parallel_voigt_upper_bound'
+    interface_condition: Literal['perfect'] = 'perfect'
+    source_terms: Literal['none'] = 'none'
+    lateral_loss: Literal['none'] = 'none'
+    provenance: Provenance
+
+
 class CoupledThermomechanicalSettings(Contract):
     """Explicit matched thermal/mechanics settings for three D1 quantities."""
     kind: Literal['planar_coupled'] = 'planar_coupled'
-    thermal: ThermalSettings
+    thermal: MappedThermalSettings
     mechanics: ThermoelasticSettings
     density_mapping: Text
     property_pack_id: Text
     property_pack_version: Text
     property_pack_hash: Digest
+    temperature_min: Quantity
+    temperature_max: Quantity
     evaluation_context_hash: Digest
 
     @model_validator(mode='after')
     def consistent_mesh(self):
         if self.thermal.mesh != self.mechanics.mesh:
             raise ValueError('Thermal/mechanics mesh mismatch')
+        require_dimension(self.temperature_min,'temperature')
+        require_dimension(self.temperature_max,'temperature')
+        if self.temperature_max.value <= self.temperature_min.value:
+            raise ValueError('Invalid supported temperature range')
         return self
 
 
@@ -409,6 +426,29 @@ class ConstraintMetric(Contract):
         return self
 
 
+class SpatialFields(Contract):
+    coordinate_from_hot_m: tuple[Finite,...]
+    temperature_K: tuple[Positive,...]
+    signed_equibiaxial_stress_Pa: tuple[Finite,...]
+    signed_hot_to_cold_flux: Quantity
+    force_residual: Quantity
+    moment_residual: Quantity
+    curvature_per_m: Finite
+    sampled_stress_region: Literal['cell_centres'] = 'cell_centres'
+
+    @model_validator(mode='after')
+    def shapes(self):
+        n=len(self.coordinate_from_hot_m)
+        if n<1 or len(self.temperature_K)!=n or len(self.signed_equibiaxial_stress_Pa)!=n:
+            raise ValueError('Spatial field arrays must have matching nonempty coordinates')
+        if any(a>=b for a,b in zip(self.coordinate_from_hot_m,self.coordinate_from_hot_m[1:])):
+            raise ValueError('Coordinates must be strictly increasing')
+        require_dimension(self.signed_hot_to_cold_flux,'heat_flux')
+        require_dimension(self.force_residual,'force_per_length')
+        require_dimension(self.moment_residual,'force')
+        return self
+
+
 class Evaluation(Contract):
     kind: Literal['evaluation'] = 'evaluation'
 
@@ -418,6 +458,8 @@ class Evaluation(Contract):
         raw=self.model_dump(mode='json')
         if not self.constraint_metrics:
             raw.pop('constraint_metrics', None)
+        for key in ('spatial_fields','comparison_context_hash','evidence_status'):
+            if raw.get(key) is None: raw.pop(key,None)
         return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
     input_hash: Digest
     brief_hash: Digest
@@ -425,6 +467,9 @@ class Evaluation(Contract):
     status: Literal['complete','incomplete','unsupported','failed']
     metrics: tuple[Metric,...]
     constraint_metrics: tuple[ConstraintMetric,...] = ()
+    spatial_fields: SpatialFields | None = None
+    comparison_context_hash: Digest | None = None
+    evidence_status: Literal['synthetic','provisional','supported'] | None = None
     feasibility: Literal['unknown','conditional','infeasible']
     limitations: Annotated[tuple[Text,...], Field(min_length=1)]
     temperature_K: tuple[Positive,...] = ()

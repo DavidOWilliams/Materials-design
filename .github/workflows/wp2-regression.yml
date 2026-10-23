@@ -21,3 +21,12 @@ jobs:
         run: .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
       - name: Replay all three original architectures
         run: .venv-foundation/bin/python foundation/verify_demo.py --output /tmp/wp2-replay
+      - name: Persist and independently replay WP2 numerical scenarios
+        run: .venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp2-evidence
+      - name: Upload WP2 numerical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp2-numerical-evidence
+          path: /tmp/wp2-evidence/*.json
+          if-no-files-found: ignore

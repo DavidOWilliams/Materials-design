@@ -208,6 +208,30 @@ class RunStore:
             if shared is not None and (shared.value != metric.value or shared.status != metric.status):
                 raise ValueError('Shared objective and constraint metrics disagree')
 
+        # A mapped evaluation must be traceably tied to the identical
+        # property pack, context and selected physical target it calculated.
+        # Historic WP1 thermal artifacts have none of these fields.
+        from .contracts import CoupledThermomechanicalSettings
+        if isinstance(inputs.settings, CoupledThermomechanicalSettings):
+            from .wp2_numerical import property_pack_hash, comparison_context_hash
+            if inputs.settings.property_pack_hash != property_pack_hash(inputs.materials):
+                raise ValueError('Stored property-pack identity mismatch')
+            expected = comparison_context_hash(inputs.brief, inputs.settings,
+                                               inputs.evaluation_target)
+            if inputs.settings.evaluation_context_hash != expected:
+                raise ValueError('Input comparison context identity mismatch')
+            if evaluation.comparison_context_hash != expected:
+                raise ValueError('Evaluation comparison context identity mismatch')
+            if evaluation.evidence_status is None:
+                raise ValueError('Mapped evaluation must declare evidence maturity')
+            fields = evaluation.spatial_fields
+            if evaluation.status == 'complete' and fields is None:
+                raise ValueError('Complete mapped result lacks spatial fields')
+            if fields is not None and (
+                fields.coordinate_from_hot_m[0] < 0 or
+                fields.coordinate_from_hot_m[-1] > inputs.brief.thickness.value):
+                raise ValueError('Spatial coordinates outside coupon geometry')
+
     def finish(self, run_id: str, evaluation: Evaluation) -> None:
         if not isinstance(evaluation, Evaluation):
             raise TypeError('Expected Evaluation')

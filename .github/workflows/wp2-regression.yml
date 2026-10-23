@@ -1,0 +1,21 @@
+name: WP2 foundation regression
+on:
+  push:
+    branches: [wp2-numerical-2026-10-23]
+  workflow_dispatch:
+jobs:
+  numerical-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: bash foundation/setup.sh
+      - name: Run WP1 and WP0R regressions plus WP2 gate
+        env:
+          PYTHONPATH: foundation
+        run: .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: Replay all three original architectures
+        run: .venv-foundation/bin/python foundation/verify_demo.py --output /tmp/wp2-replay

@@ -100,3 +100,54 @@ beginning with analytical free expansion, restrained expansion and a layered
 reference. It should reuse the run/assumption trail, retain signed stress and
 source conventions, and register tolerances before broader evaluation. Search,
 manufacturing resolution feedback and the UI follow in their planned packages.
+
+
+---
+
+## WP2 bounded numerical evaluation (dedicated unmerged branch)
+
+WP1 above remains an historical description of what WP1 delivered.
+WP2 adds the mapped synthetic three-objective evaluator and an explicitly
+bounded classical-laminate thermoelastic calculation. It does **not**
+turn the synthetic phase catalogue into validated printed ceramic data.
+
+From repository root using Python 3.12:
+
+```sh
+bash foundation/setup.sh
+export PYTHONPATH=foundation
+.venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+.venv-foundation/bin/python foundation/verify_demo.py --output /tmp/wp1-history-replay
+.venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp2-numerical
+```
+
+The setup script deliberately refuses to overwrite an existing environment.
+If `.venv-foundation` already exists, use it rather than rerun setup, or
+pass a new directory to `foundation/setup.sh`.
+
+For an individual three-objective example and a separate process replay:
+
+```sh
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp2_demo \
+  --store /tmp/wp2-single --architecture gradient
+# Copy the run_id shown in the printed JSON:
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp2_demo \
+  --store /tmp/wp2-single --replay RUN_ID
+```
+
+Choose `homogeneous`, `layered` or `gradient`. Add
+`--architecture gradient --achieved` for a separately labelled supplied
+synthetic achieved-state geometry. The three objective IDs are
+`thermal_transmission` (absolute W/m²),
+`areal_mass` (kg/m²), and
+`tensile_thermal_mismatch` (Pa, positive cell-centre equibiaxial stress).
+The signed raw flux and stress profile remain in the persisted spatial fields.
+No flow/CFD, drying, sintering or process-to-state prediction is implied.
+
+Use `foundation/WP2_NUMERICAL_QUALIFICATION.md` for scientific equations,
+reference values and limitations;
+`foundation/WP2_ARCHITECTURE_AND_DECISIONS.md` for interfaces and extension
+paths; and `foundation/WP2_COMPLETION_REPORT.md` for the WP2 exit review.
+The two GitHub Actions jobs run separate locked-core and legacy-regression
+environments; the core job uploads replay JSON evidence as an artifact.
+Do not infer V1 validation, D1 completion or approval to merge.

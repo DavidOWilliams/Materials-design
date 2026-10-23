@@ -197,6 +197,16 @@ class RunStore:
             objective = objectives[key]
             if metric.value is not None and (metric.value.dimension,metric.value.unit) != (objective.dimension,objective.unit):
                 raise ValueError('Result units differ from requested objective')
+        constraints = {c.metric_id:c for c in inputs.brief.constraints}
+        for metric in evaluation.constraint_metrics:
+            if metric.metric_id not in constraints:
+                raise ValueError('Result contains an undeclared constraint metric')
+            expected = constraints[metric.metric_id].limit
+            if metric.value is not None and (metric.value.dimension,metric.value.unit) != (expected.dimension,expected.unit):
+                raise ValueError('Constraint result units differ from declared constraint')
+            shared = metrics.get(metric.metric_id)
+            if shared is not None and (shared.value != metric.value or shared.status != metric.status):
+                raise ValueError('Shared objective and constraint metrics disagree')
 
     def finish(self, run_id: str, evaluation: Evaluation) -> None:
         if not isinstance(evaluation, Evaluation):

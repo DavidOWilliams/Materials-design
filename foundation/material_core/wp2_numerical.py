@@ -263,13 +263,23 @@ def evaluate(inputs: RunInputs) -> Evaluation:
                 constraints.append(ConstraintMetric(metric_id=c.metric_id,value=None,
                     status='unsupported',explanation='Constraint metric unavailable or dimension mismatch'))
         status='complete' if all(m.status=='computed' for m in metrics) else 'incomplete'
-        # Conditional is intentionally NOT a physical validation claim. Numerical
-        # results, evidence status and constraint satisfaction remain separate.
+        constrained_values={m.metric_id:m for m in constraints}
+        if any(m.status!='computed' for m in constraints):
+            feasibility='unknown'
+        elif any(
+            (c.relation=='le' and constrained_values[c.metric_id].value.value>c.limit.value) or
+            (c.relation=='ge' and constrained_values[c.metric_id].value.value<c.limit.value)
+            for c in inputs.brief.constraints):
+            feasibility='infeasible'
+        else:
+            feasibility='conditional'
+        # Conditional is NOT experimental material validation: evidence
+        # maturity and numerical status remain separate from hard feasibility.
         return Evaluation(input_hash=inputs.content_hash,brief_hash=inputs.brief.content_hash,
             solver=inputs.solver,status=status,metrics=tuple(metrics),
             constraint_metrics=tuple(constraints),spatial_fields=fields,
             comparison_context_hash=ctx,evidence_status='synthetic',
-            feasibility='conditional',limitations=limitations+result.limitations)
+            feasibility=feasibility,limitations=limitations+result.limitations)
     except DomainError as error:
         reason=str(error)
         return Evaluation(input_hash=inputs.content_hash,brief_hash=inputs.brief.content_hash,

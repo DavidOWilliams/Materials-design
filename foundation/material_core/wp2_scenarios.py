@@ -105,3 +105,49 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.):
     return RunInputs(brief=brief,design=design,materials=materials,
         solver=solver_identity(),settings=settings,assumption_snapshots=snapshots,
         provenance=(p,))
+
+
+def make_wp2_achieved_fixture():
+    """Supplied *synthetic estimated* geometry; NOT a process predictor.
+
+    The changed mid-knot shifts the composition budget. This deliberately
+    tests evaluating the achieved, not the original intended, state.
+    """
+    import json
+    from .contracts import (
+        EstimatedAchievedState, ProcessScenario, RunInputs,
+    )
+    x=make_wp2_fixture('gradient')
+    p=x.provenance[0]
+    process=ProcessScenario(id='supplied-synthetic-estimate',version=1,
+        route='external estimated profile fixture; no manufacturing calculation',
+        layer_resolution=None,feed_fraction_resolution=None,
+        status='assumed',provenance=p,assumptions=x.brief.assumptions,
+        excluded_mechanisms=('mixing and residence time','deposition rheology',
+                             'drying and sintering','geometry defects'))
+    def comp(a):
+        return Composition(basis='volume',fractions=(
+            ConstituentFraction(material_id='scenario_A',fraction=float(a)),
+            ConstituentFraction(material_id='scenario_B',fraction=float(1-a))))
+    achieved=IntendedDesign(id='explicit-estimated-spatial-state',
+        parent_hashes=(x.design.content_hash,),thickness=x.brief.thickness,
+        architecture=Gradient(knots=(
+            Knot(position=0.,composition=comp(1.)),
+            Knot(position=.5,composition=comp(.25)),
+            Knot(position=1.,composition=comp(0.)))),
+        proposal_method='Externally supplied labelled synthetic achieved state; no process predictor',
+        assumptions=x.brief.assumptions)
+    estimate=EstimatedAchievedState(id='synthetic-estimate',
+        intended_design_hash=x.design.content_hash,
+        process_hash=process.content_hash,geometry=achieved,
+        observations=(),estimator_id='external-supplied-spatial-fixture',
+        estimator_version='1',feasibility='conditional',
+        conditions='Hypothetical achieved composition differs from intended; no manufacturing model',
+        assumptions=x.brief.assumptions)
+    raw=x.model_dump(mode='json')
+    raw['process']=process.model_dump(mode='json')
+    raw['estimated_state']=estimate.model_dump(mode='json')
+    raw['evaluation_target']='estimated'
+    raw['settings']['evaluation_context_hash']=comparison_context_hash(
+        x.brief,x.settings,'estimated')
+    return RunInputs.model_validate_json(json.dumps(raw))

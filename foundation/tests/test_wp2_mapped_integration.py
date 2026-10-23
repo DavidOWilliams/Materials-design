@@ -157,3 +157,22 @@ def test_independent_analytic_bilayer_thermal_bending_reference():
     assert y.metrics[2].value.value==pytest.approx(680000000/59,rel=.005)
     assert f.force_residual.value==pytest.approx(0.,abs=1)
     assert f.moment_residual.value==pytest.approx(0.,abs=.01)
+
+
+def test_actual_numeric_mass_constraint_with_mass_not_an_objective(tmp_path):
+    x=make_wp2_fixture('layered',mass_limit=31.)
+    raw=x.model_dump(mode='json')
+    raw['brief']['objectives']=[
+        o for o in raw['brief']['objectives'] if o['id']!='areal_mass']
+    interim=RunInputs.model_validate_json(json.dumps(raw))
+    raw['settings']['evaluation_context_hash']=comparison_context_hash(
+        interim.brief,interim.settings,'intended')
+    constrained=RunInputs.model_validate_json(json.dumps(raw))
+    y=evaluate(constrained)
+    assert [m.objective_id for m in y.metrics]==[
+        'thermal_transmission','tensile_thermal_mismatch']
+    assert y.constraint_metrics[0].metric_id=='areal_mass'
+    assert y.constraint_metrics[0].value.value==pytest.approx(30.)
+    assert y.comparison_eligible(constrained.brief)
+    store=RunStore(tmp_path);run=store.create(constrained);store.finish(run,y)
+    assert store.load(run).evaluation.comparison_eligible(constrained.brief)

@@ -348,6 +348,42 @@ class ThermalSettings(Contract):
         if self.provenance.evidence_kind != 'synthetic_scenario': raise ValueError('Prescribed fixture must be synthetic')
         return self
 
+class ThermoelasticSettings(Contract):
+    """Bounded mechanics method; not a manufacturing residual-stress model."""
+    kind: Literal['planar_thermoelastic'] = 'planar_thermoelastic'
+    mesh: Discretisation
+    stress_free_temperature: Quantity
+    kinematics: Literal['equibiaxial_plane_stress'] = 'equibiaxial_plane_stress'
+    restraint: Literal['force_and_moment_free','fully_flat_restrained']
+    expansion_convention: Literal['small_strain_isotropic'] = 'small_strain_isotropic'
+    stiffness_mapping: Text
+    expansion_mapping: Text
+    provenance: Provenance
+
+    @model_validator(mode='after')
+    def physical_units(self):
+        require_dimension(self.stress_free_temperature,'temperature')
+        return self
+
+
+class CoupledThermomechanicalSettings(Contract):
+    """Explicit matched thermal/mechanics settings for three D1 quantities."""
+    kind: Literal['planar_coupled'] = 'planar_coupled'
+    thermal: ThermalSettings
+    mechanics: ThermoelasticSettings
+    density_mapping: Text
+    property_pack_id: Text
+    property_pack_version: Text
+    property_pack_hash: Digest
+    evaluation_context_hash: Digest
+
+    @model_validator(mode='after')
+    def consistent_mesh(self):
+        if self.thermal.mesh != self.mechanics.mesh:
+            raise ValueError('Thermal/mechanics mesh mismatch')
+        return self
+
+
 class Metric(Contract):
     objective_id: Text
     value: Quantity | None
@@ -447,7 +483,7 @@ class RunInputs(Contract):
     commands: ManufacturingCommands | None = None
     evaluation_target: Literal['intended','estimated','measured'] = 'intended'
     solver: SolverIdentity
-    settings: ThermalSettings
+    settings: Annotated[ThermalSettings | ThermoelasticSettings | CoupledThermomechanicalSettings, Field(discriminator='kind')]
     assumption_snapshots: tuple[str,...]
     provenance: Annotated[tuple[Provenance,...], Field(min_length=1)]
 

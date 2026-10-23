@@ -6,8 +6,9 @@ and mechanical restraint. This is a software/numerical demonstration only.
 """
 import hashlib
 import json
+from pathlib import Path
 
-from .assumptions import AssumptionRegistry
+from .assumptions import AssumptionRegistry, AssumptionRecord
 from .contracts import (
     AssumptionRef, Brief, Composition, ConstituentFraction, Constraint,
     CoupledThermomechanicalSettings, Discretisation, Gradient, Homogeneous,
@@ -61,9 +62,16 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.):
                              Knot(position=1.,composition=comp(0.))))
     else:
         raise ValueError('Unsupported scenario architecture')
-    refs=tuple(AssumptionRef(id=x,version=1) for x in ('A01','A06','A07','A12','A14'))
+    registry=AssumptionRegistry.from_builtin()
+    wp2_registry=json.loads((Path(__file__).resolve().parent/'data'/
+                             'assumptions_wp2_v1.json').read_text())
+    assert wp2_registry['schema_version']==1
+    for row in wp2_registry['assumptions']:
+        registry.add(AssumptionRecord.from_dict(row))
+    refs=tuple(AssumptionRef(id=x,version=1) for x in
+        ('A01','A06','A07','A12','A14','A16','A17','A18','A19','A20','A21'))
     snapshots=tuple(json.dumps(r,sort_keys=True,separators=(',',':'))
-        for r in AssumptionRegistry.from_builtin().snapshot({a.id:a.version for a in refs}))
+        for r in registry.snapshot({a.id:a.version for a in refs}))
     objectives=(
         Objective(id='thermal_transmission',dimension='heat_flux',unit='W/m2',
             direction='min',applicability='Absolute through-thickness steady flux'),

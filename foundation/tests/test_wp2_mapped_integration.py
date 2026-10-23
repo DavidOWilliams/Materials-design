@@ -71,7 +71,7 @@ def test_free_layer_equilibrium_and_positive_tensile_stress():
 def test_constraint_violation_independent_of_numerical_success(tmp_path):
     x=make_wp2_fixture('layered',mass_limit=29.)
     y=evaluate(x)
-    assert y.status=='complete' and y.feasibility=='conditional'
+    assert y.status=='complete' and y.feasibility=='infeasible'
     assert y.constraint_metrics[0].value.value==pytest.approx(30.)
     assert not y.comparison_eligible(x.brief)
     s=RunStore(tmp_path);run=s.create(x);s.finish(run,y)
@@ -132,6 +132,7 @@ def test_supplied_achieved_field_changes_physical_result_and_identity(tmp_path):
     a=evaluate(intended)
     b=evaluate(estimated)
     assert b.status=='complete' and b.evidence_status=='synthetic'
+    assert b.feasibility=='infeasible'
     assert b.metrics[1].value.value>a.metrics[1].value.value
     assert b.metrics[0].value.value!=pytest.approx(a.metrics[0].value.value)
     assert not compatible_comparison(a,b)

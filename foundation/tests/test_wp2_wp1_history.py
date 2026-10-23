@@ -30,7 +30,7 @@ def test_wp1_raw_bytes_and_hashes_unchanged(arch):
 
 
 def test_wp1_saved_artifacts_load_in_independent_interpreter():
-    program="""import hashlib,sys
+    program=r"""import hashlib,sys
 from pathlib import Path
 from material_core.contracts import RunInputs,Evaluation
 p=Path(sys.argv[1])

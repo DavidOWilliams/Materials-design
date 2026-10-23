@@ -22,7 +22,7 @@ def case(value=20., status="computed", shared=False):
         raw["brief"]["objectives"].append({"schema_version":"1.0","id":"mass",
             "dimension":"areal_mass","unit":"kg/m2","direction":"min",
             "applicability":"synthetic software fixture"})
-    inputs=RunInputs.model_validate(raw)
+    inputs=RunInputs.model_validate_json(json.dumps(raw))
     computed=status=="computed"
     m=ConstraintMetric(metric_id="mass",value=quantity("areal_mass",value) if computed else None,
         status=status,explanation="Software fixture; not a physical mass calculation")

@@ -82,7 +82,14 @@ def evaluate_cells(cells: tuple[Cell, ...], hot_K: float, cold_K: float,
     D=sum(c.biaxial_modulus_Pa*(c.thickness_m*z*z+c.thickness_m**3/12)
           for c,z in zip(cells,zmid))
     NT=sum(q*e for q,e in zip(stiffness,eigen))
-    MT=sum(q*e*z for q,e,z in zip(stiffness,eigen,zmid))
+    # T(z) is exactly linear inside each constant-k cell. The eigenstrain
+    # moment therefore includes Q*alpha*T'(z)*h**3/12 in addition to
+    # its centroid contribution. Omitting this term creates spurious
+    # homogeneous free-plate stress and incorrect curvature.
+    thermal_slopes=[(tb-ta)/c.thickness_m for c,ta,tb in
+                    zip(cells,t_edges,t_edges[1:])]
+    MT=sum(q*e*z + c.biaxial_modulus_Pa*c.expansion_per_K*slope*c.thickness_m**3/12
+           for q,e,z,c,slope in zip(stiffness,eigen,zmid,cells,thermal_slopes))
     if restraint=='free':
         denominator=A*D-B*B
         if denominator<=0 or not isfinite(denominator):
@@ -97,7 +104,9 @@ def evaluate_cells(cells: tuple[Cell, ...], hot_K: float, cold_K: float,
               for q,z,e in zip(stiffness,zmid,eigen))
     moment=sum(q*(strain+curvature*z-e)*z
                for q,z,e in zip(stiffness,zmid,eigen))
-    moment+=curvature*sum(c.biaxial_modulus_Pa*c.thickness_m**3/12 for c in cells)
+    moment+=sum(c.biaxial_modulus_Pa*c.thickness_m**3/12*
+                (curvature-c.expansion_per_K*slope)
+                for c,slope in zip(cells,thermal_slopes))
     return BoundedResult(
         areal_mass_kg_m2=sum(c.density_kg_m3*c.thickness_m for c in cells),
         hot_to_cold_flux_W_m2=flux,
@@ -113,6 +122,7 @@ def evaluate_cells(cells: tuple[Cell, ...], hot_K: float, cold_K: float,
             "Perfect bonding and contact; no interface fracture or edge effects.",
             "Elastic, small-strain response from a prescribed stress-free state.",
             "Centroid stress maximum: not a layer-interface stress peak.",
+            "Exact linear within-cell thermal force/moment; sampled stress at cell centres.",
             "No drying, sintering, creep, relaxation, cracking or total residual stress.",
             "No property mapping or ceramic validation provided by this numerical kernel.",
         ),

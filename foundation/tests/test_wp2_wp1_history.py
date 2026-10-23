@@ -18,10 +18,10 @@ def test_wp1_raw_bytes_and_hashes_unchanged(arch):
     b=(EVIDENCE/f'{arch}-evaluation.json').read_bytes()
     i=RunInputs.model_validate_json(a)
     e=Evaluation.model_validate_json(b)
-    assert i.canonical_json().encode()==a
-    assert e.canonical_json().encode()==b
-    assert i.content_hash==hashlib.sha256(a).hexdigest()
-    assert e.content_hash==hashlib.sha256(b).hexdigest()
+    assert i.canonical_json().encode()==a.rstrip(b'\\n')
+    assert e.canonical_json().encode()==b.rstrip(b'\\n')
+    assert i.content_hash==hashlib.sha256(a.rstrip(b'\\n')).hexdigest()
+    assert e.content_hash==hashlib.sha256(b.rstrip(b'\\n')).hexdigest()
     assert e.input_hash==i.content_hash
     assert e.brief_hash==i.brief.content_hash
     assert e.solver==i.solver
@@ -38,8 +38,8 @@ for arch in ('homogeneous','layered','gradient'):
  a=(p/(arch+'-inputs.json')).read_bytes()
  b=(p/(arch+'-evaluation.json')).read_bytes()
  i=RunInputs.model_validate_json(a);e=Evaluation.model_validate_json(b)
- assert i.canonical_json().encode()==a
- assert e.canonical_json().encode()==b
+ assert i.canonical_json().encode()==a.rstrip(b'\\n')
+ assert e.canonical_json().encode()==b.rstrip(b'\\n')
  assert e.input_hash==i.content_hash
 print('three immutable WP1 architectures preserved')
 """

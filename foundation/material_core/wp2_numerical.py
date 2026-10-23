@@ -82,6 +82,10 @@ class DomainError(ValueError):
 
 
 def _get_properties(materials):
+    states={m.state for m in materials}
+    conditions={m.provenance.conditions for m in materials}
+    if len(states)!=1 or len(conditions)!=1:
+        raise DomainError('Incompatible constituent processing or evidence conditions')
     catalogue={}
     for m in materials:
         if m.provenance.evidence_kind!='synthetic_scenario':

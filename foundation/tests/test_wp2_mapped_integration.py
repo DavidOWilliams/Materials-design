@@ -102,12 +102,10 @@ def test_out_of_domain_property_and_missing_achieved_state():
     raw=x.model_dump(mode='json')
     raw['evaluation_target']='estimated'
     # Explicitly updated context, but no estimated geometry.
-    s=RunInputs.model_validate_json(json.dumps(raw))
-    raw['settings']['evaluation_context_hash']=comparison_context_hash(
-        s.brief,s.settings,'estimated')
-    y=evaluate(RunInputs.model_validate_json(json.dumps(raw)))
-    assert y.status=='unsupported'
-    assert not y.comparison_eligible(s.brief)
+    # The WP1 input contract correctly blocks missing achieved states before
+    # the numerical adapter is invoked; no intended-state fallback is allowed.
+    with pytest.raises(ValueError,match='Estimated target missing'):
+        RunInputs.model_validate_json(json.dumps(raw))
 
 
 def test_mapped_run_separate_process_replay(tmp_path):

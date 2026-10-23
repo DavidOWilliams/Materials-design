@@ -1,0 +1,13 @@
+{
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "architecture": "x86_64",
+  "packages": {
+    "pydantic": "2.12.5",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "scikit-fem": "12.0.2",
+    "pytest": "9.0.2"
+  },
+  "scope": "fresh venv, CPU, same host, no GPU, no external language model service"
+}

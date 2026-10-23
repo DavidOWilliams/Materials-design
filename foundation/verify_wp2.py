@@ -54,6 +54,8 @@ def main():
         (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
     print(json.dumps({'status':'passed','runs':len(results),
         'objective_names':list(results['gradient']['objectives']),
+        'scenario_results':{k:{m:round(v['value'],8) for m,v in r['objectives'].items()}
+             for k,r in results.items()},
         'achieved_mass_budget_feasibility':'violated' if
          results['estimated-achieved-gradient']['objectives']['areal_mass']['value']>31.
          else 'satisfied'}))

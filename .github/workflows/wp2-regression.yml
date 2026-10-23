@@ -44,3 +44,52 @@ jobs:
         run: python -m pip check
       - name: Run legacy and WP0R regressions without modifying legacy source
         run: python -m pytest tests recovered_wp0 -q
+
+  wp1-immutable-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact unmodified WP1 review commit
+        uses: actions/checkout@v4
+        with:
+          ref: 22350b119d8a30248a9924ba375ebf4c8dabb4b7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original WP1 hash-locked environment
+        run: bash foundation/setup.sh
+      - name: Reproduce original 74 WP1 and recovery checks
+        env:
+          PYTHONPATH: foundation
+        run: .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: Reproduce original R1 before WP2 correction
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python - <<'PY'
+          import json, tempfile
+          from material_core.demo import make_fixture
+          from material_core.contracts import Constraint, Metric, RunInputs, quantity
+          from material_core.thermal import evaluate
+          from material_core.store import RunStore
+          x=make_fixture()
+          raw=x.model_dump(mode='json')
+          raw['brief']['constraints']=[Constraint(id='mass_ceiling',
+              metric_id='mass',limit=quantity('areal_mass',30.),
+              relation='le',applicability='software review fixture').model_dump(mode='json')]
+          inputs=RunInputs.model_validate_json(json.dumps(raw))
+          result=evaluate(inputs)
+          mass=Metric(objective_id='mass',value=quantity('areal_mass',20.),
+              status='computed',explanation='synthetic R1 regression value')
+          result=result.model_copy(update={'metrics':result.metrics+(mass,),
+              'feasibility':'conditional'})
+          assert not result.comparison_eligible(inputs.brief)
+          with tempfile.TemporaryDirectory() as d:
+              store=RunStore(d);run=store.create(inputs)
+              try:
+                  store.finish(run,result)
+              except ValueError as error:
+                  assert 'unrequested objective' in str(error)
+              else:
+                  raise AssertionError('WP1 R1 unexpectedly accepted constraint-only mass')
+          print('R1 original WP1 defect independently reproduced')
+          PY

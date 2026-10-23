@@ -176,3 +176,16 @@ def test_actual_numeric_mass_constraint_with_mass_not_an_objective(tmp_path):
     assert y.comparison_eligible(constrained.brief)
     store=RunStore(tmp_path);run=store.create(constrained);store.finish(run,y)
     assert store.load(run).evaluation.comparison_eligible(constrained.brief)
+
+
+def test_wp2_open_assumptions_are_immutable_and_historical_versions_retained():
+    from material_core.assumptions import validate_snapshot, AssumptionRegistry
+    x=make_wp2_fixture()
+    records=validate_snapshot([json.loads(s) for s in x.assumption_snapshots])
+    by_id={a.assumption_id:a for a in records}
+    assert set(f'A{i}' for i in range(16,22)).issubset(by_id)
+    assert all(by_id[f'A{i}'].status=='open' and
+               by_id[f'A{i}'].value is None for i in range(16,22))
+    builtin=AssumptionRegistry.from_builtin()
+    for a in ('A01','A06','A07','A12','A14'):
+        assert by_id[a].content_hash==builtin.get(a,1).content_hash

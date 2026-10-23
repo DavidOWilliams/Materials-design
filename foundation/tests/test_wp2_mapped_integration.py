@@ -140,3 +140,20 @@ def test_supplied_achieved_field_changes_physical_result_and_identity(tmp_path):
     s=RunStore(tmp_path);rid=s.create(estimated);s.finish(rid,b)
     assert RunStore(tmp_path).load(rid).inputs.estimated_state.geometry==estimated.estimated_state.geometry
     assert RunStore(tmp_path).load(rid).evaluation==b
+
+
+def test_independent_analytic_bilayer_thermal_bending_reference():
+    """Exact continuous through-layer A/B/D integrals (not a second solver call).
+
+    Equal 5 mm layers, Q=100/160 GPa, alpha=5/12 microstrain/K,
+    400/300 K, stress-free 300 K. Fourier flux=100000/3 W/m2.
+    The analytic free-laminate solution is eps0=703/3540000,
+    curvature=-763/17700 1/m. The max tensile stress is
+    680000000/59 Pa on the side-A interface, within the idealisation.
+    """
+    y=evaluate(make_wp2_fixture('layered',elements=512))
+    f=y.spatial_fields
+    assert f.curvature_per_m==pytest.approx(-763/17700,rel=2e-4)
+    assert y.metrics[2].value.value==pytest.approx(680000000/59,rel=.005)
+    assert f.force_residual.value==pytest.approx(0.,abs=1)
+    assert f.moment_residual.value==pytest.approx(0.,abs=.01)

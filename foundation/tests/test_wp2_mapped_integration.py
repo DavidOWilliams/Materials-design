@@ -10,7 +10,7 @@ from material_core.store import RunStore
 from material_core.wp2_numerical import (
     compatible_comparison, evaluate, property_pack_hash, comparison_context_hash,
 )
-from material_core.wp2_scenarios import make_wp2_fixture
+from material_core.wp2_scenarios import make_wp2_fixture, make_wp2_achieved_fixture
 
 
 @pytest.mark.parametrize('arch',('homogeneous','layered','gradient'))
@@ -124,3 +124,19 @@ print(got.metrics[0].value.value)
     process=subprocess.run([sys.executable,'-c',program,str(tmp_path),run_id],
         capture_output=True,text=True,check=True)
     assert float(process.stdout)>0
+
+
+def test_supplied_achieved_field_changes_physical_result_and_identity(tmp_path):
+    intended=make_wp2_fixture('gradient')
+    estimated=make_wp2_achieved_fixture()
+    a=evaluate(intended)
+    b=evaluate(estimated)
+    assert b.status=='complete' and b.evidence_status=='synthetic'
+    assert b.metrics[1].value.value>a.metrics[1].value.value
+    assert b.metrics[0].value.value!=pytest.approx(a.metrics[0].value.value)
+    assert not compatible_comparison(a,b)
+    assert b.comparison_context_hash!=a.comparison_context_hash
+    assert estimated.content_hash!=intended.content_hash
+    s=RunStore(tmp_path);rid=s.create(estimated);s.finish(rid,b)
+    assert RunStore(tmp_path).load(rid).inputs.estimated_state.geometry==estimated.estimated_state.geometry
+    assert RunStore(tmp_path).load(rid).evaluation==b

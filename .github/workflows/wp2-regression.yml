@@ -30,3 +30,17 @@ jobs:
           name: wp2-numerical-evidence
           path: /tmp/wp2-evidence/*.json
           if-no-files-found: ignore
+
+  legacy-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install legacy pinned environment
+        run: python -m pip install -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Run legacy and WP0R regressions without modifying legacy source
+        run: python -m pytest tests recovered_wp0 -q

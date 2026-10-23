@@ -375,6 +375,14 @@ class ConstraintMetric(Contract):
 
 class Evaluation(Contract):
     kind: Literal['evaluation'] = 'evaluation'
+
+    def canonical_json(self) -> str:
+        # WP1 v1.0 evaluation artifacts did not contain constraint_metrics.
+        # Preserve their exact canonical bytes and SHA256 identifiers.
+        raw=self.model_dump(mode='json')
+        if not self.constraint_metrics:
+            raw.pop('constraint_metrics', None)
+        return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
     input_hash: Digest
     brief_hash: Digest
     solver: SolverIdentity

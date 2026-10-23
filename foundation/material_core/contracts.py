@@ -359,6 +359,20 @@ class Metric(Contract):
         if (self.value is not None) != (self.status == 'computed'): raise ValueError('Computed status/value mismatch')
         return self
 
+class ConstraintMetric(Contract):
+    """Independent measured/calculated constraint quantity, not an objective."""
+    metric_id: Text
+    value: Quantity | None
+    status: Literal['computed','unsupported','missing','failed']
+    explanation: Text
+
+    @model_validator(mode='after')
+    def known(self):
+        if (self.value is not None) != (self.status == 'computed'):
+            raise ValueError('Computed constraint status/value mismatch')
+        return self
+
+
 class Evaluation(Contract):
     kind: Literal['evaluation'] = 'evaluation'
     input_hash: Digest
@@ -366,6 +380,7 @@ class Evaluation(Contract):
     solver: SolverIdentity
     status: Literal['complete','incomplete','unsupported','failed']
     metrics: tuple[Metric,...]
+    constraint_metrics: tuple[ConstraintMetric,...] = ()
     feasibility: Literal['unknown','conditional','infeasible']
     limitations: Annotated[tuple[Text,...], Field(min_length=1)]
     temperature_K: tuple[Positive,...] = ()
@@ -374,6 +389,7 @@ class Evaluation(Contract):
     @model_validator(mode='after')
     def complete(self):
         unique([m.objective_id for m in self.metrics],'metric IDs')
+        unique([m.metric_id for m in self.constraint_metrics],'constraint metric IDs')
         if self.status == 'complete' and (not self.metrics or any(m.status!='computed' for m in self.metrics)): raise ValueError('Incomplete objectives cannot be complete')
         if self.flux_spread is not None: require_dimension(self.flux_spread,'heat_flux')
         return self
@@ -385,9 +401,18 @@ class Evaluation(Contract):
         for o in brief.objectives:
             m=metrics[o.id]
             if m.status!='computed' or m.value is None or (m.value.dimension,m.value.unit)!=(o.dimension,o.unit): return False
+        constrained={m.metric_id:m for m in self.constraint_metrics}
+        if set(constrained) - {c.metric_id for c in brief.constraints}: return False
         for c in brief.constraints:
-            m=metrics.get(c.metric_id)
-            if m is None or m.value is None or m.value.dimension!=c.limit.dimension: return False
+            # A quantity shared with an objective must agree rather than supply
+            # two contradictory values for the same physical metric.
+            m=constrained.get(c.metric_id)
+            objective=metrics.get(c.metric_id)
+            if m is not None and objective is not None:
+                if m.value != objective.value or m.status != objective.status: return False
+            if m is None: m=objective
+            if m is None or m.status!='computed' or m.value is None: return False
+            if (m.value.dimension,m.value.unit)!=(c.limit.dimension,c.limit.unit): return False
             if c.relation=='le' and m.value.value>c.limit.value: return False
             if c.relation=='ge' and m.value.value<c.limit.value: return False
         return True

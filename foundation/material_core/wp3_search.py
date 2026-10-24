@@ -205,7 +205,9 @@ def open_search(path, *, verify_decision=True, recovery=False):
     for name in checked:
         # A narrow escape route permits pre-correction crashed, incomplete
         # ledgers to be recovered. It never approves a completed corrupted log.
-        if name in ledger and ledger[name]!=expected[name]:
+        if name not in ledger or ledger[name]!=expected[name]:
+            # Old interrupted, incomplete ledgers may not yet have the new
+            # counters. Only a pending run allows explicit recovery/migration.
             if recovery and any(p["status"]=="created" for p in ledger["proposals"]):
                 continue
             raise ValueError("Campaign accounting mismatch: "+name)

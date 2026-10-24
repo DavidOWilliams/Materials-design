@@ -8,7 +8,7 @@ from material_core.contracts import (
     Constraint, Quantity, RunInputs, ConstraintMetric, quantity, Evaluation)
 from material_core.wp2_numerical import (
     evaluate, compatible_comparison, context_for_run, numerical_comparison_eligible,
-    property_pack_hash)
+    property_pack_hash, exploratory_numerical_eligible)
 from material_core.wp2_scenarios import make_wp2_fixture, make_wp2_achieved_fixture
 from material_core.store import RunStore
 
@@ -41,7 +41,7 @@ def test_two_sided_and_equality_bounds_and_persistence(tmp_path):
     assert len(y.constraint_metrics)==1
     assert [o.constraint_id for o in y.constraint_outcomes]==['floor','ceiling']
     assert [o.outcome for o in y.constraint_outcomes]==['satisfied','satisfied']
-    assert numerical_comparison_eligible(y,x.brief)
+    assert exploratory_numerical_eligible(y,x.brief)
     s=RunStore(tmp_path);rid=s.create(x);s.finish(rid,y)
     reopened=s.load(rid).evaluation
     assert reopened.constraint_outcomes==y.constraint_outcomes
@@ -125,7 +125,7 @@ def test_manufacturing_unknown_retained_and_numerical_only_comparison(tmp_path):
     assert y.manufacturing_feasibility=='unknown'
     assert y.feasibility=='conditional'
     assert not y.comparison_eligible(z.brief)
-    assert numerical_comparison_eligible(y,z.brief)
+    assert exploratory_numerical_eligible(y,z.brief)
     s=RunStore(tmp_path);rid=s.create(z);s.finish(rid,y)
     assert s.load(rid).evaluation.manufacturing_feasibility=='unknown'
     invalid=edited(x,lambda r:r['estimated_state'].__setitem__('feasibility','infeasible'))

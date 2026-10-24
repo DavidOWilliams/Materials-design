@@ -69,8 +69,17 @@ def comparison_context_hash(brief: Brief, settings: CoupledThermomechanicalSetti
 
 
 def context_for_run(inputs: RunInputs) -> str:
-    return comparison_context_hash(inputs.brief,inputs.settings,inputs.evaluation_target,
+    digest=comparison_context_hash(inputs.brief,inputs.settings,inputs.evaluation_target,
         process=inputs.process,assumptions=inputs.assumption_snapshots,solver=inputs.solver)
+    if inputs.evaluation_target=='estimated':
+        state=inputs.estimated_state
+        # Only estimator *method* and interpretation, not candidate geometry,
+        # composition, predictions or candidate-specific feasibility.
+        method={'estimator_id':state.estimator_id,
+                'estimator_version':state.estimator_version,
+                'conditions':state.conditions}
+        return hashlib.sha256(json.dumps([digest,method],sort_keys=True).encode()).hexdigest()
+    return digest
 
 
 def compatible_comparison(a: Evaluation, b: Evaluation) -> bool:
@@ -325,7 +334,7 @@ def evaluate(inputs: RunInputs) -> Evaluation:
             feasibility='unknown'
         else:
             feasibility='conditional'
-        manufacturing=('conditional' if inputs.evaluation_target=='intended'
+        manufacturing=('unknown' if inputs.evaluation_target=='intended'
                        else inputs.estimated_state.feasibility if inputs.evaluation_target=='estimated'
                        else 'unknown')
         # A completed calculation does not establish manufacturing feasibility.

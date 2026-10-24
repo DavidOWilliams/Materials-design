@@ -93,3 +93,81 @@ jobs:
                   raise AssertionError('WP1 R1 unexpectedly accepted constraint-only mass')
           print('R1 original WP1 defect independently reproduced')
           PY
+
+  wp2-reviewed-defects-and-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout corrected branch with reproduction script
+        uses: actions/checkout@v4
+      - name: Checkout exact original reviewed WP2 source
+        uses: actions/checkout@v4
+        with:
+          ref: ae052d6f70499eceb92e73436fd0de7cb1791777
+          path: reviewed
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original WP2 locked runtime
+        run: bash reviewed/foundation/setup.sh
+      - name: Run five independent review reproductions on unchanged WP2
+        env:
+          PYTHONPATH: reviewed/foundation:reviewed
+        run: reviewed/.venv-foundation/bin/python foundation/reproduce_reviewed_wp2_defects.py
+      - name: Produce original WP2 historical run and replay
+        env:
+          PYTHONPATH: reviewed/foundation:reviewed
+        run: |
+          reviewed/.venv-foundation/bin/python - <<'PY'
+          from material_core.wp2_scenarios import make_wp2_fixture
+          from material_core.wp2_numerical import evaluate
+          from material_core.store import RunStore
+          from pathlib import Path
+          store=RunStore('archive/wp2-v1')
+          x=make_wp2_fixture('homogeneous')
+          rid=store.create(x);result=evaluate(x);store.finish(rid,result)
+          Path('archive/run_id.txt').write_text(rid)
+          assert RunStore('archive/wp2-v1').load(rid).evaluation==result
+          print('Original reviewed WP2 archived result',rid,result.content_hash)
+          PY
+      - name: Archive immutable reviewed WP2 store
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp2-reviewed-historical-store
+          path: archive/
+          include-hidden-files: true
+
+  wp2-cross-version-history:
+    runs-on: ubuntu-latest
+    needs: wp2-reviewed-defects-and-history
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install corrected locked environment
+        run: bash foundation/setup.sh
+      - name: Download original reviewed WP2 store
+        uses: actions/download-artifact@v4
+        with:
+          name: wp2-reviewed-historical-store
+          path: archive/
+      - name: Verify historical WP2 artifact hashes and readability without rewriting
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python - <<'PY'
+          from material_core.store import RunStore
+          from material_core.wp2_numerical import evaluate
+          from pathlib import Path
+          rid=Path('archive/run_id.txt').read_text().strip()
+          s=RunStore('archive/wp2-v1');r=s.load(rid)
+          assert r.evaluation is not None
+          assert r.inputs.solver.version=='wp2-bounded-1'
+          saved_hash=r.evaluation.content_hash
+          assert s.load(rid).evaluation.content_hash==saved_hash
+          try: evaluate(r.inputs)
+          except ValueError as error:
+              assert 'solver source or dependency identity' in str(error)
+          else: raise AssertionError('Corrected method silently reused historical solver')
+          print('Historical WP2 readable and hash-preserved; original solver only for original replay',saved_hash)
+          PY

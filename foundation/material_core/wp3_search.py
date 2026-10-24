@@ -147,8 +147,11 @@ def _derived(ledger, store):
 
 def _save_search(path,ledger,store):
     derived=_derived(ledger,store)
-    ledger.clear()
-    ledger.update(derived)
+    # Preserve live proposal object identity while evaluating: replacing the
+    # proposal list would detach the active item's post-evaluation updates.
+    for original,reconstructed in zip(ledger["proposals"],derived["proposals"]):
+        original.update(reconstructed)
+    ledger.update({k:v for k,v in derived.items() if k!="proposals"})
     _write_ledger(path,ledger)
 
 

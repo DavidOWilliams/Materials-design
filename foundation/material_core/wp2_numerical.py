@@ -93,7 +93,13 @@ def compatible_comparison(a: Evaluation, b: Evaluation) -> bool:
 
 
 def numerical_comparison_eligible(e: Evaluation, brief: Brief) -> bool:
-    """Numerical-only comparison, not a claim of manufactured feasibility."""
+    """Numerically qualified only; still NOT a claim of manufacture feasibility."""
+    if e.numerical_quality!='qualified': return False
+    return exploratory_numerical_eligible(e,brief)
+
+
+def exploratory_numerical_eligible(e: Evaluation, brief: Brief) -> bool:
+    """Explicitly exploratory numerical comparison; accuracy may be unresolved."""
     if e.status!='complete' or e.brief_hash!=brief.content_hash:
         return False
     objectives={m.objective_id:m for m in e.metrics}
@@ -284,6 +290,25 @@ def evaluate(inputs: RunInputs) -> Evaluation:
         result=evaluate_cells(cells,
             inputs.brief.hot_boundary.value,inputs.brief.cold_boundary.value,
             settings.mechanics.stress_free_temperature.value,restraint)
+        # Compare with a doubled mesh; this checks *sampled maximum stress*,
+        # not just equilibrium or a scalar heat-flux conservation residual.
+        finer_cells=_mesh_cells(design,props,settings.thermal.mesh.elements*2)
+        refined=evaluate_cells(finer_cells,
+            inputs.brief.hot_boundary.value,inputs.brief.cold_boundary.value,
+            settings.mechanics.stress_free_temperature.value,restraint)
+        stress_ok=(abs(result.tensile_mismatch_Pa-refined.tensile_mismatch_Pa)<.05
+                   if refined.tensile_mismatch_Pa<.05 else
+                   abs(result.tensile_mismatch_Pa-refined.tensile_mismatch_Pa)/
+                       max(1.,refined.tensile_mismatch_Pa)<=.001)
+        curvature_ok=(abs(result.curvature_per_m-refined.curvature_per_m)<=2e-9
+                      if abs(refined.curvature_per_m)<1e-6 else
+                      abs(result.curvature_per_m-refined.curvature_per_m)/
+                          abs(refined.curvature_per_m)<=.001)
+        flux_ok=(abs(result.transmitted_flux_magnitude_W_m2-
+                     refined.transmitted_flux_magnitude_W_m2)/
+                 max(1.,refined.transmitted_flux_magnitude_W_m2)<=1e-5)
+        mass_ok=abs(result.areal_mass_kg_m2-refined.areal_mass_kg_m2)<=1e-8
+        quality='qualified' if all((stress_ok,curvature_ok,flux_ok,mass_ok)) else 'unresolved'
         values={'thermal_transmission':quantity('heat_flux',result.transmitted_flux_magnitude_W_m2),
                 'areal_mass':quantity('areal_mass',result.areal_mass_kg_m2),
                 'tensile_thermal_mismatch':quantity('stress',result.tensile_mismatch_Pa)}
@@ -343,13 +368,14 @@ def evaluate(inputs: RunInputs) -> Evaluation:
             solver=inputs.solver,status=status,metrics=tuple(metrics),
             constraint_metrics=tuple(constraints),constraint_outcomes=tuple(outcomes),
             spatial_fields=fields,comparison_context_hash=ctx,evidence_status='synthetic',
-            manufacturing_feasibility=manufacturing,
-            feasibility=feasibility,limitations=limitations+result.limitations)
+            manufacturing_feasibility=manufacturing,numerical_quality=quality,
+            feasibility=feasibility,limitations=limitations+result.limitations+
+            (() if quality=='qualified' else ('Mesh-doubling accuracy threshold not met; comparison unqualified.',)))
     except DomainError as error:
         reason=str(error)
         return Evaluation(input_hash=inputs.content_hash,brief_hash=inputs.brief.content_hash,
             solver=inputs.solver,status='unsupported',
             metrics=tuple(Metric(objective_id=o.id,value=None,status='unsupported',explanation=reason)
                           for o in inputs.brief.objectives),
-            feasibility='unknown',manufacturing_feasibility='unknown',comparison_context_hash=ctx,evidence_status='synthetic',
+            feasibility='unknown',manufacturing_feasibility='unknown',numerical_quality='unresolved',comparison_context_hash=ctx,evidence_status='synthetic',
             limitations=limitations+(reason,))

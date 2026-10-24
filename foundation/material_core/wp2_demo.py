@@ -49,6 +49,7 @@ def main():
     ap.add_argument('--store',type=Path,required=True)
     ap.add_argument('--architecture',choices=('homogeneous','layered','gradient'),
                     default='homogeneous')
+    ap.add_argument('--elements',type=int,default=128)
     ap.add_argument('--achieved',action='store_true',
                     help='Use an externally supplied labelled synthetic estimated profile')
     ap.add_argument('--replay',metavar='RUN_ID')
@@ -65,7 +66,7 @@ def main():
         return
     if args.achieved and args.architecture!='gradient':
         ap.error('The supplied achieved-state fixture applies only to a gradient')
-    x=make_wp2_achieved_fixture() if args.achieved else make_wp2_fixture(args.architecture)
+    x=make_wp2_achieved_fixture(elements=args.elements) if args.achieved else make_wp2_fixture(args.architecture,elements=args.elements)
     run_id=store.create(x)
     try:
         result=evaluate(x)

@@ -1,0 +1,44 @@
+{
+  "recovery_date": "2026-10-21",
+  "base_commit": "f3e6cfc7f7e9ed885ce681814c0927fc421163c8",
+  "branch": "wp0r-recovery-2026-10-21",
+  "missing_original_commit": "51c84ac",
+  "source_archive_sha256": "fdb1c6448e9b237b42151bdf519345442d3897c10619de2eb79cce5779736d95",
+  "recovered_exact": [
+    "ceramic/Ceramic_Evidence_Milestone.md",
+    "ceramic/ceramic_evaluation.json",
+    "ceramic/ceramic_evidence.json",
+    "ceramic/evaluate_ceramic.py"
+  ],
+  "reconstructed": [
+    "thermal.py",
+    "laminate.py",
+    "test_recovery.py"
+  ],
+  "not_recovered": [
+    "Original wp0_spike and wp0_comparison source and tests",
+    "Original wp0_manufacturing source and tests",
+    "Original local git commit",
+    "Previously inspected source PDFs"
+  ],
+  "files": {
+    "README.md": "fa0d87ecbf02edf64b97943da363c9455a1f74d1433150805fcccf7a8b4966cd",
+    "__init__.py": "78113fc2a81d62d585e50985bc47fa8c91d795be68e1bbbf6a4a5ace8397d489",
+    "ceramic/Ceramic_Evidence_Milestone.md": "43361bad2abc278ed49f237f35766ff1b9f3d8989d23a9b4f1fedbc1ced2ae60",
+    "ceramic/ceramic_evaluation.json": "64fce96549558cbc61776fa3f7f4453e745a2749ada1a72c5d48cb1fc42c0ed7",
+    "ceramic/ceramic_evidence.json": "19cc507c33a4552d3bfd3fdc04bd6326eedb5f07fa7135d67e60165b0d1d0262",
+    "ceramic/evaluate_ceramic.py": "711db9310cd84b5313fa8477e49707385eb29c41395db761d9b35d25da94dbec",
+    "environment-freeze.txt": "5730fe8c55b72bdfd75b789849d8ef6171a09eddce2d26a8457900aa9877b0d3",
+    "evidence/Material_System_Implementation_Plan_v2.md": "d13eba15ea17b04b506a11a48bfe3f7f4ed48687e9035e1c05046660239b1168",
+    "evidence/WP0_Decision_Pack_and_Assumptions.md": "a10cad2287c6c64d878a253c74ace1f0bf80f13944c60121b43ec5c6b440031a",
+    "evidence/WP0_Manufacturing_Evidence_Reproduction.md": "a746b2a2e5eae2cfa8a9a17c7662e512187e2295c23e655626864bb983a1343f",
+    "laminate.py": "d0d5db4ff9aee5dff9e5063f06f566a2c29f89cccd3a73d9e1138de5d786ecdf",
+    "laminate_results.json": "bd8d0961b873e0392561d3bce82618f677552ec701b1ddfa42042a4454c914cc",
+    "make_inventory.py": "6020203a04afa912ce8c6f64171d7d79a7287892e8a704be6c834ec7272f249f",
+    "requirements.txt": "4bc8920001ec373a762f66a57fc4e58c5a534cbd5f5ab3bfea076704d48aae80",
+    "test-run.txt": "f359772d972ab53d28c43b3078705061b5aae952353a3334bf62f742f8d6822d",
+    "test_recovery.py": "578f5021241a789e576833b56b504cae30faff41fa3040369c2fcf1412f6542b",
+    "thermal.py": "d82a17f3f068c9dff52208c840167b5ec5f73193f50f44b200d2a7f39c63c1c7",
+    "thermal_results.json": "66e91ea713a98c0007c01c0201870f53f6690ca6c8a2a38c627cc522a33edfa4"
+  }
+}

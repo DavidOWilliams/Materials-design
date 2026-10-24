@@ -71,7 +71,7 @@ def make_catalogue_base(*, elements=4096, mass_limit=31.):
     return RunInputs.model_validate_json(json.dumps(raw))
 
 
-def propose(*, architecture, pair, fraction, elements=4096, mass_limit=31.,
+def propose(*, architecture, pair, fraction, knot_position=.5, elements=4096, mass_limit=31.,
             parent_hashes=(), origin=PROVIDER_ID):
     """Bounded candidate; pair is ordered, two distinct members from A/B/C."""
     if architecture not in ("homogeneous","layered","gradient"):
@@ -81,6 +81,8 @@ def propose(*, architecture, pair, fraction, elements=4096, mass_limit=31.,
         raise ValueError("Unsupported constituent selection")
     if type(fraction) not in (int,float) or not 0.05<=fraction<=0.95:
         raise ValueError("Fraction outside declared [0.05,0.95]")
+    if type(knot_position) not in (int,float) or not 0.05<=knot_position<=0.95:
+        raise ValueError("Gradient knot position outside [0.05,0.95]")
     base=make_catalogue_base(elements=elements,mass_limit=mass_limit)
     if architecture=="homogeneous":
         arch=Homogeneous(composition=_composition(pair,fraction))
@@ -92,7 +94,7 @@ def propose(*, architecture, pair, fraction, elements=4096, mass_limit=31.,
     else:
         arch=Gradient(knots=(
             Knot(position=0.,composition=_composition(pair,1.)),
-            Knot(position=.5,composition=_composition(pair,fraction)),
+            Knot(position=float(knot_position),composition=_composition(pair,fraction)),
             Knot(position=1.,composition=_composition(pair,0.)),
         ))
     design=IntendedDesign(
@@ -132,4 +134,5 @@ class BoundedProvider:
             pair=self.rng.choice(self.pairs)
             architecture=self.rng.choice(self.architectures)
             fraction=round(self.rng.uniform(.1,.9),8)
-        return dict(pair=pair,architecture=architecture,fraction=fraction)
+        return dict(pair=pair,architecture=architecture,fraction=fraction,
+                    knot_position=round(self.rng.uniform(.3,.7),8) if architecture=="gradient" else .5)

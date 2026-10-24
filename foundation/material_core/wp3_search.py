@@ -44,7 +44,7 @@ def _config(seed,budget,method,elements,mass_limit):
         numerical_policy="WP2 mesh doubling on every evaluated design",
         comparison_mode="numerical-only",
         objectives=("thermal_transmission","areal_mass","tensile_thermal_mismatch"),
-        resource_contract="max unique WP2 evaluations including nominal and doubled mesh",
+        resource_contract="total proposal slots across resumes, including failed and invalid proposals",
     )
 
 
@@ -85,6 +85,29 @@ def _derived(ledger, store):
         saved=store.load(item["run_id"])
         if saved.inputs.content_hash!=item.get("input_hash"):
             raise ValueError("Proposal input identity mismatch")
+        proposal=item.get("proposal")
+        if not isinstance(proposal,dict):
+            raise ValueError("Proposal description missing")
+        architecture=saved.inputs.design.architecture
+        if proposal.get("architecture")!=architecture.kind:
+            raise ValueError("Proposal architecture differs from immutable design")
+        if architecture.kind=="homogeneous":
+            reference=architecture.composition
+            declared_fraction=reference.fractions[0].fraction
+            declared_knot=.5
+        elif architecture.kind=="layered":
+            reference=architecture.layers[0].composition
+            declared_fraction=architecture.layers[0].end
+            declared_knot=.5
+        else:
+            reference=architecture.knots[0].composition
+            declared_fraction=architecture.knots[1].composition.fractions[0].fraction
+            declared_knot=architecture.knots[1].position
+        if (list(proposal.get("pair",())) !=
+                [x.material_id for x in reference.fractions] or
+                proposal.get("fraction") != declared_fraction or
+                proposal.get("knot_position",.5) != declared_knot):
+            raise ValueError("Proposal parameters differ from immutable design")
         if item.get("parent_run_id") != saved.parent_run_id:
             raise ValueError("Parent run link mismatch")
         if list(saved.inputs.design.parent_hashes)!=item.get("parent_design_hashes"):
@@ -308,7 +331,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
         parent_hashes=() if previous is None else (store.load(parent_run_id).inputs.design.content_hash,)
         try:
             inputs=propose(**proposal,elements=elements,mass_limit=mass_limit,
-                           parent_hashes=parent_hashes)
+                           parent_hashes=parent_hashes,origin=config["provider"])
         except (ValueError,TypeError) as exc:
             ledger["proposals"].append(dict(index=i,proposal=proposal,
                     status="invalid",reason=str(exc)))
@@ -382,7 +405,12 @@ def compare_paired(path,*,seeds=(11,23,37),budget=9,elements=4096,mass_limit=31.
                 pareto_count=len((ledger["qualified_comparison"] or {}).get("pareto_ids",[])),
                 unique_evaluations=ledger["unique_evaluations"],
                 kernel_solves=ledger["nominal_kernel_solves"]+ledger["refinement_kernel_solves"],
-                cache_hits=ledger["cache_hits"],ledger=str(seed)+"-"+method+"/campaign.json")
+                cache_hits=ledger["cache_hits"],
+                evaluation_attempts=ledger["evaluation_attempts"],
+                confirmed_numerical_solves=ledger["confirmed_numerical_solves"],
+                uncertain_evaluation_attempts=ledger["uncertain_evaluation_attempts"],
+                kernel_solve_count_uncertain=ledger["kernel_solve_count_uncertain"],
+                ledger=str(seed)+"-"+method+"/campaign.json")
         pairs.append(row)
     result=dict(schema_version=1,seeds=list(seeds),budget=budget,
         measured_outcome="qualified and Pareto portfolio coverage; no superiority presupposed",

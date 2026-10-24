@@ -120,7 +120,7 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,
         'settings':settings.model_dump(mode='json')}))
 
 
-def make_wp2_achieved_fixture():
+def make_wp2_achieved_fixture(elements=128):
     """Supplied *synthetic estimated* geometry; NOT a process predictor.
 
     The changed mid-knot shifts the composition budget. This deliberately
@@ -130,7 +130,7 @@ def make_wp2_achieved_fixture():
     from .contracts import (
         EstimatedAchievedState, ProcessScenario, RunInputs,
     )
-    x=make_wp2_fixture('gradient')
+    x=make_wp2_fixture('gradient',elements=elements)
     p=x.provenance[0]
     process=ProcessScenario(id='supplied-synthetic-estimate',version=1,
         route='external estimated profile fixture; no manufacturing calculation',

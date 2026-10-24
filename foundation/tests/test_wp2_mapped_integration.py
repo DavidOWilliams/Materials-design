@@ -8,7 +8,7 @@ import pytest
 from material_core.contracts import RunInputs, quantity
 from material_core.store import RunStore
 from material_core.wp2_numerical import (
-    compatible_comparison, numerical_comparison_eligible, evaluate, property_pack_hash, comparison_context_hash, context_for_run,
+    compatible_comparison, numerical_comparison_eligible, exploratory_numerical_eligible, evaluate, property_pack_hash, comparison_context_hash, context_for_run,
 )
 from material_core.wp2_scenarios import make_wp2_fixture, make_wp2_achieved_fixture
 
@@ -25,7 +25,7 @@ def test_three_objectives_equal_budget_and_store(tmp_path,arch):
     assert all(m.status=='computed' for m in y.metrics)
     assert y.metrics[1].value.value==pytest.approx(30.,abs=1e-8)
     assert not y.comparison_eligible(x.brief)
-    assert numerical_comparison_eligible(y,x.brief)
+    assert exploratory_numerical_eligible(y,x.brief)
     assert y.spatial_fields is not None
     assert len(y.spatial_fields.coordinate_from_hot_m)>=128
     assert len(y.spatial_fields.signed_equibiaxial_stress_Pa)==len(y.spatial_fields.temperature_K)
@@ -119,8 +119,8 @@ from material_core.wp2_numerical import evaluate
 r=RunStore(sys.argv[1]).load(sys.argv[2])
 got=evaluate(r.inputs)
 assert got.content_hash==r.evaluation.content_hash
-from material_core.wp2_numerical import numerical_comparison_eligible
-assert numerical_comparison_eligible(got,r.inputs.brief)
+from material_core.wp2_numerical import exploratory_numerical_eligible
+assert exploratory_numerical_eligible(got,r.inputs.brief)
 print(got.metrics[0].value.value)
 """
     process=subprocess.run([sys.executable,'-c',program,str(tmp_path),run_id],
@@ -175,9 +175,9 @@ def test_actual_numeric_mass_constraint_with_mass_not_an_objective(tmp_path):
         'thermal_transmission','tensile_thermal_mismatch']
     assert y.constraint_metrics[0].metric_id=='areal_mass'
     assert y.constraint_metrics[0].value.value==pytest.approx(30.)
-    assert numerical_comparison_eligible(y,constrained.brief)
+    assert exploratory_numerical_eligible(y,constrained.brief)
     store=RunStore(tmp_path);run=store.create(constrained);store.finish(run,y)
-    assert numerical_comparison_eligible(store.load(run).evaluation,constrained.brief)
+    assert exploratory_numerical_eligible(store.load(run).evaluation,constrained.brief)
 
 
 def test_wp2_open_assumptions_are_immutable_and_historical_versions_retained():
@@ -204,7 +204,7 @@ def test_stress_convergence_with_declared_bilayer_limit():
 
 
 def test_gradient_stress_and_curvature_numerical_convergence():
-    runs=[evaluate(make_wp2_fixture('gradient',elements=n)) for n in (32,64,128,256,512)]
+    runs=[evaluate(make_wp2_fixture('gradient',elements=n)) for n in (32,64,128,256,512,1024,2048,4096)]
     stress=[e.metrics[2].value.value for e in runs]
     curvature=[e.spatial_fields.curvature_per_m for e in runs]
     stress_deltas=[abs(a-b) for a,b in zip(stress,stress[1:])]
@@ -213,3 +213,15 @@ def test_gradient_stress_and_curvature_numerical_convergence():
     assert all(a>b for a,b in zip(curvature_deltas,curvature_deltas[1:]))
     assert stress_deltas[-1]/stress[-1]<1e-3
     assert curvature_deltas[-1]/abs(curvature[-1])<1e-3
+
+
+def test_numerical_quality_gate_rejects_underresolved_gradient():
+    under=make_wp2_fixture('gradient',elements=128)
+    low=evaluate(under)
+    assert low.status=='complete' and low.numerical_quality=='unresolved'
+    assert not numerical_comparison_eligible(low,under.brief)
+    assert exploratory_numerical_eligible(low,under.brief)
+    high=make_wp2_fixture('gradient',elements=4096)
+    accurate=evaluate(high)
+    assert accurate.numerical_quality=='qualified'
+    assert numerical_comparison_eligible(accurate,high.brief)

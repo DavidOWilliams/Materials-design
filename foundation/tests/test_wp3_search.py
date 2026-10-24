@@ -87,3 +87,25 @@ def test_decision_reconstruction_and_numerical_recomputation(tmp_path):
     path.write_text(json.dumps(raw))
     with pytest.raises(ValueError,match="qualified comparison"):
         open_search(path)
+
+
+def test_replaceable_provider_and_evaluator_contract(tmp_path):
+    from material_core.wp2_numerical import evaluate
+    calls=[]
+    class AlternativeProvider:
+        def __init__(self,seed,method):
+            self.seed=seed
+        def proposal(self,index):
+            return dict(architecture="gradient",
+                pair=("scenario_A","scenario_C"),fraction=.55)
+    def evaluator(inputs):
+        calls.append(inputs.design.architecture.kind)
+        return evaluate(inputs)
+    out=run_search(tmp_path/"modular.json",seed=5,budget=2,elements=256,
+        provider_factory=AlternativeProvider,provider_identity="contract-provider-v1",
+        evaluation_adapter=evaluator,evaluator_identity="test-double-delegating-to-wp2-v1")
+    assert len(calls)==2
+    assert [x["proposal"]["architecture"] for x in out["proposals"]]==[
+        "homogeneous","gradient"]
+    assert out["config"]["provider"]=="contract-provider-v1"
+    assert out["config"]["evaluation_adapter"]=="test-double-delegating-to-wp2-v1"

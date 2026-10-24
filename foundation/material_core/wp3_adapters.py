@@ -38,7 +38,7 @@ class CatalogueAdapter:
         except (ValueError,TypeError) as error:
             raise ValueError("Proposal validation rejected unsupported parameters") from error
         if reconstructed.content_hash!=inputs.content_hash:
-            raise ValueError("Scenario proposal differs from stored typed design")
+            raise ValueError("Proposal differs from stored typed design")
     def baseline(self):
         return self.build(self.start(),())
 

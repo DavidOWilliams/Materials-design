@@ -197,8 +197,8 @@ def open_search(path, *, verify_decision=True, recovery=False):
     if reason=="running":
         if terminal is not None:
             raise ValueError("Running campaign carries terminal event")
-        if count==config["evaluation_budget"] and not pending:
-            raise ValueError("Full campaign cannot remain running")
+        # A crash after the last evaluation but before its terminal journal
+        # update can leave a full campaign running; resume finalizes it.
     else:
         if pending:
             raise ValueError("Terminated campaign retains pending work")
@@ -228,7 +228,7 @@ def open_search(path, *, verify_decision=True, recovery=False):
                          "hard_constraint_feasibility","qualified"):
                 if original.get(name)!=reconstructed.get(name):
                     raise ValueError("Persisted evaluation summary mismatch: "+name)
-    if verify_decision and ledger.get("stop_reason")!="running":
+    if verify_decision:
         if _canonical(expected.get("qualified_comparison"))!=_canonical(ledger.get("qualified_comparison")):
             raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
     return ledger

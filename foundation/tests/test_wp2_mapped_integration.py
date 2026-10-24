@@ -191,3 +191,25 @@ def test_wp2_open_assumptions_are_immutable_and_historical_versions_retained():
     builtin=AssumptionRegistry.from_builtin()
     for a in ('A01','A06','A07','A12','A14'):
         assert by_id[a].content_hash==builtin.get(a,1).content_hash
+
+
+def test_stress_convergence_with_declared_bilayer_limit():
+    analytic=680000000/59  # Pa: limiting tensile interface stress, not cell centre
+    runs=[evaluate(make_wp2_fixture('layered',elements=n)) for n in (32,64,128,256,512)]
+    errors=[abs(analytic-e.metrics[2].value.value) for e in runs]
+    assert all(a>b for a,b in zip(errors,errors[1:]))
+    assert errors[-1]/analytic<.005  # bound on sampled maximum, not experimental error
+    curvatures=[e.spatial_fields.curvature_per_m for e in runs]
+    assert all(abs(c+763/17700)<1e-8 for c in curvatures)
+
+
+def test_gradient_stress_and_curvature_numerical_convergence():
+    runs=[evaluate(make_wp2_fixture('gradient',elements=n)) for n in (32,64,128,256,512)]
+    stress=[e.metrics[2].value.value for e in runs]
+    curvature=[e.spatial_fields.curvature_per_m for e in runs]
+    stress_deltas=[abs(a-b) for a,b in zip(stress,stress[1:])]
+    curvature_deltas=[abs(a-b) for a,b in zip(curvature,curvature[1:])]
+    assert all(a>b for a,b in zip(stress_deltas,stress_deltas[1:]))
+    assert all(a>b for a,b in zip(curvature_deltas,curvature_deltas[1:]))
+    assert stress_deltas[-1]/stress[-1]<1e-3
+    assert curvature_deltas[-1]/abs(curvature[-1])<1e-3

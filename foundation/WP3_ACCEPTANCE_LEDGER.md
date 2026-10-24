@@ -17,7 +17,7 @@
 | F07 | `open_search` and `recompute_search`, subprocess CLI and immutable `RunStore` | CI 40127435140 passed tamper, replay and hash/checksum checks; independent review pending |
 | F08 | Cancellation before/after a completed evaluation, `stop_history`, resumable append-only ledger | CI 40127435140 passed interruption, failed attempt uncertainty, crash-after-store and atomic-write fault injection; independent review pending |
 | F09 | Current foundation + recovery + legacy jobs, WP2 verifier, old run-store contracts | CI 40127435140: 185 foundation/recovery and 1,148 legacy/recovery passed; direct-head correction job 24 passed |
-| F10 | `test_replaceable_provider_and_evaluator_contract` and generic `wp3_pareto.py` objective ordering | Software modularity tests, not additional scientific capability |
+| F10 | registered `wp3_adapters.py` default/alternate provider contracts, actual changed-duty three-layer construction and generic `wp3_pareto.py` objective ordering | Software modularity tests, not additional scientific capability |
 
 ## Challenge gate
 
@@ -103,3 +103,20 @@ The run's event was `pull_request`, and `GITHUB_SHA` was the temporary merge com
 - These artifacts and jobs are test evidence for their precise source revisions. Any subsequent documentation-only commit must obtain a matching final-head run; do not copy prior results forward as direct proof of a newer HEAD.
 
 **Implementation-owned Gate 1 and Gate 2:** supported for the declared synthetic WP3 domain at the tested revision above. **Gate 3 remains PENDING** independent scientific and architecture review. No independent reviewer has approved the correction.
+
+## Independent scientific/architecture review R1–R4 closure evidence — revision after d62023d
+
+| Finding | Inspected defect and pre-fix reproduction | Correction | Required validation |
+| --- | --- | --- | --- |
+| R1 unprotected schema-1 API | Old `run_campaign` + forged `unique_evaluations=999` and `pareto_ids=["invented"]`; `reopen_campaign` accepted both | Retire normal v1 API/CLI, preserve `read_legacy_unvalidated` as labelled non-reviewable reader; use only schema-2 search as executable/CI path | `test_wp3_campaign.py` refuses normal API, CLI and forged historical evidence; current WP3 CI invokes schema-2; exact-original reproduction job |
+| R2 recovery bypasses completed corruption | Real WP2 completes first, second crashes, corrupt first objective/constraints/status; old `recovery=True` suppressed unrelated mismatch | Remove blanket any-pending bypass; all complete summaries/counters/Pareto checked even with pending; only valid created-run reconciliation on resume | Parameterized completed-field corruption during pending recovery; pending comparison corruption; existing interruption boundary tests |
+| R3 fabricated stop status | Set full ledger `stop_reason=manufacturing_validated`; old open accepted | Closed set of four reasons, matching terminal event, proposal budget/pending consistency, explicit resume-to-running transition and stop history | Unsupported and mismatched states, impossible budget, pending termination, actual cancel/stop/resume tests |
+| R4 synthetic coupling | Hardcoded A/B starting design, objective IDs, fixture `propose` and geometric representation branches in campaign code | Versioned adapters with `start/proposal/build/validate/baseline` own scenario. Brief supplies objective/constraint IDs and hashes. Alternate synthetic 380/320 K three-layer WP2-supported duty proves a materially different scenario with same orchestration. Unknown adapters fail; recorded non-WP2 evaluator cannot be silently recomputed as WP2 | Alternate scenario persistence/reopen/resume/recompute and explicit CLI, mutated-proposal rejections, unsupported adapter tests and exact-original reproduction |
+
+**Source of truth:** reviewed head `d62023d7205d48beba11269d4c358a7380ab9ca4` is checked out *unchanged* in CI job `wp3-original-review-reproduction` and the frozen `foundation/reproduce_reviewed_wp3_r1_r4.py` reports all four defects. Implementation-owned current regression tests do not substitute for a fresh independent review. See `foundation/WP3_R1_R4_CORRECTION_RECORD.md` for root causes, incompatibilities, architecture choices, and scientific safeguards.
+
+**Compatibility:** historical schema-1 artifacts remain readable as unvalidated historical material only. They are not upgraded by opening, and must not be cited as qualified WP3 acceptance. New work must use the schema-2 path. Previous custom evaluator test doubles require a supplied callable for execution; reopening can check stored artifacts, but independent numerical recomputation must fail unless evaluator identity is registered and scientifically supported.
+
+**Exploration is structured seeded sampling**, not an adaptive optimiser. Earlier three-seed comparisons do not establish superiority. New paired comparisons retain exactly the same budget/count semantics and fixed start within the default provider. These scientific boundaries and the distinct numerical qualification/hard-feasibility/manufacturing/evidence statuses remain mandatory.
+
+**Gate 3 remains pending separately commissioned independent re-review** of the corrected, exact-commit review package.

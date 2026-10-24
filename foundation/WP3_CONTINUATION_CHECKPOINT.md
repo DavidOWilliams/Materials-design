@@ -1,40 +1,27 @@
-# WP3 continuation checkpoint — 2026-10-24
+# WP3 continuation checkpoint — updated implementation state, 24 October 2026
 
-## Source state
-Branch `wp3-inverse-search-2026-10-24`, latest implementation commit `6065a67bfca2c67d6a3d0b92b6b58068170d93c7`; draft PR #3; no merge or WP4.
+This document supersedes its original early-vertical-slice snapshot. The branch `wp3-inverse-search-2026-10-24` and draft PR #3 are retained, with the corrected WP2 baseline `7009189d9be4dfd5940999c88cbb5c3c70c8ce56` unchanged. No merge or WP4 start.
 
-## Independently reported failures
-- Inspected actual job logs for failed Actions run 40092556593 (job 120868054275): Pydantic strict tuple validation failures in two WP3 tests; example skipped. Log's summary says 112 passed, 2 failed (independent user's earlier 140 figure is not the same workflow run).
-- Replaced both Python-object validations of JSON-mode dumps with `RunInputs.model_validate_json(json.dumps(raw))` in `wp3_vertical.py`, preserving strict contracts.
-- Rejected non-Boolean eligibility and blank context in `wp3_pareto.py`; added `wp3_qualified.py` to derive eligibility from WP2 numerical checks.
-- Added focused review regression tests.
-- Updated workflow to run a separate-process replay and upload full store artifacts.
-- The known `mid_fraction=0.35` example has independently reported mass 31.5 kg/m2 versus 31 ceiling; do not present it as feasible. A new feasible design and test are still required.
+## Implemented WP3 capability
 
-## Evidence ledger
-| Requirement | Status | Evidence / remaining |
-| --- | --- | --- |
-| Strict JSON-mode tuple validation | Implemented, unverified | commit d6e75dec; fresh CI needed |
-| Reject unsafe eligibility and empty context | Implemented, unverified | commits 87a77e2, 7d40df0 |
-| WP2-derived numerical qualification | Implemented, unverified | commit 6065a67; needs tests and edge-case scrutiny |
-| Durable replay artifacts | Implemented, unverified | commit ec5b4a1; fresh Actions artifact inspection needed |
-| New feasible candidate and distinct infeasible example | Pending | keep 31.5 kg/m2 example infeasible |
-| Campaigns, reproducible seeds, lineage | Pending | no implementation |
-| Constituent/architecture proposals | Pending | no implementation |
-| Budgets, cancellation, failures, restart | Pending | no implementation |
-| Equal-budget baseline | Pending | no implementation |
-| Functional matrix Gate 1 | Pending | not executed |
-| Challenge matrix Gate 2 | Pending | not executed |
-| Separate reviewer Gate 3 | Pending | no reviewer approval |
+- `wp3_provider.py`: bounded synthetic A/B/C common catalogue, homogeneous, discrete layers and continuously defined gradients; vary constituent pair, layer boundary, composition and gradient knot position. These are hypothetical numerical properties, not engineering ceramic evidence.
+- `wp3_qualified.py`, `wp3_pareto.py`: conservative WP2-derived qualified numerical eligibility, common context, deterministic nondominated output. Manufacturing feasibility and evidence maturity remain distinct.
+- `wp3_search.py`: bounded seeded mixed search, parent lineage, immutable run links, reasoned exclusions, explicit resource counters, cancellation, append-only resume, integrity-checked open and numerical recomputation. Alternate provider and evaluator contract injections are version-labelled software test fixtures.
+- Separate `explore` and `sampling` campaigns with shared start and 11/23/37 paired seeds, isolated stores, fixed evaluation limits, and honest portfolio coverage metrics without assumed superiority.
+- CI jobs: locked foundation + recovered WP0 regressions, original corrected WP2 verifier, single-run and mixed-campaign replay/recomputation, paired comparison and independent legacy-environment regression. CI is execution evidence, not independent engineering approval.
 
-## CI observations
-Actions run 40092556593 is confirmed failed; subsequent commit workflow-run queries returned empty arrays (the connector's workflow-run lookup is limited to PR-triggered first-page results). **Do not interpret empty arrays as proof of no branch-push runs**. Need obtain actual run link and logs, or use a Codespace/local checkout. No current green final SHA.
+## Required review sources
 
-## Next executable action
-1. Add feasible mid-fraction proposal (e.g. 0.65; confirm computed mass and numerical qualification), retain 0.35 infeasible.
-2. Add regression tests of `qualified_pareto` using actual WP2 evaluation objects.
-3. Implement campaign orchestration with seed/config/proposal identity, budget, cancellation, retained failures, replay.
-4. Build fair sampling baseline and acceptance matrices.
-5. Inspect latest completed CI, fix defects, freeze revision for independent review.
+- `foundation/WP3_ACCEPTANCE_LEDGER.md` — F01–F10 and C01–C10 mapped to test and limitation.
+- `foundation/WP3_VISION_TRACEABILITY.md` — actual module mapping and retained full platform vision.
+- `foundation/WP3_REVIEW_PACKAGE.md` — independent numerical, Pareto, architecture and completion review request.
+- `foundation/WP3_USAGE.md` — fresh setup, commands, replay and recovery contracts.
+- Workflow: `.github/workflows/wp3-verification.yml`.
 
-No claims of Gate completion are authorised without fresh evidence.
+## Remaining gate
+
+Gate 3 is **pending genuinely independent reviewer assignment and sign-off**. GitHub Actions/implementation-owned tests are not independent approval. Scientific limitations remain synthetic property pack, planar idealisation, no validated manufacturing process, no full residual stress/fracture/lifetime and no V1 measurement. D1 and WP4/5 are not claimed.
+
+## Publication integrity
+
+For final review record the current branch SHA and final-head full two-job CI run, job logs and artifact IDs. These must be inspected after any later documentation updates. A historical green run does not qualify a newer SHA.

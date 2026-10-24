@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import pytest
-from material_core.wp3_search import run_search,open_search,compare_paired
+from material_core.wp3_search import run_search,open_search,compare_paired,recompute_search
 
 
 def test_mixed_architectures_candidates_reopen_and_replay(tmp_path):
@@ -74,4 +74,16 @@ def test_search_rejects_invalid_inputs_and_corruption(tmp_path):
     raw["config"]["mass_limit"]=200.
     path.write_text(json.dumps(raw))
     with pytest.raises(ValueError,match="configuration changed"):
+        open_search(path)
+
+
+def test_decision_reconstruction_and_numerical_recomputation(tmp_path):
+    path=tmp_path/"verified.json"
+    a=run_search(path,seed=19,budget=3,elements=256)
+    replay=recompute_search(path)
+    assert replay["replay"]=="passed" and replay["recomputed"]==3
+    raw=json.loads(path.read_text())
+    raw["qualified_comparison"]["pareto_ids"]=["fabricated"]
+    path.write_text(json.dumps(raw))
+    with pytest.raises(ValueError,match="qualified comparison"):
         open_search(path)

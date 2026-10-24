@@ -109,3 +109,18 @@ def test_replaceable_provider_and_evaluator_contract(tmp_path):
         "homogeneous","gradient"]
     assert out["config"]["provider"]=="contract-provider-v1"
     assert out["config"]["evaluation_adapter"]=="test-double-delegating-to-wp2-v1"
+
+
+def test_cancel_after_first_evaluation_and_resume_without_overwrite(tmp_path):
+    path=tmp_path/"interrupted.json"
+    calls=iter((False,True))
+    partial=run_search(path,seed=29,budget=3,elements=256,
+                       cancel_requested=lambda:next(calls))
+    assert partial["stop_reason"]=="cancelled"
+    assert len(partial["proposals"])==1
+    preserved=partial["proposals"][0]["evaluation_hash"]
+    complete=run_search(path,seed=29,budget=3,elements=256,resume=True)
+    assert len(complete["proposals"])==3
+    assert complete["proposals"][0]["evaluation_hash"]==preserved
+    assert "cancelled" in complete["stop_history"]
+    assert complete["stop_reason"]=="evaluation_budget_exhausted"

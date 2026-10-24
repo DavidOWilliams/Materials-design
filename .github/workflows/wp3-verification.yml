@@ -125,3 +125,24 @@ jobs:
           name: wp3-branch-head-corrections
           path: /tmp/wp3-head-wp2-reference/**
           if-no-files-found: ignore
+
+  wp3-original-review-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Freeze checked-in defect reproducer outside reviewed checkout
+        run: cp foundation/reproduce_reviewed_wp3_r1_r4.py /tmp/reproduce_reviewed_wp3_r1_r4.py
+      - uses: actions/checkout@v4
+        with:
+          ref: d62023d7205d48beba11269d4c358a7380ab9ca4
+          path: inspected
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original inspected locked dependencies
+        run: bash inspected/foundation/setup.sh
+      - name: Demonstrate four defects against unchanged reviewed source
+        run: |
+          echo "reviewed_source=$(git -C inspected rev-parse HEAD)"
+          PYTHONPATH=inspected/foundation inspected/.venv-foundation/bin/python /tmp/reproduce_reviewed_wp3_r1_r4.py

@@ -16,7 +16,7 @@ from material_core.store import RunStore
 def edited(x, action, *, refresh=True):
     raw=x.model_dump(mode='json')
     action(raw)
-    candidate=RunInputs.model_validate_json(json.dumps(raw))
+    if raw['materials']!=x.model_dump(mode='json')['materials']:\n        from material_core.contracts import MaterialRecord\n        raw['settings']['property_pack_hash']=property_pack_hash(tuple(\n            MaterialRecord.model_validate_json(json.dumps(m)) for m in raw['materials']))\n    candidate=RunInputs.model_validate_json(json.dumps(raw))
     if refresh:
         raw['settings']['evaluation_context_hash']=context_for_run(candidate)
         candidate=RunInputs.model_validate_json(json.dumps(raw))
@@ -89,9 +89,6 @@ def test_context_process_assumptions_solver_and_geometry():
     est=make_wp2_achieved_fixture()
     y=evaluate(est)
     assert not compatible_comparison(evaluate(a),y)
-    changed=edited(est,lambda r:(
-        r['process'].__setitem__('route','another versioned deposition route'),
-        r['estimated_state'].__setitem__('process_hash','0'*64)),refresh=False)
     # Re-link to the changed process without changing candidate geometry.
     from material_core.contracts import ProcessScenario
     raw=est.model_dump(mode='json')

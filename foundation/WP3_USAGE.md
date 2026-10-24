@@ -28,9 +28,10 @@ The first command creates an immutable run store and an atomic campaign journal.
 
 ```bash
 PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --paired /tmp/wp3-paired --budget 9
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --paired /tmp/wp3-paired --paired-reopen
 ```
 
-Seeds 11, 23 and 37 are prespecified in the service. Search uses structured coverage plus bounded seeded changes; sampling draws uniformly from the same discrete/continuous domain. Both include the same homogeneous start and isolated store. Counts are evaluations and known paired kernel solves; a failed computation may leave its actual solve count uncertain. The output is *not* a pre-registered hypervolume benchmark and must not be interpreted as statistical superiority.
+Seeds 11, 23 and 37 are prespecified in the service. Search uses structured coverage plus bounded seeded changes; sampling draws uniformly from the same discrete/continuous domain. Both include the same homogeneous start and isolated store. The second command cross-checks each paired export row against its linked immutable campaign, validating the saved totals and Pareto counts. Counts are attempted evaluations and confirmed paired kernel solves; a failed computation may leave its actual solve count uncertain. The output is *not* a pre-registered hypervolume benchmark and must not be interpreted as statistical superiority.
 
 ## Resource and interruption semantics
 

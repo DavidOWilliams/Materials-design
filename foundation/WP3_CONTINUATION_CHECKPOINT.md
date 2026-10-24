@@ -25,3 +25,11 @@ Gate 3 is **pending genuinely independent reviewer assignment and sign-off**. Gi
 ## Publication integrity
 
 For final review record the current branch SHA and final-head full two-job CI run, job logs and artifact IDs. These must be inspected after any later documentation updates. A historical green run does not qualify a newer SHA.
+
+## Independent review R1–R4 corrective continuation (24 October 2026)
+
+The review of `d62023d7205d48beba11269d4c358a7380ab9ca4` found four problems *after* the previous 185-test success. All four were reproduced without changing the reviewed historical source using `foundation/reproduce_reviewed_wp3_r1_r4.py` in a pinned Actions checkout. The updated WP3 source now retires the unvalidated schema-1 campaign API (historical labelled reader only), validates completed evidence during an unrelated pending recovery, validates campaign stop reasons and terminal events, and delegates scenario-specific proposal construction, validation and objective/constraint/brief identity to versioned adapters. The alternate provider uses 380/320 K and a variable three-layer synthetic two-phase design; the main provider retains the original A/B/C catalogue. Both reuse corrected WP2 and preserve intended-only manufacturing unknown.
+
+Supported executable campaign entry point: `python -m material_core.wp3_search`. The `wp3_campaign` command without `--legacy-read-unvalidated` is deliberately rejected; old schema-1 artifacts cannot meet current qualification assurances and are not rewritten. The `explore` policy is structured seeded sampling, not evaluation-driven adaptive optimisation. Any unregistered evaluator cannot be silently substituted during independent numerical recomputation.
+
+Evidence and explicit correction status: `foundation/WP3_R1_R4_CORRECTION_RECORD.md`, `WP3_ACCEPTANCE_LEDGER.md`, `WP3_REVIEW_PACKAGE.md`, `WP3_USAGE.md`, `WP3_VISION_TRACEABILITY.md`, workflow `.github/workflows/wp3-verification.yml`. Record the exact corrected commit, checkout merge/branch identities, workflow jobs and run-store artifact IDs after the final full CI. Gate 3 remains pending independent re-review. No merge or WP4 work.

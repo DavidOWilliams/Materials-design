@@ -24,6 +24,13 @@ def main():
     stress=evaluate(x).metrics[2].value.value
     assert 1000 < stress < 10000,stress
     print('REPRO A: homogeneous 128-element spurious stress Pa:',stress)
+    for label in ('homogeneous','layered','gradient'):
+        evaluation=evaluate(make_wp2_fixture(label))
+        print('ORIGINAL WP2',label,'tensile_Pa',evaluation.metrics[2].value.value,
+              'curvature_per_m',evaluation.spatial_fields.curvature_per_m)
+    baseline=evaluate(make_wp2_achieved_fixture())
+    print('ORIGINAL WP2 supplied-estimated','tensile_Pa',baseline.metrics[2].value.value,
+          'curvature_per_m',baseline.spatial_fields.curvature_per_m)
     reviewed=Path('reviewed/foundation/tests/test_wp2_kernel.py').read_text()
     assert r'\n    # linear profile' in reviewed
     print('REPRO B: literal escaped newline comments found in refinement test')

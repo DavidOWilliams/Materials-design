@@ -91,26 +91,40 @@ def test_decision_reconstruction_and_numerical_recomputation(tmp_path):
         open_search(path)
 
 
-def test_replaceable_provider_and_evaluator_contract(tmp_path):
-    from material_core.wp2_numerical import evaluate
-    calls=[]
-    class AlternativeProvider:
-        def __init__(self,seed,method):
-            self.seed=seed
-        def proposal(self,index):
-            return dict(architecture="gradient",
-                pair=("scenario_A","scenario_C"),fraction=.55)
-    def evaluator(inputs):
-        calls.append(inputs.design.architecture.kind)
-        return evaluate(inputs)
-    out=run_search(tmp_path/"modular.json",seed=5,budget=2,elements=256,
-        provider_factory=AlternativeProvider,provider_identity="contract-provider-v1",
-        evaluation_adapter=evaluator,evaluator_identity="test-double-delegating-to-wp2-v1")
-    assert len(calls)==2
-    assert [x["proposal"]["architecture"] for x in out["proposals"]]==[
-        "homogeneous","gradient"]
-    assert out["config"]["provider"]=="contract-provider-v1"
-    assert out["config"]["evaluation_adapter"]=="test-double-delegating-to-wp2-v1"
+def test_materially_distinct_registered_scenario_and_replay(tmp_path):
+    from material_core.wp3_adapters import ALTERNATE
+    path=tmp_path/"alternate.json"
+    result=run_search(path,seed=5,budget=3,elements=256,
+                      provider_identity=ALTERNATE)
+    assert result["config"]["provider"]==ALTERNATE
+    assert len(result["proposals"])==3
+    from material_core.store import RunStore
+    store=RunStore(tmp_path/"run-store")
+    run=store.load(result["proposals"][0]["run_id"])
+    assert len(run.inputs.design.architecture.layers)==3
+    assert run.inputs.brief.hot_boundary.value==380
+    assert run.inputs.brief.cold_boundary.value==320
+    assert len(run.inputs.materials)==2
+    assert result["config"]["objectives"]==[o.id for o in run.inputs.brief.objectives]
+    assert result["config"]["constraints"]==[c.id for c in run.inputs.brief.constraints]
+    assert open_search(path)==result
+    assert recompute_search(path)["recomputed"]==3
+    import os,subprocess,sys,json
+    env=dict(os.environ)
+    env["PYTHONPATH"]=str(Path(__file__).resolve().parents[1])
+    process=subprocess.run([sys.executable,"-m","material_core.wp3_search",
+        "--ledger",str(path),"--reopen"],env=env,check=True,capture_output=True,text=True)
+    assert json.loads(process.stdout)==result
+
+
+def test_unregistered_provider_or_evaluator_rejected(tmp_path):
+    with pytest.raises(ValueError,match="adapter"):
+        run_search(tmp_path/"unregistered.json",seed=5,budget=2,
+                   provider_identity="not-registered")
+    with pytest.raises(ValueError,match="Unavailable evaluator"):
+        run_search(tmp_path/"unregistered.json",seed=5,budget=2,
+                   evaluator_identity="unavailable-v0")
+
 
 
 def test_cancel_after_first_evaluation_and_resume_without_overwrite(tmp_path):

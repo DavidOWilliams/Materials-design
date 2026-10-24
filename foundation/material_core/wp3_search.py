@@ -147,6 +147,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     config=_config(seed,budget,method,elements,mass_limit)
     config["provider"]=provider_identity or PROVIDER_ID
     config["evaluation_adapter"]=evaluator_identity or "wp2-bounded-2"
+    config["wall_time_seconds"]=None if wall_time_seconds is None else float(wall_time_seconds)
     path=Path(path)
     store=RunStore(path.parent/"run-store")
     if resume:

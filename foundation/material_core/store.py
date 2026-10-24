@@ -228,6 +228,10 @@ class RunStore:
             if not legacy_wp2:
                 if evaluation.manufacturing_feasibility is None:
                     raise ValueError('Manufacturing feasibility must be explicit')
+                if evaluation.numerical_quality is None:
+                    raise ValueError('Mapped evaluation numerical convergence status missing')
+                if inputs.evaluation_target=='intended' and evaluation.manufacturing_feasibility!='unknown':
+                    raise ValueError('Intended-state execution cannot claim manufacturing feasibility')
                 ids={c.id:c for c in inputs.brief.constraints}
                 if {o.constraint_id for o in evaluation.constraint_outcomes}!=set(ids):
                     raise ValueError('Missing or extra constraint outcomes')

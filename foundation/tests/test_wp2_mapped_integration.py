@@ -8,7 +8,7 @@ import pytest
 from material_core.contracts import RunInputs, quantity
 from material_core.store import RunStore
 from material_core.wp2_numerical import (
-    compatible_comparison, evaluate, property_pack_hash, comparison_context_hash,
+    compatible_comparison, evaluate, property_pack_hash, comparison_context_hash, context_for_run,
 )
 from material_core.wp2_scenarios import make_wp2_fixture, make_wp2_achieved_fixture
 
@@ -166,8 +166,7 @@ def test_actual_numeric_mass_constraint_with_mass_not_an_objective(tmp_path):
     raw['brief']['objectives']=[
         o for o in raw['brief']['objectives'] if o['id']!='areal_mass']
     interim=RunInputs.model_validate_json(json.dumps(raw))
-    raw['settings']['evaluation_context_hash']=comparison_context_hash(
-        interim.brief,interim.settings,'intended')
+    raw['settings']['evaluation_context_hash']=context_for_run(interim)
     constrained=RunInputs.model_validate_json(json.dumps(raw))
     y=evaluate(constrained)
     assert [m.objective_id for m in y.metrics]==[

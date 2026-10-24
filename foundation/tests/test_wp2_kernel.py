@@ -96,3 +96,21 @@ def test_force_and_moment_independent_polynomial_integration():
         z+=c.thickness_m;temperature=next_t
     assert abs(force)<1e-4
     assert abs(moment)<1e-6
+
+
+@pytest.mark.parametrize('layers',[
+    (material(thickness=.003,k=2.,Q=100e9,alpha=5e-6),
+     material(thickness=.007,k=10.,Q=160e9,alpha=12e-6)),
+    tuple(material(thickness=.01/20,k=2+8*(j+.5)/20,
+                   Q=100e9+60e9*(j+.5)/20,
+                   alpha=(5+7*(j+.5)/20)*1e-6)
+          for j in range(20)),
+])
+def test_orientation_reversal_preserves_stress_and_inverts_curvature(layers):
+    original=evaluate_cells(layers,400.,300.,300.)
+    flipped=evaluate_cells(tuple(reversed(layers)),300.,400.,300.)
+    assert flipped.hot_to_cold_flux_W_m2 == pytest.approx(-original.hot_to_cold_flux_W_m2)
+    assert flipped.tensile_mismatch_Pa == pytest.approx(original.tensile_mismatch_Pa,rel=1e-9,abs=.05)
+    assert flipped.curvature_per_m == pytest.approx(-original.curvature_per_m,rel=1e-9,abs=2e-9)
+    assert flipped.signed_equibiaxial_stress_Pa == pytest.approx(
+        tuple(reversed(original.signed_equibiaxial_stress_Pa)),rel=1e-9,abs=.05)

@@ -18,6 +18,8 @@ def test_mixed_architectures_candidates_reopen_and_replay(tmp_path):
         "homogeneous","layered","gradient"}
     assert len({tuple(p["proposal"]["pair"]) for p in result["proposals"]})>=3
     assert result["unique_evaluations"]==9
+    assert result["proposals"][0]["parent_run_id"] is None
+    assert all(result["proposals"][i]["parent_run_id"]==result["proposals"][i-1]["run_id"] for i in range(1,9))
     assert result["nominal_kernel_solves"]==9
     assert result["refinement_kernel_solves"]==9
     assert all(p["manufacturing_feasibility"]=="unknown" for p in result["proposals"])

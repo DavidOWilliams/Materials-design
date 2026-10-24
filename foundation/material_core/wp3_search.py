@@ -56,7 +56,108 @@ def _proposal(provider,index):
     return provider.proposal(index-1)
 
 
-def open_search(path, *, verify_decision=True):
+def _derived(ledger, store):
+    """Reconstruct reporting from immutable run rows, not from claimed summaries.
+
+    A failed/created numerical attempt may have run either neither, one, or both
+    mesh solves; only persisted completed WP2 results confirm both solves.
+    """
+    result=json.loads(_canonical(ledger))
+    attempts=0
+    completed=0
+    hits=0
+    invalid=0
+    failed=0
+    uncertain=0
+    hashes=set()
+    previous=None
+    for index,item in enumerate(result["proposals"]):
+        if item.get("index")!=index:
+            raise ValueError("Proposal sequence/index mismatch")
+        status=item.get("status")
+        if status=="invalid":
+            if not item.get("reason") or "run_id" in item:
+                raise ValueError("Invalid proposal evidence mismatch")
+            invalid+=1
+            continue
+        if status not in ("created","complete","failed"):
+            raise ValueError("Unknown proposal status")
+        saved=store.load(item["run_id"])
+        if saved.inputs.content_hash!=item.get("input_hash"):
+            raise ValueError("Proposal input identity mismatch")
+        if item.get("parent_run_id") != saved.parent_run_id:
+            raise ValueError("Parent run link mismatch")
+        if list(saved.inputs.design.parent_hashes)!=item.get("parent_design_hashes"):
+            raise ValueError("Parent design lineage mismatch")
+        if saved.parent_run_id!=previous and previous is not None:
+            raise ValueError("Proposal sequence parent mismatch")
+        previous=item["run_id"]
+        if item.get("cache_hit") is True:
+            hits+=1
+            if status!="complete":
+                raise ValueError("Cached entry must be completed")
+        else:
+            if item.get("cache_hit") is not False:
+                raise ValueError("Evaluation attempt cache flag missing")
+            attempts+=1
+            hashes.add(item["input_hash"])
+        if status=="complete":
+            if saved.evaluation is None or saved.status!="complete":
+                raise ValueError("Completed proposal has no complete run")
+            evaluation=saved.evaluation
+            if evaluation.content_hash!=item.get("evaluation_hash"):
+                raise ValueError("Completed evaluation identity mismatch")
+            completed+=int(item.get("cache_hit") is False)
+            item.update(objectives={m.objective_id:
+                None if m.value is None else m.value.value
+                for m in evaluation.metrics},
+                constraints={c.constraint_id:c.outcome
+                             for c in evaluation.constraint_outcomes},
+                numerical_quality=evaluation.numerical_quality,
+                manufacturing_feasibility=evaluation.manufacturing_feasibility,
+                evidence_maturity=evaluation.evidence_status,
+                hard_constraint_feasibility=evaluation.feasibility,
+                qualified=numerical_comparison_eligible(evaluation,saved.inputs.brief))
+        elif status=="failed":
+            if saved.status!="failed":
+                raise ValueError("Failed proposal has no matching failed run")
+            if not item.get("reason"):
+                raise ValueError("Failed proposal reason missing")
+            failed+=1
+            uncertain+=1
+        elif status=="created":
+            if saved.status not in ("created","complete"):
+                raise ValueError("Interrupted proposal run state mismatch")
+            uncertain+=1
+    result.update(
+        evaluation_attempts=attempts,
+        unique_evaluations=len(hashes),
+        successful_evaluations=completed,
+        cache_hits=hits,
+        failed_attempts=failed,
+        invalid_proposals=invalid,
+        nominal_kernel_solves=completed,
+        refinement_kernel_solves=completed,
+        confirmed_numerical_solves=2*completed,
+        uncertain_evaluation_attempts=uncertain,
+        kernel_solve_count_uncertain=bool(uncertain))
+    _reconstruct(result,store)
+    return result
+
+
+def _save_search(path,ledger,store):
+    derived=_derived(ledger,store)
+    ledger.clear()
+    ledger.update(derived)
+    _write_ledger(path,ledger)
+
+
+def open_search(path, *, verify_decision=True, recovery=False):
+    """Validate all derived reporting without rewriting evidence.
+
+    Recovery mode tolerates *only* stale derived fields where a created run
+    remains to be reconciled. Finished ledger corruption always fails closed.
+    """
     path=Path(path)
     ledger=json.loads(path.read_text())
     if ledger.get("schema_version")!=SCHEMA:
@@ -64,29 +165,37 @@ def open_search(path, *, verify_decision=True):
     config=ledger.get("config")
     if not isinstance(config,dict) or ledger.get("configuration_hash")!=hashlib.sha256(_canonical(config).encode()).hexdigest():
         raise ValueError("Search configuration changed")
-    store=RunStore(path.parent/"run-store")
+    if not isinstance(ledger.get("proposals"),list):
+        raise ValueError("Invalid proposal ledger")
     if len(ledger["proposals"])>config["evaluation_budget"]:
         raise ValueError("Budget overrun in ledger")
-    for item in ledger["proposals"]:
-        if item["status"]=="invalid":
-            if "reason" not in item:
-                raise ValueError("Invalid proposal lacks reason")
-            continue
-        run=store.load(item["run_id"])
-        if run.inputs.content_hash!=item["input_hash"]:
-            raise ValueError("Input identity mismatch")
-        if item["status"]=="complete":
-            if run.evaluation is None or run.evaluation.content_hash!=item["evaluation_hash"]:
-                raise ValueError("Evaluation identity mismatch")
-        elif item["status"]=="failed" and run.status!="failed":
-            raise ValueError("Failure status mismatch")
-        elif item["status"]=="created" and run.status not in ("created","complete"):
-            raise ValueError("Interrupted run status mismatch")
+    store=RunStore(path.parent/"run-store")
+    expected=_derived(ledger,store)
+    checked=("evaluation_attempts","unique_evaluations","successful_evaluations",
+             "cache_hits","failed_attempts","invalid_proposals",
+             "nominal_kernel_solves","refinement_kernel_solves",
+             "confirmed_numerical_solves","uncertain_evaluation_attempts",
+             "kernel_solve_count_uncertain")
+    for name in checked:
+        # A narrow escape route permits pre-correction crashed, incomplete
+        # ledgers to be recovered. It never approves a completed corrupted log.
+        if name in ledger and ledger[name]!=expected[name]:
+            if recovery and any(p["status"]=="created" for p in ledger["proposals"]):
+                continue
+            raise ValueError("Campaign accounting mismatch: "+name)
+    for original,reconstructed in zip(ledger["proposals"],expected["proposals"]):
+        if original.get("status")=="complete":
+            for name in ("objectives","constraints","numerical_quality",
+                         "manufacturing_feasibility","evidence_maturity",
+                         "hard_constraint_feasibility","qualified"):
+                if original.get(name)!=reconstructed.get(name):
+                    if recovery and any(p["status"]=="created" for p in ledger["proposals"]):
+                        continue
+                    raise ValueError("Persisted evaluation summary mismatch: "+name)
     if verify_decision and ledger.get("stop_reason")!="running":
-        expected=json.loads(_canonical(ledger))
-        _reconstruct(expected,store)
         if _canonical(expected.get("qualified_comparison"))!=_canonical(ledger.get("qualified_comparison")):
-            raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
+            if not (recovery and any(p["status"]=="created" for p in ledger["proposals"])):
+                raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
     return ledger
 
 
@@ -151,7 +260,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     path=Path(path)
     store=RunStore(path.parent/"run-store")
     if resume:
-        ledger=open_search(path)
+        ledger=open_search(path,recovery=True)
         if _canonical(ledger["config"])!=_canonical(config):
             raise ValueError("Cannot resume with a different campaign configuration")
         if ledger["stop_reason"]=="evaluation_budget_exhausted":
@@ -166,7 +275,6 @@ def run_search(path,*,seed=17,budget=9,method="explore",
                     if old.status=="created":
                         store.fail(item["run_id"],"Interrupted work; not automatically completed")
                     item.update(status="failed",reason="Interrupted work retained")
-                    ledger["failed_attempts"]+=1
     else:
         if path.exists():
             raise FileExistsError("Search ledger exists; open or resume instead")
@@ -199,7 +307,6 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             inputs=propose(**proposal,elements=elements,mass_limit=mass_limit,
                            parent_hashes=parent_hashes)
         except (ValueError,TypeError) as exc:
-            ledger["invalid_proposals"]+=1
             ledger["proposals"].append(dict(index=i,proposal=proposal,
                     status="invalid",reason=str(exc)))
             _write_ledger(path,ledger)
@@ -211,24 +318,18 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             saved=cached[0]
             item.update(run_id=saved.run_id,status="complete",
                 evaluation_hash=saved.evaluation.content_hash,cache_hit=True)
-            ledger["cache_hits"]+=1
         else:
             run_id=store.create(inputs,parent_run_id=parent_run_id)
             item.update(run_id=run_id,status="created",cache_hit=False)
             ledger["proposals"].append(item)
             _write_ledger(path,ledger)
-            ledger["unique_evaluations"]+=1
             try:
                 result=actual_evaluator(inputs)
                 store.finish(run_id,result)
-                ledger["nominal_kernel_solves"]+=1
-                ledger["refinement_kernel_solves"]+=1
                 item.update(status="complete",evaluation_hash=result.content_hash)
             except Exception as exc:
                 store.fail(run_id,str(exc))
                 item.update(status="failed",reason=str(exc))
-                ledger["failed_attempts"]+=1
-                ledger["kernel_solve_count_uncertain"]=True
             # Already appended before the solve for crash recovery.
         if cached:
             ledger["proposals"].append(item)

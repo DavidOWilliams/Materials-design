@@ -33,7 +33,10 @@ class CatalogueAdapter:
                        parent_hashes=parent_hashes,origin=self.identity)
     def validate(self,spec,inputs):
         # The canonical typed, versioned constructor is the scenario validator.
-        reconstructed=self.build(spec,inputs.design.parent_hashes)
+        try:
+            reconstructed=self.build(spec,inputs.design.parent_hashes)
+        except (ValueError,TypeError) as error:
+            raise ValueError("Proposal validation rejected unsupported parameters") from error
         if reconstructed.content_hash!=inputs.content_hash:
             raise ValueError("Scenario proposal differs from stored typed design")
     def baseline(self):

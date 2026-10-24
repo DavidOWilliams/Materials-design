@@ -237,6 +237,8 @@ def open_search(path, *, verify_decision=True, recovery=False):
 def recompute_search(path):
     """Numerically recompute persisted evaluations, distinct from artifact checking."""
     record=open_search(path)
+    if record["config"]["evaluation_adapter"]!="wp2-bounded-2":
+        raise ValueError("Unavailable evaluator for numerical recomputation: "+record["config"]["evaluation_adapter"])
     store=RunStore(Path(path).parent/"run-store")
     checked=0
     for item in record["proposals"]:
@@ -277,19 +279,23 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     interruption, a ledger 'created' run is checked and either recovered if
     already finished or marked failed and retained before a new proposal.
     """
-    if (provider_factory is None)!=(provider_identity is None):
-        raise ValueError("Alternate provider requires versioned identity")
-    if (evaluation_adapter is None)!=(evaluator_identity is None):
-        raise ValueError("Alternate evaluator requires versioned identity")
-    if any(not isinstance(x,str) or not x.strip()
-           for x in (provider_identity,evaluator_identity) if x is not None):
-        raise ValueError("Empty provider or evaluator identity")
+    if provider_factory is not None:
+        raise ValueError("Unregistered factory cannot provide durable independent replay")
+    if evaluator_identity not in (None,"wp2-bounded-2") and evaluation_adapter is None:
+        raise ValueError("Unavailable evaluator implementation: "+str(evaluator_identity))
     if wall_time_seconds is not None and (
             type(wall_time_seconds) not in (int,float)
             or not math.isfinite(wall_time_seconds) or wall_time_seconds<0):
         raise ValueError("Invalid wall-time budget")
     config=_config(seed,budget,method,elements,mass_limit)
-    config["provider"]=provider_identity or PROVIDER_ID
+    selected=provider_identity or DEFAULT
+    provider=resolve_provider(selected,seed,method,elements,mass_limit)
+    base=provider.baseline()
+    config["provider"]=selected
+    config["objectives"]=[o.id for o in base.brief.objectives]
+    config["constraints"]=[c.id for c in base.brief.constraints]
+    config["brief_hash"]=base.brief.content_hash
+    config["property_pack_hash"]=base.settings.property_pack_hash
     config["evaluation_adapter"]=evaluator_identity or "wp2-bounded-2"
     config["wall_time_seconds"]=None if wall_time_seconds is None else float(wall_time_seconds)
     path=Path(path)
@@ -321,14 +327,12 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             nominal_kernel_solves=0,refinement_kernel_solves=0,
             invalid_proposals=0,failed_attempts=0,stop_reason="running",
             qualified_comparison=None,termination_event=None)
-    provider=(provider_factory(seed,method) if provider_factory is not None
-              else BoundedProvider(seed,method))
     actual_evaluator=evaluation_adapter or evaluate
     # Reconstruct the seeded generator state even when reopening.
     for i in range(len(ledger["proposals"])):
         _proposal(provider,i)
     start=time.monotonic()
-    _save_search(path,ledger,store)
+    _save_search(path,ledger,store,provider)
     for i in range(len(ledger["proposals"]),budget):
         if cancel_requested is not None and cancel_requested():
             ledger["stop_reason"]="cancelled"
@@ -341,12 +345,11 @@ def run_search(path,*,seed=17,budget=9,method="explore",
         parent_run_id=None if previous is None else previous["run_id"]
         parent_hashes=() if previous is None else (store.load(parent_run_id).inputs.design.content_hash,)
         try:
-            inputs=propose(**proposal,elements=elements,mass_limit=mass_limit,
-                           parent_hashes=parent_hashes,origin=config["provider"])
+            inputs=provider.build(proposal,parent_hashes)
         except (ValueError,TypeError) as exc:
             ledger["proposals"].append(dict(index=i,proposal=proposal,
                     status="invalid",reason=str(exc)))
-            _save_search(path,ledger,store)
+            _save_search(path,ledger,store,provider)
             continue
         item=dict(index=i,proposal=proposal,input_hash=inputs.content_hash,
                   parent_run_id=parent_run_id, parent_design_hashes=list(parent_hashes))
@@ -359,7 +362,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             run_id=store.create(inputs,parent_run_id=parent_run_id)
             item.update(run_id=run_id,status="created",cache_hit=False)
             ledger["proposals"].append(item)
-            _save_search(path,ledger,store)
+            _save_search(path,ledger,store,provider)
             try:
                 result=actual_evaluator(inputs)
                 store.finish(run_id,result)
@@ -380,13 +383,13 @@ def run_search(path,*,seed=17,budget=9,method="explore",
                 evidence_maturity=result.evidence_status,
                 hard_constraint_feasibility=result.feasibility,
                 qualified=numerical_comparison_eligible(result,inputs.brief))
-        _save_search(path,ledger,store)
+        _save_search(path,ledger,store,provider)
     else:
         ledger["stop_reason"]="evaluation_budget_exhausted"
     ledger["termination_event"]={"reason":ledger["stop_reason"],"proposal_slots":len(ledger["proposals"])}
     ledger["elapsed_seconds_this_execution"]=time.monotonic()-start
     _reconstruct(ledger,store)
-    _save_search(path,ledger,store)
+    _save_search(path,ledger,store,provider)
     return open_search(path)
 
 
@@ -480,6 +483,7 @@ def main():
     p.add_argument("--elements",type=int,default=4096)
     p.add_argument("--mass-limit",type=float,default=31.)
     p.add_argument("--method",choices=["explore","sampling"],default="explore")
+    p.add_argument("--provider",choices=list(SUPPORTED),default=DEFAULT)
     p.add_argument("--resume",action="store_true")
     p.add_argument("--reopen",action="store_true")
     p.add_argument("--recompute",action="store_true")
@@ -495,7 +499,7 @@ def main():
                 open_search(args.ledger) if args.reopen else
                 run_search(args.ledger,seed=args.seed,budget=args.budget,
                     elements=args.elements,mass_limit=args.mass_limit,
-                    method=args.method,resume=args.resume))
+                    method=args.method,resume=args.resume,provider_identity=args.provider))
     else:
         p.error("--ledger or --paired required")
     print(json.dumps(result,sort_keys=True))

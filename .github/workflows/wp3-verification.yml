@@ -27,10 +27,18 @@ jobs:
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store > /tmp/wp3-result.json
           cat /tmp/wp3-result.json
+      - name: Replay persisted run in a fresh process
+        run: |
+          RUN_ID=$(.venv-foundation/bin/python -c "import json; print(json.load(open('/tmp/wp3-result.json'))['run_id'])")
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store --replay "$RUN_ID" > /tmp/wp3-replay.json
+          cat /tmp/wp3-replay.json
       - name: Store reproducible output
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: wp3-vertical-output
-          path: /tmp/wp3-result.json
+          path: |
+            /tmp/wp3-result.json
+            /tmp/wp3-replay.json
+            /tmp/wp3-store/**
           if-no-files-found: ignore

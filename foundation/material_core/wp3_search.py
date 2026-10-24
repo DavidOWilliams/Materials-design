@@ -191,15 +191,20 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             ledger["stop_reason"]="wall_time_budget_exhausted"
             break
         proposal=_proposal(provider,i)
+        previous=next((p for p in reversed(ledger["proposals"]) if "run_id" in p),None)
+        parent_run_id=None if previous is None else previous["run_id"]
+        parent_hashes=() if previous is None else (store.load(parent_run_id).inputs.design.content_hash,)
         try:
-            inputs=propose(**proposal,elements=elements,mass_limit=mass_limit)
+            inputs=propose(**proposal,elements=elements,mass_limit=mass_limit,
+                           parent_hashes=parent_hashes)
         except (ValueError,TypeError) as exc:
             ledger["invalid_proposals"]+=1
             ledger["proposals"].append(dict(index=i,proposal=proposal,
                     status="invalid",reason=str(exc)))
             _write_ledger(path,ledger)
             continue
-        item=dict(index=i,proposal=proposal,input_hash=inputs.content_hash)
+        item=dict(index=i,proposal=proposal,input_hash=inputs.content_hash,
+                  parent_run_id=parent_run_id, parent_design_hashes=list(parent_hashes))
         cached=store.find_complete(inputs.content_hash)
         if cached:
             saved=cached[0]
@@ -207,7 +212,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
                 evaluation_hash=saved.evaluation.content_hash,cache_hit=True)
             ledger["cache_hits"]+=1
         else:
-            run_id=store.create(inputs)
+            run_id=store.create(inputs,parent_run_id=parent_run_id)
             item.update(run_id=run_id,status="created",cache_hit=False)
             ledger["proposals"].append(item)
             _write_ledger(path,ledger)

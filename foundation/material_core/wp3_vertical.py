@@ -36,9 +36,9 @@ def propose_gradient(*, mid_fraction: float = 0.35, elements: int = 4096) -> Run
                             assumptions=x.brief.assumptions)
     raw = x.model_dump(mode="json")
     raw["design"] = design.model_dump(mode="json")
-    provisional = RunInputs.model_validate(raw)
+    provisional = RunInputs.model_validate_json(json.dumps(raw))
     raw["settings"]["evaluation_context_hash"] = context_for_run(provisional)
-    return RunInputs.model_validate(raw)
+    return RunInputs.model_validate_json(json.dumps(raw))
 
 
 def execute_one(store_path, *, mid_fraction=0.35, elements=4096):

@@ -57,8 +57,7 @@ def main():
             raise AssertionError('Intended architecture has unequal material budget')
     for name,payload in [('wp2-numerical-results.json',results),
                          ('wp2-separate-process-replay.json',replay)]:
-        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'
-')
+        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
     for arch in ('qualified-homogeneous','qualified-layered','qualified-gradient',
                  'qualified-estimated-achieved-gradient'):
         if results[arch]['numerical_quality']!='qualified':

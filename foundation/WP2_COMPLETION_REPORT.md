@@ -5,7 +5,7 @@
 ## Decision and scope
 
 **WP2 numerical software implementation is ready for WP3 within its bounded,
-explicitly synthetic planar domain, subject to a green final-head CI workflow.**
+explicitly synthetic planar domain once final-head CI is green.**
 The review defects have been reproduced against the exact original reviewed
 commit, addressed in source, regression-tested, and documented. The original
 "WP2 complete" claim of 23 October **did not establish scientific correctness**:
@@ -118,12 +118,13 @@ The current branch has a five-job GitHub Actions qualification workflow:
 | --- | --- | --- |
 | `wp1-immutable-baseline` | Fresh original Python 3.12 hash-locked setup, `pip check`, exact original WP1/recovery code and R1 defect reproduction | **74 passed** plus expected R1 rejection |
 | `wp2-reviewed-defects-and-history` | Fresh reviewed SHA checkout and locked environment, reproducible A–E defects, original v1 store and replay | **All five reproduced**, historical replay passed |
-| `numerical-regression` | Fresh corrected locked environment and `pip check`, foundation/recovery/WP2 tests, original WP1 replay, corrected eight examples plus separate-process replay | **130 passed** in the last source-verification run before documentation; 8 persisted/replayed examples |
+| `numerical-regression` | Fresh corrected locked environment and `pip check`, foundation/recovery/WP2 tests, original WP1 replay, corrected eight examples plus separate-process replay | **134 passed** in the corrected source qualification; 8 persisted/replayed examples |
 | `legacy-regression` | Separate legacy pinned runtime + scikit-fem, `pip check`, `python -m pytest tests recovered_wp0 -q` | **1,148 passed**, 10 warnings |
 | `wp2-cross-version-history` | Load unchanged original v1 SQLite/JSON into corrected reader; check source/result hash, refuse changed-solver replay | **Passed** |
 
-The code-verification reference before documentation updates is
-[GitHub Actions run 40072532460](https://github.com/DavidOWilliams/Materials-design/actions/runs/40072532460).
+The corrected source-verification reference is
+[GitHub Actions run 40073102958](https://github.com/DavidOWilliams/Materials-design/actions/runs/40073102958),
+which includes the new four property/process/constraint/solver regressions.
 Final acceptance must use the **latest complete green workflow at the
 published PR head**, not that earlier run alone. Script output includes
 results and curvature, separate-process replay checks, and downloadable

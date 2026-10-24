@@ -1,24 +1,19 @@
-# WP3 vision traceability — initial implementation record
+# WP3 vision traceability — implementation and limitations
 
-Status: **pre-implementation; no WP3 acceptance gates passed**. Prepared 24 October 2026 from the Vision v3, Product Definition v1, Implementation Plan v2 and WP3 brief v1.3. Branch based on corrected WP2 commit `7009189d9be4dfd5940999c88cbb5c3c70c8ce56`. This document records obligations, not delivered code.
+Updated 24 October 2026. Applicable authorities: Vision v3, Product Definition v1, Implementation Plan v2, WP3 takeover v1.0; corrected WP2 ancestor `7009189d9be4dfd5940999c88cbb5c3c70c8ce56`. This is a bounded synthetic planar-coupon work package, **not a reduction of the enduring Materials Design Platform vision**.
 
-| Vision section | WP3 contract / required behavioural verification | Deferred integration |
+| Vision section | WP3 implementation and behavioural evidence | Preserved future scope |
 | --- | --- | --- |
-| 1–2 material system and inverse design | Separate Brief, IntendedDesign, Evaluation; generate new constituent and architecture proposals; test changed brief and lineage | Other material families and spatial geometries |
-| 3 specialist discovery | Pluggable proposal provider with recorded catalogue identity; alternative provider test double | Literature and pretrained discovery providers (MatterGen, AtomGPT) |
-| 4, 6 architectures and evaluation | Homogeneous, layered, continuously defined gradient; evaluator contract with objective IDs, units, directions, applicability and evidence | Coatings, multiscale and coupled physics |
-| 5, 7, 8 manufacturing and achieved state | Distinguish intended, estimated and measured state; evaluation-target contract and redesign hook; reject absent achieved state | WP4 process transform, CFD, residual stress history |
-| 9, 11 multiobjective and lifecycle | Generic constraint and Pareto service, no hardcoded objective ordering; preference distinct from nondominance | Cost, sustainability, service-life objectives with validated functional units |
-| 10, 12 evidence and control | Immutable campaign provenance, failures, unknowns, hashes, budget and cancellation; replay checks | Measured validation, next-evidence prioritisation |
+| 1–2 whole material system and inverse design | `contracts.py` keeps Brief, IntendedDesign, Evaluation distinct; `wp3_provider.py` searches synthetic A/B/C subsets and homogeneous/layered/continuous gradient architectures; `test_wp3_provider.py`, `test_wp3_search.py` | Richer compositions, coatings, composites, geometry families, route selection and measured results |
+| 3 specialist discovery | Explicit `BoundedProvider` with versioned synthetic catalogue and provenance; injectable provider factory and contract test double | Literature/databases, MatterGen, AtomGPT and other scientifically qualified adapters |
+| 4, 6 architecture and evaluation | Existing WP2 adapter, common synthetic property pack, WP2 numerical status and applicability; provider changes constituents, fractions, layer boundary and gradient knot position | Replaceable specialist solvers, spatial scale and coating/hybrid architecture |
+| 5, 7, 8 manufacturing/evaluation loops | WP2 separates intended and externally supplied estimated achieved states; campaign ranks numerical-only results while manufacturing stays unknown for intended state | WP4 versioned process-resolution feedback, CFD and supported process-history residual stress models |
+| 9, 11 multiobjective decisions | `wp3_pareto.py` accepts objective IDs/directions generically; `wp3_qualified.py` derives WP2 numerical eligibility; no hidden preference weight. Three raw supported objectives are flux, mass and sampled tensile thermal mismatch | Cost, lifecycle sustainability, inspectability, repair and preference exploration under defensible units/evidence |
+| 10, 12 evidence, control and uncertainty | `wp3_search.py` records seeded search, versioned config digest, parent lineage, evaluation hashes, qualified comparison, failed/cancelled work, solve-accounting and paired baseline; `RunStore` and `recompute_search` replay | Experimentally measured feedback, broader evidence systems and decision-value prioritisation |
 
-## Non-negotiable acceptance
+## Verification boundaries
 
-F01–F10, C01–C10 and separate independent-review checks in WP3 brief v1.3 must be executed against a single final source revision, with machine-readable evidence and resolved blocking findings. Historical WP2 tests are not fresh WP3 results. A green CI run does not constitute independent review. Do not infer D1, V1, real ceramic validation, or manufacturability from WP3.
-
-## Source precedence
-
-Current user instructions > Vision v3 (enduring scope) > Product Definition v1 (compatible requirements) > Implementation Plan v2 (delivery sequence and D1/V1 split) > WP3 brief v1.3 (WP3 acceptance). Legacy aviation selection logic is historical only.
-
-## Current limitations
-
-No WP3 implementation, tests, campaign examples, qualified numerical results, separate reviewer, or independent approval are evidenced by this initial record. The implementation must still inspect live repository contracts and AGENTS.md, reproduce WP2 qualification, and satisfy all gates.
+- The numerical example records **mid_fraction=0.35** as mass-infeasible and **0.65** as constraint-satisfying and numerically qualified under its declared WP2 mesh. Both remain manufacturing-unknown in intended-only execution.
+- An independent baseline retains the corrected thermal eigenstrain moment integral and mesh-doubling requirements. No new scientific constitutive law, predictor training or material calibration is introduced.
+- The generic campaign can inject a different proposal provider and evaluator test double, but this demonstrates *software modularity only*, not evidence for a new scientific model.
+- `WP3_ACCEPTANCE_LEDGER.md` and `WP3_REVIEW_PACKAGE.md` are the acceptance and review records. **Gate 3 is not passed** absent independent scientific/architecture review. CI self-testing does not approve WP3, nor complete D1, WP4/5 or measured V1.

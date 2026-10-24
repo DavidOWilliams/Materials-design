@@ -144,8 +144,8 @@ def _derived(ledger, store):
         elif status=="failed":
             if saved.status!="failed":
                 raise ValueError("Failed proposal has no matching failed run")
-            if not item.get("reason"):
-                raise ValueError("Failed proposal reason missing")
+            if item.get("reason")!=saved.failure_reason:
+                raise ValueError("Failed proposal reason differs from durable run")
             failed+=1
             uncertain+=1
         elif status=="created":
@@ -300,7 +300,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
                 else:
                     if old.status=="created":
                         store.fail(item["run_id"],"Interrupted work; not automatically completed")
-                    item.update(status="failed",reason="Interrupted work retained")
+                    item.update(status="failed",reason=store.load(item["run_id"]).failure_reason)
     else:
         if path.exists():
             raise FileExistsError("Search ledger exists; open or resume instead")
@@ -419,6 +419,46 @@ def compare_paired(path,*,seeds=(11,23,37),budget=9,elements=4096,mass_limit=31.
     return result
 
 
+def reopen_paired(path):
+    """Verify reported paired totals against each independently validated run store."""
+    root=Path(path)
+    record=json.loads((root/"comparison.json").read_text())
+    if record.get("schema_version")!=1 or not isinstance(record.get("pairs"),list):
+        raise ValueError("Unsupported paired comparison")
+    if record.get("seeds")!=[p.get("seed") for p in record["pairs"]]:
+        raise ValueError("Paired seed identity mismatch")
+    for seed_record in record["pairs"]:
+        seed=seed_record["seed"]
+        for method in ("explore","sampling"):
+            reported=seed_record[method]
+            expected_path=str(seed)+"-"+method+"/campaign.json"
+            if reported.get("ledger")!=expected_path:
+                raise ValueError("Paired ledger path mismatch")
+            campaign=open_search(root/expected_path)
+            if (campaign["config"]["seed"]!=seed or
+                    campaign["config"]["method"]!=method or
+                    campaign["config"]["evaluation_budget"]!=record["budget"]):
+                raise ValueError("Paired campaign configuration mismatch")
+            actual={
+                "qualified_count":sum(p.get("qualified",False) for p in campaign["proposals"]),
+                "constraint_satisfying_count":sum(
+                    p.get("hard_constraint_feasibility")=="conditional"
+                    for p in campaign["proposals"]),
+                "pareto_count":len((campaign["qualified_comparison"] or {}).get("pareto_ids",[])),
+                "unique_evaluations":campaign["unique_evaluations"],
+                "kernel_solves":campaign["confirmed_numerical_solves"],
+                "cache_hits":campaign["cache_hits"],
+                "evaluation_attempts":campaign["evaluation_attempts"],
+                "confirmed_numerical_solves":campaign["confirmed_numerical_solves"],
+                "uncertain_evaluation_attempts":campaign["uncertain_evaluation_attempts"],
+                "kernel_solve_count_uncertain":campaign["kernel_solve_count_uncertain"],
+                "ledger":expected_path,
+            }
+            if _canonical(reported)!=_canonical(actual):
+                raise ValueError("Paired summary disagrees with immutable campaign evidence")
+    return record
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--ledger")
@@ -431,8 +471,11 @@ def main():
     p.add_argument("--resume",action="store_true")
     p.add_argument("--reopen",action="store_true")
     p.add_argument("--recompute",action="store_true")
+    p.add_argument("--paired-reopen",action="store_true")
     args=p.parse_args()
-    if args.paired:
+    if args.paired and args.paired_reopen:
+        result=reopen_paired(args.paired)
+    elif args.paired:
         result=compare_paired(args.paired,budget=args.budget,
                               elements=args.elements,mass_limit=args.mass_limit)
     elif args.ledger:

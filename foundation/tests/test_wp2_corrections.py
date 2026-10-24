@@ -167,3 +167,66 @@ def test_incompatible_and_missing_property_domains_fail_closed():
         r['materials'][1]['properties'][1]['temperature_max']['value']=320.
     shortened=edited(x,shorten)
     assert evaluate(shortened).status=='unsupported'
+
+
+def test_multiple_unavailable_bounds_cannot_pass_and_nonfinite_rejected(tmp_path):
+    x=make_wp2_fixture('homogeneous')
+    def change(r):
+        r['brief']['constraints']=[
+            Constraint(id='lower_unknown',metric_id='other_stress',
+                limit=quantity('stress',1e6),relation='ge',
+                applicability='unknown numerical property').model_dump(mode='json'),
+            Constraint(id='upper_unknown',metric_id='other_stress',
+                limit=quantity('stress',2e6),relation='le',
+                applicability='unknown numerical property').model_dump(mode='json')]
+    z=edited(x,change)
+    e=evaluate(z)
+    assert len(e.constraint_metrics)==1
+    assert e.constraint_metrics[0].status=='unsupported'
+    assert tuple(v.outcome for v in e.constraint_outcomes)==('unknown','unknown')
+    assert e.feasibility=='unknown'
+    assert not exploratory_numerical_eligible(e,z.brief)
+    store=RunStore(tmp_path);rid=store.create(z);store.finish(rid,e)
+    assert store.load(rid).evaluation.constraint_outcomes==e.constraint_outcomes
+    with pytest.raises(ValueError):
+        quantity('stress',float('nan'))
+
+
+def test_changed_resolution_requires_new_comparison_context():
+    from material_core.contracts import ProcessScenario
+    x=make_wp2_achieved_fixture()
+    raw=x.model_dump(mode='json')
+    raw['process']['layer_resolution']=quantity('length',.0005).model_dump(mode='json')
+    process=ProcessScenario.model_validate_json(json.dumps(raw['process']))
+    raw['estimated_state']['process_hash']=process.content_hash
+    preliminary=RunInputs.model_validate_json(json.dumps(raw))
+    raw['settings']['evaluation_context_hash']=context_for_run(preliminary)
+    revised=RunInputs.model_validate_json(json.dumps(raw))
+    assert evaluate(revised).status=='complete'
+    assert not compatible_comparison(evaluate(x),evaluate(revised))
+
+
+def test_changing_solver_source_cannot_reuse_numerical_evaluation():
+    x=make_wp2_fixture()
+    raw=x.model_dump(mode='json')
+    raw['solver']['version']='unauthorised-physics-adapter'
+    preliminary=RunInputs.model_validate_json(json.dumps(raw))
+    raw['settings']['evaluation_context_hash']=context_for_run(preliminary)
+    altered=RunInputs.model_validate_json(json.dumps(raw))
+    assert context_for_run(altered)!=context_for_run(x)
+    with pytest.raises(ValueError,match='solver source or dependency identity'):
+        evaluate(altered)
+
+
+def test_reference_temperature_property_domain_and_revised_pack_version():
+    x=make_wp2_fixture()
+    bad=edited(x,lambda r:(
+        r['settings']['mechanics']['stress_free_temperature'].__setitem__('value',500.),
+        r['settings']['temperature_max'].__setitem__('value',600.)))
+    e=evaluate(bad)
+    assert e.status=='unsupported'
+    assert 'property evidence applicability' in ' '.join(e.limitations)
+    wider=make_wp2_fixture(property_domain=(280.,1000.))
+    assert wider.settings.property_pack_version!=x.settings.property_pack_version
+    assert wider.materials[0].provenance.source_version!=x.materials[0].provenance.source_version
+    assert wider.materials[0].properties[0].temperature_max.value==1000.

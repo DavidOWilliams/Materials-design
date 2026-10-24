@@ -47,6 +47,10 @@ def nondominated(candidates: Sequence[Candidate], objectives: Sequence[Objective
     excluded = {}
     eligible = []
     for c in candidates:
+        if type(c.eligible) is not bool:
+            raise ValueError("Eligibility must be a strict boolean")
+        if not isinstance(c.context, str) or not c.context.strip():
+            raise ValueError("Comparison context must be nonempty")
         if not c.eligible:
             excluded[c.id] = c.exclusion or "not qualified/feasible"
             continue

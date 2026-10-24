@@ -5,7 +5,7 @@ This package exists for an independently tasked reviewer; authorship and GitHub 
 ## Review subject
 - Dedicated branch: `wp3-inverse-search-2026-10-24`, draft pull request #3, unmerged.
 - Corrected WP2 reference: `7009189d9be4dfd5940999c88cbb5c3c70c8ce56`; solver identity `wp2-bounded-2`.
-- Sources: `material_core/wp3_provider.py`, `wp3_search.py`, `wp3_campaign.py`, `wp3_vertical.py`, `wp3_qualified.py`, `wp3_pareto.py`; immutable `store.py`, WP2 evaluator and tests.
+- Sources: `material_core/wp3_adapters.py`, `wp3_provider.py`, `wp3_search.py`, `wp3_campaign.py`, `wp3_vertical.py`, `wp3_qualified.py`, `wp3_pareto.py`; immutable `store.py`, WP2 evaluator and tests.
 - Review separately: numerical references, Pareto ranking, search/sampling fairness, reproducibility and recovery, evidence maturity, and whether software contracts preserve the full Vision v3.
 - Evidence: matching final-head GitHub Actions workflow logs and complete uploaded run-store artifacts; `WP3_ACCEPTANCE_LEDGER.md` and `WP3_VISION_TRACEABILITY.md`.
 
@@ -63,3 +63,21 @@ The check is for *internal evidence coherence*, not tamper-proof external attest
 ### Review record
 
 **Separate independent reviewer: not yet assigned. Gate 3: PENDING.** The corrections and implementation-owned CI are inputs to independent scientific/architecture assessment, not its conclusion. A reviewer must record name/agent identity, exact inspected checkout SHA, original independent reference computations, each finding, blocking severity, correction verification and explicit acceptance/rejection on the reviewed source revision.
+
+## Re-review challenge R1–R4, frozen reviewed original and corrected code
+
+Run `foundation/reproduce_reviewed_wp3_r1_r4.py` using **only** the exact original source revision `d62023d7205d48beba11269d4c358a7380ab9ca4`; `.github/workflows/wp3-verification.yml` has an immutable `wp3-original-review-reproduction` job to demonstrate the four original defects. Record the checked-out SHA from the log and distinguish it from the temporary pull-request merge SHA.
+
+Then review the corrected independent acceptance suite `foundation/tests/test_wp3_review_r1_r4.py`, plus the R1 retired-API tests, R2 older fault-injection recovery tests, R3 state/termination tests and R4 materially different scenario tests. Review the complete immutable stores rather than only author-side assertions.
+
+**R1:** Test `run_campaign` and `reopen_campaign` now reject schema-1 execution/replay, including fictitious counters and Pareto IDs; old artifacts are retrievable only as `UNVALIDATED_LEGACY_V1` with `review_eligible=false`. This is deliberate API retirement, not transparent migration. CI must execute schema-2 `wp3_search` exclusively for WP3 acceptance.
+
+**R2:** Under a pending later evaluation, modify the first completed candidate's objective, constraints, qualification, manufacturing/evidence maturity or decision summary and attempt ordinary resume. Check that errors occur *without rewriting the ledger*. Verify valid pending recovery after a crash before, during and after solver result persistence. Check uncertainty of actual kernel solve counts remains explicit.
+
+**R3:** Check closed stop reasons and terminal events are consistent with budget, proposal count and pending work; reject `manufacturing_validated` as a terminal campaign claim. Verify cancellation, wall-time cutoff, full-budget exhaustion, mid-run interruption and stop-history transition to running on resume. Distinguish internal journal of external decision from cryptographically verifiable event.
+
+**R4:** Confirm campaign orchestration no longer inspects the three geometry variants or constructs from a fixed A/B fixture. A versioned provider owns start, proposal, build, validate and baseline, while objective/constraint and brief/property-pack identities come from typed contracts. Check the **380/320 K, three-layer, two-phase** alternate scenario with its own provider identity versus the default **400/300 K** catalogue. Independently inspect its persisted evaluated WP2 inputs, qualified comparison, cancellation/resume and separate-process replay. Try unknown/unavailable providers and numerical evaluator identities. The current exploration methods are structured seeded sampling and randomized sampling—not a feedback-adaptive optimiser.
+
+The re-review acceptance decision must be made on the precise tested branch SHA and recorded PR-merge SHA. A successful four-defect historical reproduction, an implementation-owned regression run or a CI success does **not** supply independent scientific or architecture approval. Maintain the explicit synthetic-data and manufacturing-unknown boundary, and do not infer D1/V1/WP4 progress from WP3 tests.
+
+**Independent re-review status: PENDING.**

@@ -20,7 +20,8 @@ from .wp2_numerical import (
 )
 
 
-def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,\n                     property_domain=(290.,410.)):
+def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,
+                     property_domain=(290.,410.)):
     props=(
         ('scenario_A',2.,2000.,100e9,5e-6),
         ('scenario_B',10.,4000.,160e9,12e-6),
@@ -40,7 +41,9 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,\n
         properties=tuple(Property(name=n,quantity=quantity(dim,v),
             convention='SI synthetic isotropic, direct input',
             conditions='Assumed constant between 290–410 K; as-defined scenario',
-            uncertainty=None,provenance=p,\n            temperature_min=quantity('temperature',property_domain[0]),\n            temperature_max=quantity('temperature',property_domain[1])) for n,dim,v in settings)
+            uncertainty=None,provenance=p,
+            temperature_min=quantity('temperature',property_domain[0]),
+            temperature_max=quantity('temperature',property_domain[1])) for n,dim,v in settings)
         materials.append(MaterialRecord(id=name,version=1,
             label='Hypothetical '+name,state='synthetic ideal isotropic fully dense',
             chemistry='no identified engineering composition',

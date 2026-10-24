@@ -34,8 +34,13 @@ def property_pack_hash(materials) -> str:
 
 
 def comparison_context_hash(brief: Brief, settings: CoupledThermomechanicalSettings,
-                            target: str) -> str:
-    """A common physical duty and evidence scenario, excluding architecture."""
+                            target: str, *, process=None, assumptions=(),
+                            solver=None) -> str:
+    """Shared duty/method/assumptions/process, never candidate geometry.
+
+    Without the keyword arguments, this produces the historical WP2-v1
+    context for loading the original immutable archive only.
+    """
     raw={
         'brief_hash':brief.content_hash,
         'stress_free_temperature':settings.mechanics.stress_free_temperature.model_dump(mode='json'),
@@ -53,16 +58,49 @@ def comparison_context_hash(brief: Brief, settings: CoupledThermomechanicalSetti
         'property_pack_hash':settings.property_pack_hash,
         'target':target,
     }
+    if solver is not None:
+        raw['solver']=solver.model_dump(mode='json')
+        raw['process_capability']=None if process is None else process.model_dump(mode='json')
+        raw['assumption_snapshots']=sorted(assumptions)
+        raw['declared_temperature_domain']=[
+            settings.temperature_min.model_dump(mode='json'),
+            settings.temperature_max.model_dump(mode='json')]
     return hashlib.sha256(json.dumps(raw,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
+def context_for_run(inputs: RunInputs) -> str:
+    return comparison_context_hash(inputs.brief,inputs.settings,inputs.evaluation_target,
+        process=inputs.process,assumptions=inputs.assumption_snapshots,solver=inputs.solver)
+
+
 def compatible_comparison(a: Evaluation, b: Evaluation) -> bool:
-    """Unknown contexts are never considered compatible with one another."""
+    """Only common numerical context; not a feasibility or ranking decision."""
     return (a.comparison_context_hash is not None and
             a.comparison_context_hash==b.comparison_context_hash and
             a.brief_hash==b.brief_hash and
+            a.solver==b.solver and
             a.evidence_status==b.evidence_status and
             a.status=='complete' and b.status=='complete')
+
+
+def numerical_comparison_eligible(e: Evaluation, brief: Brief) -> bool:
+    """Numerical-only comparison, not a claim of manufactured feasibility."""
+    if e.status!='complete' or e.brief_hash!=brief.content_hash:
+        return False
+    objectives={m.objective_id:m for m in e.metrics}
+    if set(objectives)!={o.id for o in brief.objectives}:return False
+    for o in brief.objectives:
+        m=objectives[o.id]
+        if m.status!='computed' or m.value is None or (m.value.dimension,m.value.unit)!=(o.dimension,o.unit):
+            return False
+    constrained={m.metric_id:m for m in e.constraint_metrics}
+    for c in brief.constraints:
+        m=constrained.get(c.metric_id,objectives.get(c.metric_id))
+        if m is None or m.status!='computed' or m.value is None:return False
+        if (m.value.dimension,m.value.unit)!=(c.limit.dimension,c.limit.unit):return False
+        if (c.relation=='le' and m.value.value>c.limit.value) or (c.relation=='ge' and m.value.value<c.limit.value):
+            return False
+    return True
 
 
 def solver_identity() -> SolverIdentity:
@@ -72,7 +110,7 @@ def solver_identity() -> SolverIdentity:
     source=hashlib.sha256(here.read_bytes()+
         (here.parent/'wp2_kernel.py').read_bytes()).hexdigest()
     return SolverIdentity(id='wp2.planar_thermomechanical',
-        version='wp2-bounded-1',source_hash=source,
+        version='wp2-bounded-2',source_hash=source,
         dependency_versions=(f'python=={platform.python_version()}',
                              f'pydantic=={version("pydantic")}'))
 
@@ -81,7 +119,7 @@ class DomainError(ValueError):
     pass
 
 
-def _get_properties(materials):
+def _get_properties(materials, *, temperatures=()):
     states={m.state for m in materials}
     conditions={m.provenance.conditions for m in materials}
     if len(states)!=1 or len(conditions)!=1:
@@ -97,6 +135,10 @@ def _get_properties(materials):
                     raise DomainError('Property dimensional mismatch: '+p.name)
                 if p.provenance.evidence_kind!='synthetic_scenario':
                     raise DomainError('Mixed process/evidence property states are unsupported')
+                if p.temperature_min is None or p.temperature_max is None:
+                    raise DomainError('Missing machine-checkable property temperature applicability')
+                if any(t<p.temperature_min.value or t>p.temperature_max.value for t in temperatures):
+                    raise DomainError('Temperature outside property evidence applicability')
                 props[p.name]=p.quantity.value
         if set(props)!=set(_REQUIRED):
             raise DomainError('Missing required properties for '+m.id)
@@ -188,7 +230,7 @@ def evaluate(inputs: RunInputs) -> Evaluation:
         raise ValueError('WP2 solver source or dependency identity differs from request')
     if settings.property_pack_hash!=property_pack_hash(inputs.materials):
         raise ValueError('Property pack hash differs from supplied material evidence')
-    ctx=comparison_context_hash(inputs.brief,settings,inputs.evaluation_target)
+    ctx=context_for_run(inputs)
     if settings.evaluation_context_hash!=ctx:
         raise ValueError('Comparison context hash differs from scientific scenario')
     limitations=('Synthetic constituent and mixture scenario; no ceramic material validation.',
@@ -207,8 +249,8 @@ def evaluate(inputs: RunInputs) -> Evaluation:
             design=state.geometry
             if state.intended_design_hash!=inputs.design.content_hash:
                 raise DomainError('Estimated achieved state is not linked to intended design')
-            if state.feasibility=='infeasible':
-                raise DomainError('Manufacturing assessment explicitly infeasible')
+            # An infeasible or unknown manufacturing state may still have a
+            # complete *numerical* vector. Never upgrade its feasibility.
         elif inputs.evaluation_target=='measured':
             raise DomainError('Measured achieved geometry unavailable in v1 contract')
         if design.thickness!=inputs.brief.thickness:
@@ -226,7 +268,7 @@ def evaluate(inputs: RunInputs) -> Evaluation:
             raise DomainError('Mapping relation is not qualified by this scenario adapter')
         if settings.mechanics.kinematics!='equibiaxial_plane_stress':
             raise DomainError('Unsupported mechanics kinematics')
-        props=_get_properties(inputs.materials)
+        props=_get_properties(inputs.materials, temperatures=(inputs.brief.hot_boundary.value,inputs.brief.cold_boundary.value,settings.mechanics.stress_free_temperature.value))
         cells=_mesh_cells(design,props,settings.thermal.mesh.elements)
         restraint=('free' if settings.mechanics.restraint=='force_and_moment_free'
                    else 'flat_restrained')
@@ -254,31 +296,45 @@ def evaluate(inputs: RunInputs) -> Evaluation:
                 metrics.append(Metric(objective_id=obj.id,value=None,status='unsupported',
                                       explanation='Objective outside bounded WP2 method'))
         constraints=[]
-        for c in inputs.brief.constraints:
-            val=values.get(c.metric_id)
-            if val is not None and (val.dimension,val.unit)==(c.limit.dimension,c.limit.unit):
-                constraints.append(ConstraintMetric(metric_id=c.metric_id,value=val,
-                    status='computed',explanation='Computed from shared synthetic scenario'))
-            else:
-                constraints.append(ConstraintMetric(metric_id=c.metric_id,value=None,
-                    status='unsupported',explanation='Constraint metric unavailable or dimension mismatch'))
+        for metric_id in dict.fromkeys(c.metric_id for c in inputs.brief.constraints):
+            references=[c for c in inputs.brief.constraints if c.metric_id==metric_id]
+            units={(c.limit.dimension,c.limit.unit) for c in references}
+            if len(units)!=1: raise DomainError('Conflicting constraint units')
+            val=values.get(metric_id)
+            valid=val is not None and (val.dimension,val.unit) in units
+            constraints.append(ConstraintMetric(metric_id=metric_id,
+                value=val if valid else None,status='computed' if valid else 'unsupported',
+                explanation='Computed once for all bounds' if valid else 'Unsupported metric or units'))
         status='complete' if all(m.status=='computed' for m in metrics) else 'incomplete'
         constrained_values={m.metric_id:m for m in constraints}
-        if any(m.status!='computed' for m in constraints):
-            feasibility='unknown'
-        elif any(
-            (c.relation=='le' and constrained_values[c.metric_id].value.value>c.limit.value) or
-            (c.relation=='ge' and constrained_values[c.metric_id].value.value<c.limit.value)
-            for c in inputs.brief.constraints):
+        from .contracts import ConstraintOutcome
+        outcomes=[]
+        for constraint in inputs.brief.constraints:
+            value=constrained_values[constraint.metric_id]
+            outcome='unknown'
+            if value.status=='computed' and value.value is not None:
+                satisfied=(value.value.value<=constraint.limit.value if constraint.relation=='le'
+                           else value.value.value>=constraint.limit.value)
+                outcome='satisfied' if satisfied else 'violated'
+            outcomes.append(ConstraintOutcome(constraint_id=constraint.id,
+                metric_id=constraint.metric_id,relation=constraint.relation,
+                limit=constraint.limit,outcome=outcome))
+        if any(o.outcome=='violated' for o in outcomes):
             feasibility='infeasible'
+        elif any(o.outcome=='unknown' for o in outcomes):
+            feasibility='unknown'
         else:
             feasibility='conditional'
-        # Conditional is NOT experimental material validation: evidence
-        # maturity and numerical status remain separate from hard feasibility.
+        manufacturing=('conditional' if inputs.evaluation_target=='intended'
+                       else inputs.estimated_state.feasibility if inputs.evaluation_target=='estimated'
+                       else 'unknown')
+        # A completed calculation does not establish manufacturing feasibility.
+        # Comparisons with unknown feasibility must be explicitly numerical-only.
         return Evaluation(input_hash=inputs.content_hash,brief_hash=inputs.brief.content_hash,
             solver=inputs.solver,status=status,metrics=tuple(metrics),
-            constraint_metrics=tuple(constraints),spatial_fields=fields,
-            comparison_context_hash=ctx,evidence_status='synthetic',
+            constraint_metrics=tuple(constraints),constraint_outcomes=tuple(outcomes),
+            spatial_fields=fields,comparison_context_hash=ctx,evidence_status='synthetic',
+            manufacturing_feasibility=manufacturing,
             feasibility=feasibility,limitations=limitations+result.limitations)
     except DomainError as error:
         reason=str(error)
@@ -286,5 +342,5 @@ def evaluate(inputs: RunInputs) -> Evaluation:
             solver=inputs.solver,status='unsupported',
             metrics=tuple(Metric(objective_id=o.id,value=None,status='unsupported',explanation=reason)
                           for o in inputs.brief.objectives),
-            feasibility='unknown',comparison_context_hash=ctx,evidence_status='synthetic',
+            feasibility='unknown',manufacturing_feasibility='unknown',comparison_context_hash=ctx,evidence_status='synthetic',
             limitations=limitations+(reason,))

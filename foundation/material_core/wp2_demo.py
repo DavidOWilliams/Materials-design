@@ -21,6 +21,8 @@ def report(result, run_id):
         'input_hash':result.input_hash,
         'status':result.status,
         'feasibility':result.feasibility,
+        'manufacturing_feasibility':result.manufacturing_feasibility,
+        'numerical_quality':result.numerical_quality,
         'evidence_status':result.evidence_status,
         'comparison_context_hash':result.comparison_context_hash,
         'objectives':{

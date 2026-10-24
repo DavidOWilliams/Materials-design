@@ -34,6 +34,19 @@
 | C09 | WP2 achieved-target guards and evidence-status contract tests | WP4 transformer intentionally not implemented |
 | C10 | Fixed seeds, persisted configuration digest, tampering tests, cancellation and replay tests | Ledger-level checks; no arbitrary host crash simulation |
 
+
+## Paired sampling observations — 24 October 2026
+
+Source run: [WP3 Actions #40123058451](https://github.com/DavidOWilliams/Materials-design/actions/runs/40123058451), code/configuration at `cfe8631b0d315fc9e6b1369f3dbf1c6022b5682c`. Each method has 3 unique evaluations, no cache hits, and 6 reported nominal/refinement kernel solves per seed.
+
+| Seed | Explore qualified | Sampling qualified | Explore Pareto | Sampling Pareto |
+| --- | ---: | ---: | ---: | ---: |
+| 11 | 2 | 3 | 2 | 3 |
+| 23 | 2 | 3 | 2 | 2 |
+| 37 | 2 | 1 | 2 | 1 |
+
+Coverage counts are not objective-value superiority or scientifically meaningful hypervolume. Sampling achieves higher qualifying coverage on two seeds; structured coverage on one. The study is very small and does **not** justify a general claim that inverse search improves on uniform sampling. See archived input/evaluation artifacts for actual flux, mass and stress vectors. Method choice must remain open to further evidence.
+
 ## Exact gates and limitations
 
 - **Gate 1:** Do not close until all jobs at the frozen source SHA succeed, artifacts are inspected and one numerical replay is separately checked.

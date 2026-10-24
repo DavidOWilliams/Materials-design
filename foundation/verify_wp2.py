@@ -51,10 +51,12 @@ def main():
             raise AssertionError('Intended architecture has unequal material budget')
     for name,payload in [('wp2-numerical-results.json',results),
                          ('wp2-separate-process-replay.json',replay)]:
-        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'
+')
     print(json.dumps({'status':'passed','runs':len(results),
         'objective_names':list(results['gradient']['objectives']),
-        'scenario_curvature_per_m':{k:r['curvature_per_m'] for k,r in results.items()},\n        'scenario_results':{k:{m:round(v['value'],8) for m,v in r['objectives'].items()}
+        'scenario_curvature_per_m':{k:r['curvature_per_m'] for k,r in results.items()},
+        'scenario_results':{k:{m:round(v['value'],8) for m,v in r['objectives'].items()}
              for k,r in results.items()},
         'achieved_mass_budget_feasibility':'violated' if
          results['estimated-achieved-gradient']['objectives']['areal_mass']['value']>31.

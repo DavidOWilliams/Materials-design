@@ -57,3 +57,47 @@ The correction tests include a real WP2 solve followed by `KeyboardInterrupt`, `
 **Integrity boundary:** cryptographic hashes validate the immutable run artifacts against their stored references and objective/decision reports against those artifacts. They do not supply external signatures or protect against an attacker capable of coordinated replacement of the SQLite database, all artifacts, the ledger and its provenance. This is accidental or uncoordinated tampering detection, not tamper-proof audit storage. A hard kill after SQLite insertion but before the campaign journal records the newly created run can leave an orphan run record; the campaign cannot yet reconstruct a wholly missing journal link automatically. Concurrent writers to the same campaign ledger are unsupported.
 
 On pull-request Actions, the standard checkout normally uses a temporary merge SHA. The workflow prints `github.event_name`, `GITHUB_SHA` and `git rev-parse HEAD`; the separate `wp3-exact-branch-head` job explicitly checks out `github.event.pull_request.head.sha || github.sha` and prints that identity. Check the job logs and artifact metadata rather than assuming the tested checkout equals the PR branch head.
+
+## Supported and retired commands (R1)
+
+**Only schema-2 `material_core.wp3_search` is supported for new WP3 campaigns and accepted evidence.** The historical `material_core.wp3_campaign.run_campaign`, `reopen_campaign` and ordinary CLI now raise `RuntimeError: ... retired`. The independent review demonstrated that schema-1 counters and Pareto IDs could be altered without detection. They are not valid WP3 acceptance evidence, even if the historical run-store artifacts remain intact.
+
+To inspect old JSON without validating it:
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger PATH_TO_SCHEMA1_JSON --legacy-read-unvalidated
+```
+
+The reader returns `validation_status=UNVALIDATED_LEGACY_V1`, `review_eligible=false` and the original historical contents; it makes **no replay or qualification claim**. Preserve old files unchanged; generate a new schema-2 campaign at a **new directory** for current qualification.
+
+## Versioned providers and scenario differences (R4)
+
+Default provider: `wp3-synthetic-catalogue-provider-v1`, preserving the A/B/C synthetic software scenarios. The second registered provider `wp3-alternate-duty-layered-provider-v1` uses the same corrected WP2 evaluator, with a 380 K/320 K thermal duty and a variable **three-layer** configuration instead of the default 400 K/300 K A/B/C domain. Both are hypothetical numerical scenarios without validated ceramics data.
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --provider wp3-alternate-duty-layered-provider-v1 --seed 17 --budget 3
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --reopen
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --recompute
+```
+
+The scenario adapter owns the baseline, proposal construction and typed validation. Campaign sequencing, budgets, persistent links, qualification/decision coordination and stop states are scenario-neutral. The campaign stores provider identity, actual brief hash, catalogue hash, declared objective and constraint IDs, and evaluator identity. An unknown provider fails explicitly; an unregistered evaluator cannot be silently substituted during numerical recomputation.
+
+**Search-policy terminology:** `explore` is structured seeded sampling, not evaluation-driven adaptive optimisation. The original A/B/C and the alternate three-layer paths are bounded scientific-software demonstrations, not evidence of physical performance.
+
+## Recovery and termination states (R2–R3)
+
+Allowed `stop_reason` values are `running`, `cancelled`, `wall_time_budget_exhausted`, and `evaluation_budget_exhausted`. Terminal records include `termination_event` with matching reason and number of consumed proposal slots. Invalid reasons (such as `manufacturing_validated`), impossible budget exhaustion and terminal states with outstanding `created` proposals are rejected. Resume records the previous stop in `stop_history`, changes status to `running`, clears terminal declaration, and only then continues.
+
+When another proposal is pending, previously completed proposal summaries and numerical comparison remain **fully validated**. A corrupt objective, constraint, qualification, evidence or manufacturing field is rejected without changing the historical ledger. Recovery tolerances apply to the pending operation's normal state transition, not to unrelated completed data. A process kill between evaluation commit and journal update can be resumed without re-evaluating that completed result.
+
+Termination-event metadata documents the campaign's own cancellation or wall-time decision, not an independently authenticated external signal. The whole-campaign proposal budget persists across resumes; wall-time applies separately per invocation as previously documented.
+
+## Re-review commands
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_review_r1_r4.py foundation/tests/test_wp3_campaign.py -q
+PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+```
+
+For **R1–R4 before correction**, use `foundation/reproduce_reviewed_wp3_r1_r4.py` with `PYTHONPATH` bound to an isolated checkout of exact reviewed commit `d62023d7205d48beba11269d4c358a7380ab9ca4`. The GitHub workflow's `wp3-original-review-reproduction` job does this without modifying the historical revision.
+

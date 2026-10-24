@@ -1,200 +1,210 @@
-# WP2 completion report — bounded synthetic numerical evaluation
+# WP2 corrected completion and requalification report
 
-23 October 2026 | Materials-design | WP2 work-package handoff
+24 October 2026 | Materials-design | Focused corrections to draft PR #2
 
-## Exit decision
+## Decision and scope
 
-**WP2 numerical software scope: PASS for its expressly bounded, synthetic
-planar thermomechanical demonstration.** This is a numerical implementation
-and verification milestone, **not** scientifically validated printed-ceramic
-performance or complete D1 inverse design. The assumed mixing relations and
-phase properties remain conditional, and all A01–A21 scientific questions
-retain their actual unresolved status.
+**WP2 numerical software implementation is ready for WP3 within its bounded,
+explicitly synthetic planar domain, subject to a green final-head CI workflow.**
+The review defects have been reproduced against the exact original reviewed
+commit, addressed in source, regression-tested, and documented. The original
+"WP2 complete" claim of 23 October **did not establish scientific correctness**:
+the original reports are superseded as numerical qualification evidence.
 
-The source was built from verified WP1 branch head
-`22350b119d8a30248a9924ba375ebf4c8dabb4b7` without modifying main,
-the recovery branch, recovered reference source or the legacy metallic
-selection code. The dedicated WP2 branch is
-`wp2-numerical-2026-10-23` with draft PR #2, targeting WP1 rather than main.
+This is **not D1** (the integrated inverse-search and manufacturing-feedback
+workflow), **not V1** (measured ceramic validation), and **not a prediction of
+manufactured-ceramic reliability**. No WP3, WP4 or WP5 code was implemented as
+part of this focused correction. The dedicated branch remains unmerged and
+PR #2 remains draft, targeting `wp1-foundation-2026-10-22`.
 
-**Verified source/CI commit**:
-`8d9f15a641c44e2c8346db7bf050dc60d09c9506`.
-GitHub Actions verification:
-https://github.com/DavidOWilliams/Materials-design/actions/runs/39986262631
-The final report itself is documentation-only and will have a later
-publishing commit. No merge was requested or performed.
+Authority: `recovered_wp0/evidence/Material_System_Implementation_Plan_v2.md`
+for delivery. The product's wider vision is unchanged. Scientific adapters,
+typed applicability, source provenance and historical decisions remain
+replaceable and traceable.
 
-## Scope delivered
+## The five independent findings and closure
 
-From a common typed `Brief`, consistent hypothetical material catalogue
-and a design with homogeneous, discrete layered or piecewise-linear graded
-architecture, WP2 calculates three physical numerical quantities:
-
-1. **Thermal transmission**, `W/m2`, the magnitude of steady
-   through-thickness Fourier flux. The original signed flux and spatial
-   temperatures are preserved.
-2. **Areal mass**, `kg/m2`, from the same geometry and phase density
-   accounting used by the other adapters.
-3. **Tensile thermal mismatch**, `Pa`, the positive maximum over sampled
-   equibiaxial in-plane elastic stress at cell centres, with signed stresses,
-   force/moment equilibrium diagnostics and bending curvature retained.
-
-All quantities use a common 10 mm duty, property pack, boundary conditions,
-stress-free temperature, physical input range, and scenario identity.
-A bounded classical laminate plate treatment includes bending for asymmetric
-stacks. Constituent count, layer count and objective count are **not** fixed
-in reusable core contracts. Coatings, additional geometries and process
-physics require explicit future specialist adapters, not dummy outputs.
-
-The source includes a separately labelled **synthetic supplied achieved-state**
-fixture that changes actual evaluated geometry/composition. It demonstrates
-that the new target is used without claiming any process transformation or
-measured state. Unknown measured geometry never defaults to intended geometry.
-
-## Scientific qualifier
-
-Only neutral synthetic phases A and B, with explicit numerical conductivity,
-density, biaxial stiffness and thermal expansion, are included in the runnable
-catalogue. Effective-conductivity Voigt parallel-channel, volume-additive
-density, iso-strain stiffness and stiffness-weighted expansion assumptions
-are separately declared. These do not establish material compatibility,
-manufacturing feasibility or validated composite-property prediction.
-Properties are scenario-constant only across the declared 290–410 K domain.
-All unsupported or incomplete physical inputs reject or become unresolved.
-
-The implemented stress is an **elastic thermal-mismatch contribution** under
-one selected thin plane-stress kinematic idealisation. It is not total
-manufacturing residual stress, sintering/drying shrinkage, crack prediction,
-fatigue, lifecycle performance or a certified material criterion.
-
-## Fresh verification actually performed
-
-The successful CI execution used Linux GitHub Actions runners, Python 3.12,
-and two separate dependency environments. The baseline WP1 run was checked
-out from the *immutable original* commit, not from the modified branch.
-
-| Verification | Fresh outcome | Evidence |
+| Review | Fix | Direct verification |
 | --- | --- | --- |
-| Original WP1/recovery setup at reviewed SHA, `pip check` | Passed | CI job `wp1-immutable-baseline` |
-| Original baseline suite | **74 passed**, 1.35 s | Same job |
-| Original unmodified R1 defect reproduction | **Expected rejection reproduced**: constraint-only mass cannot be stored as objective | Same job |
-| Modified WP2 setup via `foundation/setup.sh` and hash-locked 13 packages, `pip check` | Passed | CI `numerical-regression` |
-| WP1 + recovery + WP2 unit/reference/integration suite | **116 passed**, 3.81 s | Same job |
-| Saved WP1 homogeneous/layered/gradient artifact hashes and cross-process reader | Passed, original source files unchanged | `test_wp2_wp1_history.py` |
-| Original WP1 three-architecture separate-process replay | Passed | `foundation/verify_demo.py` |
-| WP2 homogeneous, layered, gradient and supplied achieved profile | **Four persisted runs and four separate-process replays passed** | `foundation/verify_wp2.py` plus downloadable CI artifact `wp2-numerical-evidence` |
-| Independent Fourier slab, multilayer resistance, analytic variable conductivity, flux direction and mesh convergence | Passed within registered numerical tolerances | `test_wp2_kernel.py`, `test_wp2_mapped_integration.py` |
-| Independent free/restrained expansion and exact analytic bilayer A/B/D thermal bending reference, equilibrium and refinement | Passed within stated domain/tolerances | Same tests |
-| Property endpoint, intermediate, mass/volume basis, missing/invalid data and scenario state checks | Passed | `test_wp2_property_mapping.py` |
-| Constraint-only, shared and objective-only metrics, absent and nonfinite values, satisfied/violated and durable replay | Passed | `test_wp2_constraint_gate.py`, mapped integration tests |
-| Separate legacy requirements plus recovery regression suite, `pip check` | **1,148 passed**, 10 dependency-deprecation warnings, 31.03 s | CI `legacy-regression` |
+| A — omitted within-cell thermal moment | Exact cellwise `Q alpha g h³/12` thermal moment integrated with bending stiffness; independent polynomial equilibrium checks | Homogeneous zero-stress 2/16/64/128/512 cells; analytical bilayer; orientation reversal and layered/gradient convergence |
+| B — disabled refinement test | Literal backslash-newline comments replaced by executable assertions | Original test defect reproduced at reviewed SHA; corrected test fails on v1 spurious stress |
+| C — two bounds, duplicate metric | One calculated constrained metric; distinct outcome per constraint ID, relation and limit | 29–31 kg/m² range, separate violations, equalities, contradiction, units, missingness and separate-process persistence |
+| D — false compatibility and manufacture default | Full scenario/assumption/solver/method context; explicit `manufacturing_feasibility`, `numerical_quality`, numerical-only comparison API | Changed process route/capability invalidates context, unknown manufacturing persists, legitimate different geometries stay compatible |
+| E — settings broadened property domain | Versioned min/max Kelvin for each property, required supported-domain intersection | 900 K fails with unchanged 290–410 K records despite settings 1000 K; missing, mismatched and revised wider synthetic pack tests |
+| WP4 handoff wording | D1 assumed resolution feedback and V1 measured validation separated | This report, corrected architecture and correction log |
 
-No test exclusion, skip or expected-failure waiver is represented as a pass.
-Earlier red CI runs during implementation were inspected and fixed. The
-latest green run above, not earlier cached WP1 logs, is the acceptance source.
-No external UI, Codespace, second-person laptop, live printer or production
-service was verified. Python 3.12 is a supported configuration; the
-independently runnable CI host is not material validation.
+All five original problems were reproduced automatically against **unchanged**
+source commit `ae052d6f70499eceb92e73436fd0de7cb1791777`.
+See [correction log](WP2_CORRECTION_LOG.md) for reproduction commands,
+analytical derivation, acceptance tolerances and remaining limitations.
 
-## Numerical examples — 128-element synthetic catalogue
+## Before and after — same 128-element calculation
 
-The following **observed** numbers were printed by the successful CI job
-and independently replayed; they are not made-up ceramic property values.
+The *old* values remain in the original
+[23 October report](https://github.com/DavidOWilliams/Materials-design/blob/ae052d6f70499eceb92e73436fd0de7cb1791777/foundation/WP2_COMPLETION_REPORT.md).
+Revised synthetic property records are now versioned with an explicit
+290–410 K supported domain. Their nominal phase values, thermal boundaries,
+coupon thickness and material accounting are unchanged.
 
-| Intended or labelled achieved design | Thermal transmission W/m2 | Areal mass kg/m2 | Tensile mismatch Pa |
+| Design | v1 tensile mismatch (Pa) | v2 tensile mismatch (Pa) | v1 curvature (1/m) | v2 curvature (1/m) |
+| --- | ---: | ---: | ---: | ---: |
+| Homogeneous 50:50 A/B | 3,663.78 | ~0.00000001 | -0.093071242 | -0.093076923 |
+| Two-layer equal-budget | 11,368,069.05 | 11,368,290.96 | -0.043103742 | -0.043107345 |
+| Linear gradient A→B | 4,640,168.57 | 4,642,799.60 | -0.053133851 | -0.053138762 |
+| Supplied synthetic estimated achieved profile | 9,269,092.00 | 9,272,019.83 | -0.055845907 | -0.055851386 |
+
+The material/geometry budgets and Fourier definitions have not changed:
+three intended designs have 30 kg/m² areal mass; the supplied estimated state
+has 32.5 kg/m² and breaches the fixed 31 kg/m² hard ceiling. Intended thermal
+transmissions are respectively 60,000, 33,333.333 and 49,708.001 W/m².
+The achieved demonstration has approximately 58,376 W/m².
+
+**Crucially, the 128-cell layered and gradient stress figures are exploratory.**
+Force/moment equilibrium is not enough to qualify their sampled maximum
+stress against spatial discretisation error. The corrected evaluator runs
+a separate 2x mesh and stores `numerical_quality=unresolved` if its
+registered error threshold is missed. No unresolved result is admitted by
+`numerical_comparison_eligible`.
+
+### High-resolution qualified numerical examples
+
+The corrected verifier additionally persists and independently replays
+4096-element versions of the four examples. The independent mesh-doubling
+gate qualifies the intended scenarios and is checked for the achieved
+example by the verification CLI.
+
+| Design, 4096 cells | Thermal transmission W/m² | Areal mass kg/m² | Sampled tensile stress Pa |
 | --- | ---: | ---: | ---: |
-| Homogeneous 50:50 A/B | 60000.00000000 | 30.0 | 3663.77830506 |
-| Discrete equal A/B layers | 33333.33333333 | 30.0 | 11368069.04871642 |
-| Continuous linear A→B gradient | 49708.00100817 | 30.0 | 4640168.56558629 |
-| Supplied *estimated achieved* profile | 58376.02189673 | 32.5 | 9269091.99693567 |
+| Homogeneous | 60,000 | 30.0 | ~0.00000375 |
+| Layered | 33,333.333 | 30.0 | 11,520,513.33 |
+| Gradient | 49,706.796 | 30.0 | 4,785,159.66 |
+| Supplied estimated achieved gradient | 58,373.568 | 32.5 | 9,532,502.28 |
 
-The three **intended** architectures have the same 30 kg/m2 material budget.
-An example hard mass ceiling is 31 kg/m2: the estimated achieved state is
-**infeasible** for this ceiling, although its numerical vector is fully
-computed. The original WP1 synthetic heat fixtures, Pelz literal and
-reversed assignments and CODE case are preserved but are not treated as
-experimental corroboration.
+These remain **synthetic, numerical** and do not demonstrate printable
+ceramic material properties, manufacturing feasibility or measurement
+agreement. The difference between 128-cell and 4096-cell sampled peak
+stresses shows why the qualification gate is essential.
 
-## WP2 exit criteria, one by one
+## Five distinct statuses in the corrected evaluation
 
-| ID | Outcome | Direct support and qualification |
+1. `status`: whether mathematical objectives were computed.
+2. `feasibility`: evaluation of the declared hard numerical limits;
+   all constraint IDs, relations and outcomes are separately retained.
+3. `manufacturing_feasibility`: intended-only **unknown**, or exact
+   `unknown/conditional/infeasible` carried from supplied estimated state.
+4. `evidence_status`: synthetic / provisional / supported property evidence.
+5. `numerical_quality`: 2x-mesh qualified / unresolved.
+
+`compatible_comparison` validates scenario compatibility but does not
+constitute a feasibility or accuracy decision. Changed process-capability
+routes/resolutions, selected target, assumptions, solver and material pack
+invalidate context. Candidate-specific geometry and composition do not:
+homogeneous, layered and gradient alternatives remain comparable when
+their scientific context is genuinely identical.
+
+`exploratory_numerical_eligible` is intentionally not a manufacturing
+ranking and may accept an unresolved spatially sampled result if all declared
+mathematical constraints pass. `numerical_comparison_eligible` additionally
+requires verified mesh convergence. The generic stored
+`Evaluation.comparison_eligible` does not promote intended or
+manufacturing-unknown states into a feasible manufacture assertion.
+An unknown feasibility is **never silently made conditional**.
+
+## Fresh execution and regression evidence
+
+The current branch has a five-job GitHub Actions qualification workflow:
+
+| Job | Scope checked | Observed result on passing 24 October run |
 | --- | --- | --- |
-| 1 R1 | PASS | Separate constraint results, unit checks, missing and nonfinite handling, hard feasibility and SQLite replay without adding objectives |
-| 2 R2 and history | PASS | Typed thermal/mechanics/coupled settings; three actual WP1 artifact classes retain canonical hashes; original solver replay retained |
-| 3 Property pack and mapping | PASS (synthetic domain) | Versioned and SHA256-bound neutral catalogue, source conditions, individual mapping rules, unsupported input rejection; real ceramic validation absent |
-| 4 Thermal/mass/mechanics methods | PASS (bounded domain) | Registered independent analytical references, force/moment equilibrium, signed fields and mesh checks; process stresses excluded |
-| 5 Common vector, three classes | PASS (synthetic scenario) | Three complete vectors under the same duty and nominal budget, with no fabricated measured property pack |
-| 6 Distinct result categories | PASS | Numerical completion, hard feasibility, scientific evidence maturity and comparison contexts independent; unknown never silently passes |
-| 7 Cache/identity | PASS | Full input hash, solver source/settings, catalogue provenance, assumptions and target; context mismatch and stale/changed pack rejected |
-| 8 Storage and achieved target | PASS | Full input, fields, three metrics, limitations, context, synthetic evidence and constraint results persist and separately replay; achieved fixture changes values |
-| 9 Fresh regressions | PASS | Immutable 74 original and R1 defect; 116 new; 1,148 legacy/recovery; both replay pathways |
-| 10 Preserved deliverables | PASS | Source, tests, CI workflow, locked setup, reference report, architecture/decision map and this completion review on independent WP2 branch |
+| `wp1-immutable-baseline` | Fresh original Python 3.12 hash-locked setup, `pip check`, exact original WP1/recovery code and R1 defect reproduction | **74 passed** plus expected R1 rejection |
+| `wp2-reviewed-defects-and-history` | Fresh reviewed SHA checkout and locked environment, reproducible A–E defects, original v1 store and replay | **All five reproduced**, historical replay passed |
+| `numerical-regression` | Fresh corrected locked environment and `pip check`, foundation/recovery/WP2 tests, original WP1 replay, corrected eight examples plus separate-process replay | **130 passed** in the last source-verification run before documentation; 8 persisted/replayed examples |
+| `legacy-regression` | Separate legacy pinned runtime + scikit-fem, `pip check`, `python -m pytest tests recovered_wp0 -q` | **1,148 passed**, 10 warnings |
+| `wp2-cross-version-history` | Load unchanged original v1 SQLite/JSON into corrected reader; check source/result hash, refuse changed-solver replay | **Passed** |
 
-The **WP2 software exit passes**, conditional on the already explicit
-synthetic domain, not on evidence of general printed ceramic applicability.
+The code-verification reference before documentation updates is
+[GitHub Actions run 40072532460](https://github.com/DavidOWilliams/Materials-design/actions/runs/40072532460).
+Final acceptance must use the **latest complete green workflow at the
+published PR head**, not that earlier run alone. Script output includes
+results and curvature, separate-process replay checks, and downloadable
+JSON evidence artifacts.
 
-## Scientific assumption status
+The test totals are not a substitute for verification. Independent
+conduction, membrane/bending thermal results, force/moment integrals,
+reference temperatures and property validity, separate-process results,
+physical limits and solver/source identity are checked behaviourally.
 
-Original A01–A15 remain **unchanged, unresolved except as historically
-recorded**. No record has been silently upgraded to "resolved". The
-separate A16–A21 registry adds exact expert-review questions for
-effective-property microgeometry, density/porosity, elasticity and stress-free
-state, perfect interfaces, assumed temperature response and process-to-achieved
-composition/geometry evidence. Each version retains provisional answer,
-null value for unsupported physical claims, evidence, affected calculations,
-priority, reviewer role and resolution criteria.
+## Historical integrity
 
-## How to reproduce and where to continue
+- The original WP1 `RunInputs` and `Evaluation` JSON bytes, SHA256
+  hashes and three-architecture replay remain unchanged by optional v2
+  fields; the original WP1 baseline is reexecuted in CI.
+- Historical WP2 `wp2-bounded-1` records are **readable** in the corrected
+  run store with their original hash and interpretation. Original-method
+  **replay** is supported using the exact reviewed checkout, independently
+  tested as a separate CI job.
+- A historical v1 run is **not** silently recomputed using
+  `wp2-bounded-2`. Its older results remain superseded scientific
+  evidence; a fresh run receives new solver source identity, property pack,
+  assumptions and input/output hashes.
+- A01–A21 remain open to the extent indicated in the existing append-only
+  assumption registry. Tests do not scientifically resolve them.
 
-From repository root (Python 3.12):
+## Setup and repeatability
+
+With a fresh Python 3.12 environment from the repository root:
 
 ```bash
 bash foundation/setup.sh
 export PYTHONPATH=foundation
+.venv-foundation/bin/python -m pip check
 .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
 .venv-foundation/bin/python foundation/verify_demo.py --output /tmp/wp1-replay
-.venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp2-qualification
-.venv-foundation/bin/python -m material_core.wp2_demo \
-  --store /tmp/wp2-example --architecture gradient
-# Use the printed run_id:
-.venv-foundation/bin/python -m material_core.wp2_demo \
-  --store /tmp/wp2-example --replay RUN_ID
+.venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp2-corrected-evidence
 ```
 
-Follow `foundation/README.md` and
-`foundation/WP2_NUMERICAL_QUALIFICATION.md` for details.
+The last command performs both the standard 128-cell illustrations and
+the 4096-cell accuracy-qualified cases, persisting their spatial fields,
+hard constraints and eight independent-process replays. Run an individual
+case at high resolution with:
 
-**WP3 immediate implementation**: introduce bounded architecture proposal,
-multiobjective search and a Pareto comparison service using the same brief,
-solver API and context/evidence guard. Benchmark against reproducible simple
-sampling with equal run budgets. A gradient is not preferred a priori: a
-homogeneous or layered option may win.
+```bash
+.venv-foundation/bin/python -m material_core.wp2_demo --store /tmp/wp2-case --architecture gradient --elements 4096
+.venv-foundation/bin/python -m material_core.wp2_demo --store /tmp/wp2-case --replay RUN_ID
+```
 
-**WP4 first real feedback loop**: replace the supplied achieved-state
-fixture with a verified manufacturing data/process adapter linking feed
-commands to deposited geometry and composition, then recompute the three
-objectives on that achieved state. A model or measured link must carry
-uncertainty and compatible process conditions; absent evidence cannot be
-called successful manufacturing feedback.
+Historical WP2 v1 source must be replayed using its archived checkout,
+not the corrected command.
 
-**WP5**: expose the brief, spatial results, Pareto evidence and
-decision/rejection history without inventing missing physics.
+## D1 and V1 handoff — correct Implementation Plan v2 interpretation
 
-**Updated planning assessment**: the small CPU numerical core now runs in
-seconds per 116-check regression and four-case replay; the legacy isolation
-suite runs in tens of seconds. Compute capacity is not the first remaining
-risk. A provisional focused implementation allowance is **about 3–6 active
-work-weeks** for WP3 search, WP4 bounded feedback, WP5 workflow and integration
-checks, with the largest uncertainty in credible process-state data and the
-scientific scope of that mapping. This is a new risk-based estimate from the
-working interfaces and actual CI runtimes, **not** a subtraction from an
-earlier schedule and **not** a guarantee. External measured V1 validation
-could require a separate research timescale.
+**D1** does **not** require experimental manufacturing records. WP4 can
+configure an *explicit versioned assumed* layer/feed-resolution capability,
+transform intended into estimated achieved fields, preserve geometry and
+material accounting, recompute performance, expose binding constraint
+violations and show a design revision. That will be a transparent simulation
+under stated assumptions, **not a scientifically validated printer predictor**.
+Nothing in the WP2 correction implements that transformer.
 
-## Change controls
+**V1** is separate measured ceramic validation, requiring compatible
+process/feed commands, achieved composition/geometry, porosity, provenance
+and uncertainty. Missing such experimental evidence does not delay D1,
+but it prevents a V1 or physical-ceramic validation claim.
 
-No main merge, force push, deletion of old work, commercial purchase,
-researcher communication or family contact occurred. The PR remains a draft
-until explicitly reviewed. A green build permits WP3 to start from the
-verified WP2 branch, but does not approve certification or physical ranking
-of ceramic materials.
+Further work beyond WP2 includes WP3 multiobjective inverse search,
+WP4 bounded feed/layer-resolution feedback, WP5 user workflow and the
+remaining D1 integration/replay package. No downstream work has begun in
+this correction task. The agreed Implementation Plan v2 remains the
+delivery authority; the 4–6 active week D1 working-target estimate is a
+planning assumption, not a guaranteed clock schedule or V1 commitment.
+
+## WP2 exit judgement
+
+The **revised WP2 software and bounded numerical qualification** has
+demonstrable closure of review findings A–E and is suitable as the foundation
+for WP3 **once final-head CI is green**. That does not authorise a merge
+or imply material-science acceptance; independent expert selection of a real
+ceramic case and evidence-backed V1 remain future decisions.
+
+Draft PR #2 is preserved; no merge, destructive rewrite, purchase,
+researcher contact or WP3 implementation was made.

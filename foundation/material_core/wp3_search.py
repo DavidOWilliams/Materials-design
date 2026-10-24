@@ -291,7 +291,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     for i in range(len(ledger["proposals"])):
         _proposal(provider,i)
     start=time.monotonic()
-    _write_ledger(path,ledger)
+    _save_search(path,ledger,store)
     for i in range(len(ledger["proposals"]),budget):
         if cancel_requested is not None and cancel_requested():
             ledger["stop_reason"]="cancelled"
@@ -309,7 +309,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
         except (ValueError,TypeError) as exc:
             ledger["proposals"].append(dict(index=i,proposal=proposal,
                     status="invalid",reason=str(exc)))
-            _write_ledger(path,ledger)
+            _save_search(path,ledger,store)
             continue
         item=dict(index=i,proposal=proposal,input_hash=inputs.content_hash,
                   parent_run_id=parent_run_id, parent_design_hashes=list(parent_hashes))
@@ -322,7 +322,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             run_id=store.create(inputs,parent_run_id=parent_run_id)
             item.update(run_id=run_id,status="created",cache_hit=False)
             ledger["proposals"].append(item)
-            _write_ledger(path,ledger)
+            _save_search(path,ledger,store)
             try:
                 result=actual_evaluator(inputs)
                 store.finish(run_id,result)
@@ -343,12 +343,12 @@ def run_search(path,*,seed=17,budget=9,method="explore",
                 evidence_maturity=result.evidence_status,
                 hard_constraint_feasibility=result.feasibility,
                 qualified=numerical_comparison_eligible(result,inputs.brief))
-        _write_ledger(path,ledger)
+        _save_search(path,ledger,store)
     else:
         ledger["stop_reason"]="evaluation_budget_exhausted"
     ledger["elapsed_seconds_this_execution"]=time.monotonic()-start
     _reconstruct(ledger,store)
-    _write_ledger(path,ledger)
+    _save_search(path,ledger,store)
     return open_search(path)
 
 

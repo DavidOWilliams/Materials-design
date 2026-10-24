@@ -197,6 +197,66 @@ class RunStore:
             objective = objectives[key]
             if metric.value is not None and (metric.value.dimension,metric.value.unit) != (objective.dimension,objective.unit):
                 raise ValueError('Result units differ from requested objective')
+        constraints = {c.metric_id:c for c in inputs.brief.constraints}
+        for metric in evaluation.constraint_metrics:
+            if metric.metric_id not in constraints:
+                raise ValueError('Result contains an undeclared constraint metric')
+            expected = [c.limit for c in inputs.brief.constraints if c.metric_id==metric.metric_id]
+            if metric.value is not None and any((metric.value.dimension,metric.value.unit) != (c.dimension,c.unit) for c in expected):
+                raise ValueError('Constraint result units differ from declared constraint')
+            shared = metrics.get(metric.metric_id)
+            if shared is not None and (shared.value != metric.value or shared.status != metric.status):
+                raise ValueError('Shared objective and constraint metrics disagree')
+
+        # A mapped evaluation must be traceably tied to the identical
+        # property pack, context and selected physical target it calculated.
+        # Historic WP1 thermal artifacts have none of these fields.
+        from .contracts import CoupledThermomechanicalSettings
+        if isinstance(inputs.settings, CoupledThermomechanicalSettings):
+            from .wp2_numerical import property_pack_hash, comparison_context_hash, context_for_run
+            if inputs.settings.property_pack_hash != property_pack_hash(inputs.materials):
+                raise ValueError('Stored property-pack identity mismatch')
+            legacy_wp2=inputs.solver.version=='wp2-bounded-1'
+            expected=(comparison_context_hash(inputs.brief,inputs.settings,
+                     inputs.evaluation_target) if legacy_wp2 else context_for_run(inputs))
+            if inputs.settings.evaluation_context_hash != expected:
+                raise ValueError('Input comparison context identity mismatch')
+            if evaluation.comparison_context_hash != expected:
+                raise ValueError('Evaluation comparison context identity mismatch')
+            if evaluation.evidence_status is None:
+                raise ValueError('Mapped evaluation must declare evidence maturity')
+            if not legacy_wp2:
+                if evaluation.manufacturing_feasibility is None:
+                    raise ValueError('Manufacturing feasibility must be explicit')
+                if evaluation.numerical_quality is None:
+                    raise ValueError('Mapped evaluation numerical convergence status missing')
+                if inputs.evaluation_target=='intended' and evaluation.manufacturing_feasibility!='unknown':
+                    raise ValueError('Intended-state execution cannot claim manufacturing feasibility')
+                ids={c.id:c for c in inputs.brief.constraints}
+                if {o.constraint_id for o in evaluation.constraint_outcomes}!=set(ids):
+                    raise ValueError('Missing or extra constraint outcomes')
+                evaluated={m.metric_id:m for m in evaluation.constraint_metrics}
+                for outcome in evaluation.constraint_outcomes:
+                    constraint=ids[outcome.constraint_id]
+                    if (outcome.metric_id,outcome.relation,outcome.limit)!=(constraint.metric_id,constraint.relation,constraint.limit):
+                        raise ValueError('Constraint outcome interpretation mismatch')
+                    metric=evaluated.get(constraint.metric_id,metrics.get(constraint.metric_id))
+                    status=('unknown' if metric is None or metric.status!='computed'
+                            else 'satisfied' if (
+                                (constraint.relation=='le' and metric.value.value<=constraint.limit.value) or
+                                (constraint.relation=='ge' and metric.value.value>=constraint.limit.value))
+                            else 'violated')
+                    if outcome.outcome!=status:
+                        raise ValueError('Constraint outcome value mismatch')
+                if inputs.evaluation_target=='estimated' and evaluation.manufacturing_feasibility!=inputs.estimated_state.feasibility:
+                    raise ValueError('Achieved-state manufacturing feasibility mismatch')
+            fields = evaluation.spatial_fields
+            if evaluation.status == 'complete' and fields is None:
+                raise ValueError('Complete mapped result lacks spatial fields')
+            if fields is not None and (
+                fields.coordinate_from_hot_m[0] < 0 or
+                fields.coordinate_from_hot_m[-1] > inputs.brief.thickness.value):
+                raise ValueError('Spatial coordinates outside coupon geometry')
 
     def finish(self, run_id: str, evaluation: Evaluation) -> None:
         if not isinstance(evaluation, Evaluation):

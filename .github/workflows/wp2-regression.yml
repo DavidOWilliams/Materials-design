@@ -1,0 +1,175 @@
+name: WP2 foundation regression
+on:
+  push:
+    branches: [wp2-numerical-2026-10-23]
+  workflow_dispatch:
+env:
+  PYTHONPATH: foundation
+jobs:
+  numerical-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: bash foundation/setup.sh
+      - name: Run WP1 and WP0R regressions plus WP2 gate
+        env:
+          PYTHONPATH: foundation
+        run: .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: Replay all three original architectures
+        run: .venv-foundation/bin/python foundation/verify_demo.py --output /tmp/wp2-replay
+      - name: Persist and independently replay WP2 numerical scenarios
+        run: .venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp2-evidence
+      - name: Upload WP2 numerical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp2-numerical-evidence
+          path: /tmp/wp2-evidence/*.json
+          if-no-files-found: ignore
+
+  legacy-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install legacy pinned environment
+        run: python -m pip install -r requirements.txt scikit-fem==12.0.2
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Run legacy and WP0R regressions without modifying legacy source
+        run: python -m pytest tests recovered_wp0 -q
+
+  wp1-immutable-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact unmodified WP1 review commit
+        uses: actions/checkout@v4
+        with:
+          ref: 22350b119d8a30248a9924ba375ebf4c8dabb4b7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original WP1 hash-locked environment
+        run: bash foundation/setup.sh
+      - name: Reproduce original 74 WP1 and recovery checks
+        env:
+          PYTHONPATH: foundation
+        run: .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: Reproduce original R1 before WP2 correction
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python - <<'PY'
+          import json, tempfile
+          from material_core.demo import make_fixture
+          from material_core.contracts import Constraint, Metric, RunInputs, quantity
+          from material_core.thermal import evaluate
+          from material_core.store import RunStore
+          x=make_fixture()
+          raw=x.model_dump(mode='json')
+          raw['brief']['constraints']=[Constraint(id='mass_ceiling',
+              metric_id='mass',limit=quantity('areal_mass',30.),
+              relation='le',applicability='software review fixture').model_dump(mode='json')]
+          inputs=RunInputs.model_validate_json(json.dumps(raw))
+          result=evaluate(inputs)
+          mass=Metric(objective_id='mass',value=quantity('areal_mass',20.),
+              status='computed',explanation='synthetic R1 regression value')
+          result=result.model_copy(update={'metrics':result.metrics+(mass,),
+              'feasibility':'conditional'})
+          assert not result.comparison_eligible(inputs.brief)
+          with tempfile.TemporaryDirectory() as d:
+              store=RunStore(d);run=store.create(inputs)
+              try:
+                  store.finish(run,result)
+              except ValueError as error:
+                  assert 'unrequested objective' in str(error)
+              else:
+                  raise AssertionError('WP1 R1 unexpectedly accepted constraint-only mass')
+          print('R1 original WP1 defect independently reproduced')
+          PY
+
+  wp2-reviewed-defects-and-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout corrected branch with reproduction script
+        uses: actions/checkout@v4
+      - name: Checkout exact original reviewed WP2 source
+        uses: actions/checkout@v4
+        with:
+          ref: ae052d6f70499eceb92e73436fd0de7cb1791777
+          path: reviewed
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original WP2 locked runtime
+        run: bash reviewed/foundation/setup.sh
+      - name: Run five independent review reproductions on unchanged WP2
+        env:
+          PYTHONPATH: reviewed/foundation:reviewed
+        run: |
+          cp foundation/reproduce_reviewed_wp2_defects.py /tmp/reproduce_reviewed_wp2_defects.py
+          reviewed/.venv-foundation/bin/python /tmp/reproduce_reviewed_wp2_defects.py
+      - name: Produce original WP2 historical run and replay
+        env:
+          PYTHONPATH: reviewed/foundation:reviewed
+        run: |
+          reviewed/.venv-foundation/bin/python - <<'PY'
+          from material_core.wp2_scenarios import make_wp2_fixture
+          from material_core.wp2_numerical import evaluate
+          from material_core.store import RunStore
+          from pathlib import Path
+          store=RunStore('archive/wp2-v1')
+          x=make_wp2_fixture('homogeneous')
+          rid=store.create(x);result=evaluate(x);store.finish(rid,result)
+          Path('archive/run_id.txt').write_text(rid)
+          assert RunStore('archive/wp2-v1').load(rid).evaluation==result
+          print('Original reviewed WP2 archived result',rid,result.content_hash)
+          PY
+      - name: Archive immutable reviewed WP2 store
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp2-reviewed-historical-store
+          path: archive/
+          include-hidden-files: true
+
+  wp2-cross-version-history:
+    runs-on: ubuntu-latest
+    needs: wp2-reviewed-defects-and-history
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install corrected locked environment
+        run: bash foundation/setup.sh
+      - name: Download original reviewed WP2 store
+        uses: actions/download-artifact@v4
+        with:
+          name: wp2-reviewed-historical-store
+          path: archive/
+      - name: Verify historical WP2 artifact hashes and readability without rewriting
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python - <<'PY'
+          from material_core.store import RunStore
+          from material_core.wp2_numerical import evaluate
+          from pathlib import Path
+          rid=Path('archive/run_id.txt').read_text().strip()
+          s=RunStore('archive/wp2-v1');r=s.load(rid)
+          assert r.evaluation is not None
+          assert r.inputs.solver.version=='wp2-bounded-1'
+          saved_hash=r.evaluation.content_hash
+          assert s.load(rid).evaluation.content_hash==saved_hash
+          try: evaluate(r.inputs)
+          except ValueError as error:
+              assert 'solver source or dependency identity' in str(error)
+          else: raise AssertionError('Corrected method silently reused historical solver')
+          print('Historical WP2 readable and hash-preserved; original solver only for original replay',saved_hash)
+          PY

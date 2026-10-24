@@ -8,7 +8,7 @@ import hashlib
 import json
 import math
 from typing import Annotated, Literal, Protocol
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, model_serializer
 
 Text = Annotated[str, Field(min_length=1, pattern=r'.*\S.*')]
 Positive = Annotated[float, Field(gt=0, allow_inf_nan=False)]
@@ -30,7 +30,8 @@ class Contract(BaseModel):
 UNITS = {'length':'m', 'temperature':'K', 'conductivity':'W/(m K)',
          'heat_flux':'W/m2', 'areal_mass':'kg/m2', 'density':'kg/m3',
          'stress':'Pa', 'fraction':'1', 'time':'s', 'energy':'J',
-         'mass':'kg', 'volume':'m3', 'expansion':'1/K'}
+         'mass':'kg', 'volume':'m3', 'expansion':'1/K',
+         'force':'N', 'force_per_length':'N/m'}
 
 class Quantity(Contract):
     dimension: Text
@@ -114,7 +115,10 @@ class Brief(Contract):
         require_dimension(self.hot_boundary,'temperature'); require_dimension(self.cold_boundary,'temperature')
         unique([o.id for o in self.objectives],'objectives'); unique([c.id for c in self.constraints],'constraints')
         unique([a.id for a in self.assumptions],'assumptions')
+        per_metric={}
         for c in self.constraints:
+            previous=per_metric.setdefault(c.metric_id,(c.limit.dimension,c.limit.unit))
+            if previous!=(c.limit.dimension,c.limit.unit): raise ValueError('Conflicting constraint units for one metric')
             for o in self.objectives:
                 if c.metric_id == o.id and (c.limit.dimension,c.limit.unit)!=(o.dimension,o.unit):
                     raise ValueError('Constraint/objective dimension mismatch')
@@ -137,9 +141,25 @@ class Property(Contract):
     conditions: Text
     uncertainty: Uncertainty | None
     provenance: Provenance
+    temperature_min: Quantity | None = None
+    temperature_max: Quantity | None = None
+
+    @model_serializer(mode='wrap')
+    def omit_optional_domain_for_legacy(self, handler):
+        raw=handler(self)
+        for key in ('temperature_min','temperature_max'):
+            if raw.get(key) is None: raw.pop(key,None)
+        return raw
 
     @model_validator(mode='after')
     def valid_uncertainty(self):
+        if (self.temperature_min is None)!=(self.temperature_max is None):
+            raise ValueError('Property temperature applicability requires both limits')
+        if self.temperature_min is not None:
+            require_dimension(self.temperature_min,'temperature')
+            require_dimension(self.temperature_max,'temperature')
+            if self.temperature_max.value<=self.temperature_min.value:
+                raise ValueError('Invalid property temperature applicability')
         if self.uncertainty is not None:
             if self.uncertainty.dimension != self.quantity.dimension or self.uncertainty.value < 0:
                 raise ValueError('Uncertainty must be nonnegative in property units')
@@ -348,6 +368,58 @@ class ThermalSettings(Contract):
         if self.provenance.evidence_kind != 'synthetic_scenario': raise ValueError('Prescribed fixture must be synthetic')
         return self
 
+class ThermoelasticSettings(Contract):
+    """Bounded mechanics method; not a manufacturing residual-stress model."""
+    kind: Literal['planar_thermoelastic'] = 'planar_thermoelastic'
+    mesh: Discretisation
+    stress_free_temperature: Quantity
+    kinematics: Literal['equibiaxial_plane_stress'] = 'equibiaxial_plane_stress'
+    restraint: Literal['force_and_moment_free','fully_flat_restrained']
+    expansion_convention: Literal['small_strain_isotropic'] = 'small_strain_isotropic'
+    stiffness_mapping: Text
+    expansion_mapping: Text
+    provenance: Provenance
+
+    @model_validator(mode='after')
+    def physical_units(self):
+        require_dimension(self.stress_free_temperature,'temperature')
+        return self
+
+
+class MappedThermalSettings(Contract):
+    kind: Literal['mapped_steady_conduction'] = 'mapped_steady_conduction'
+    mesh: Discretisation
+    conductivity_mapping: Literal['parallel_voigt_upper_bound'] = 'parallel_voigt_upper_bound'
+    interface_condition: Literal['perfect'] = 'perfect'
+    source_terms: Literal['none'] = 'none'
+    lateral_loss: Literal['none'] = 'none'
+    provenance: Provenance
+
+
+class CoupledThermomechanicalSettings(Contract):
+    """Explicit matched thermal/mechanics settings for three D1 quantities."""
+    kind: Literal['planar_coupled'] = 'planar_coupled'
+    thermal: MappedThermalSettings
+    mechanics: ThermoelasticSettings
+    density_mapping: Text
+    property_pack_id: Text
+    property_pack_version: Text
+    property_pack_hash: Digest
+    temperature_min: Quantity
+    temperature_max: Quantity
+    evaluation_context_hash: Digest
+
+    @model_validator(mode='after')
+    def consistent_mesh(self):
+        if self.thermal.mesh != self.mechanics.mesh:
+            raise ValueError('Thermal/mechanics mesh mismatch')
+        require_dimension(self.temperature_min,'temperature')
+        require_dimension(self.temperature_max,'temperature')
+        if self.temperature_max.value <= self.temperature_min.value:
+            raise ValueError('Invalid supported temperature range')
+        return self
+
+
 class Metric(Contract):
     objective_id: Text
     value: Quantity | None
@@ -359,13 +431,76 @@ class Metric(Contract):
         if (self.value is not None) != (self.status == 'computed'): raise ValueError('Computed status/value mismatch')
         return self
 
+class ConstraintMetric(Contract):
+    """Independent measured/calculated constraint quantity, not an objective."""
+    metric_id: Text
+    value: Quantity | None
+    status: Literal['computed','unsupported','missing','failed']
+    explanation: Text
+
+    @model_validator(mode='after')
+    def known(self):
+        if (self.value is not None) != (self.status == 'computed'):
+            raise ValueError('Computed constraint status/value mismatch')
+        return self
+
+
+class SpatialFields(Contract):
+    coordinate_from_hot_m: tuple[Finite,...]
+    temperature_K: tuple[Positive,...]
+    signed_equibiaxial_stress_Pa: tuple[Finite,...]
+    signed_hot_to_cold_flux: Quantity
+    force_residual: Quantity
+    moment_residual: Quantity
+    curvature_per_m: Finite
+    sampled_stress_region: Literal['cell_centres'] = 'cell_centres'
+
+    @model_validator(mode='after')
+    def shapes(self):
+        n=len(self.coordinate_from_hot_m)
+        if n<1 or len(self.temperature_K)!=n or len(self.signed_equibiaxial_stress_Pa)!=n:
+            raise ValueError('Spatial field arrays must have matching nonempty coordinates')
+        if any(a>=b for a,b in zip(self.coordinate_from_hot_m,self.coordinate_from_hot_m[1:])):
+            raise ValueError('Coordinates must be strictly increasing')
+        require_dimension(self.signed_hot_to_cold_flux,'heat_flux')
+        require_dimension(self.force_residual,'force_per_length')
+        require_dimension(self.moment_residual,'force')
+        return self
+
+
+class ConstraintOutcome(Contract):
+    constraint_id: Text
+    metric_id: Text
+    outcome: Literal['satisfied','violated','unknown']
+    relation: Literal['le','ge']
+    limit: Quantity
+
+
 class Evaluation(Contract):
     kind: Literal['evaluation'] = 'evaluation'
+
+    def canonical_json(self) -> str:
+        # WP1 v1.0 evaluation artifacts did not contain constraint_metrics.
+        # Preserve their exact canonical bytes and SHA256 identifiers.
+        raw=self.model_dump(mode='json')
+        if not self.constraint_metrics:
+            raw.pop('constraint_metrics', None)
+        for key in ('spatial_fields','comparison_context_hash','evidence_status','manufacturing_feasibility','numerical_quality'):
+            if raw.get(key) is None: raw.pop(key,None)
+        if not self.constraint_outcomes: raw.pop('constraint_outcomes',None)
+        return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
     input_hash: Digest
     brief_hash: Digest
     solver: SolverIdentity
     status: Literal['complete','incomplete','unsupported','failed']
     metrics: tuple[Metric,...]
+    constraint_metrics: tuple[ConstraintMetric,...] = ()
+    spatial_fields: SpatialFields | None = None
+    comparison_context_hash: Digest | None = None
+    evidence_status: Literal['synthetic','provisional','supported'] | None = None
+    manufacturing_feasibility: Literal['unknown','conditional','infeasible'] | None = None
+    numerical_quality: Literal['qualified','unresolved'] | None = None
+    constraint_outcomes: tuple['ConstraintOutcome',...] = ()
     feasibility: Literal['unknown','conditional','infeasible']
     limitations: Annotated[tuple[Text,...], Field(min_length=1)]
     temperature_K: tuple[Positive,...] = ()
@@ -374,20 +509,32 @@ class Evaluation(Contract):
     @model_validator(mode='after')
     def complete(self):
         unique([m.objective_id for m in self.metrics],'metric IDs')
+        unique([m.metric_id for m in self.constraint_metrics],'constraint metric IDs')
+        unique([m.constraint_id for m in self.constraint_outcomes],'constraint outcome IDs')
         if self.status == 'complete' and (not self.metrics or any(m.status!='computed' for m in self.metrics)): raise ValueError('Incomplete objectives cannot be complete')
         if self.flux_spread is not None: require_dimension(self.flux_spread,'heat_flux')
         return self
 
     def comparison_eligible(self, brief: Brief) -> bool:
         if self.brief_hash != brief.content_hash or self.status != 'complete' or self.feasibility != 'conditional': return False
+        if self.manufacturing_feasibility in ('unknown','infeasible'): return False
         metrics = {m.objective_id:m for m in self.metrics}
         if set(metrics) != {o.id for o in brief.objectives}: return False
         for o in brief.objectives:
             m=metrics[o.id]
             if m.status!='computed' or m.value is None or (m.value.dimension,m.value.unit)!=(o.dimension,o.unit): return False
+        constrained={m.metric_id:m for m in self.constraint_metrics}
+        if set(constrained) - {c.metric_id for c in brief.constraints}: return False
         for c in brief.constraints:
-            m=metrics.get(c.metric_id)
-            if m is None or m.value is None or m.value.dimension!=c.limit.dimension: return False
+            # A quantity shared with an objective must agree rather than supply
+            # two contradictory values for the same physical metric.
+            m=constrained.get(c.metric_id)
+            objective=metrics.get(c.metric_id)
+            if m is not None and objective is not None:
+                if m.value != objective.value or m.status != objective.status: return False
+            if m is None: m=objective
+            if m is None or m.status!='computed' or m.value is None: return False
+            if (m.value.dimension,m.value.unit)!=(c.limit.dimension,c.limit.unit): return False
             if c.relation=='le' and m.value.value>c.limit.value: return False
             if c.relation=='ge' and m.value.value<c.limit.value: return False
         return True
@@ -414,7 +561,7 @@ class RunInputs(Contract):
     commands: ManufacturingCommands | None = None
     evaluation_target: Literal['intended','estimated','measured'] = 'intended'
     solver: SolverIdentity
-    settings: ThermalSettings
+    settings: Annotated[ThermalSettings | ThermoelasticSettings | CoupledThermomechanicalSettings, Field(discriminator='kind')]
     assumption_snapshots: tuple[str,...]
     provenance: Annotated[tuple[Provenance,...], Field(min_length=1)]
 

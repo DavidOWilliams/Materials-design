@@ -198,3 +198,13 @@ def test_paired_export_rechecked_against_underlying_campaigns(tmp_path):
     path.write_text(json.dumps(raw))
     with pytest.raises(ValueError,match="Paired summary"):
         reopen_paired(base)
+
+
+def test_missing_required_attempt_accounting_rejected(tmp_path):
+    path=tmp_path/"missing.json"
+    run_search(path,seed=7,budget=1,elements=256)
+    record=json.loads(path.read_text())
+    del record["evaluation_attempts"]
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError,match="Campaign accounting mismatch"):
+        open_search(path)

@@ -123,14 +123,25 @@ def _reconstruct(ledger,store):
 
 def run_search(path,*,seed=17,budget=9,method="explore",
                elements=4096,mass_limit=31.,cancel_requested=None,
-               resume=False,wall_time_seconds=None):
+               resume=False,wall_time_seconds=None,
+               provider_factory=None,evaluation_adapter=None,
+               provider_identity=None,evaluator_identity=None):
     """Restart is append-only; terminal records and completed runs are never overwritten.
 
     Cancellation is cooperative between evaluations. On unexpected process
     interruption, a ledger 'created' run is checked and either recovered if
     already finished or marked failed and retained before a new proposal.
     """
+    if (provider_factory is None)!=(provider_identity is None):
+        raise ValueError("Alternate provider requires versioned identity")
+    if (evaluation_adapter is None)!=(evaluator_identity is None):
+        raise ValueError("Alternate evaluator requires versioned identity")
+    if any(not isinstance(x,str) or not x.strip()
+           for x in (provider_identity,evaluator_identity) if x is not None):
+        raise ValueError("Empty provider or evaluator identity")
     config=_config(seed,budget,method,elements,mass_limit)
+    config["provider"]=provider_identity or PROVIDER_ID
+    config["evaluation_adapter"]=evaluator_identity or "wp2-bounded-2"
     path=Path(path)
     store=RunStore(path.parent/"run-store")
     if resume:
@@ -158,7 +169,9 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             nominal_kernel_solves=0,refinement_kernel_solves=0,
             invalid_proposals=0,failed_attempts=0,stop_reason="running",
             qualified_comparison=None)
-    provider=BoundedProvider(seed,method)
+    provider=(provider_factory(seed,method) if provider_factory is not None
+              else BoundedProvider(seed,method))
+    actual_evaluator=evaluation_adapter or evaluate
     # Reconstruct the seeded generator state even when reopening.
     for i in range(len(ledger["proposals"])):
         _proposal(provider,i)
@@ -196,7 +209,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             ledger["nominal_kernel_solves"]+=1
             ledger["refinement_kernel_solves"]+=1
             try:
-                result=evaluate(inputs)
+                result=actual_evaluator(inputs)
                 store.finish(run_id,result)
                 item.update(status="complete",evaluation_hash=result.content_hash)
             except Exception as exc:

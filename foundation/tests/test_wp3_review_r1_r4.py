@@ -73,8 +73,7 @@ def test_r2_comparison_rejected_with_pending(tmp_path):
                    evaluation_adapter=evaluate,evaluator_identity="review-pending-v1")
 
 
-@pytest.mark.parametrize("reason",["manufacturing_validated","cancelled",
-                        "evaluation_budget_exhausted","wall_time_budget_exhausted"])
+@pytest.mark.parametrize("reason",["manufacturing_validated","cancelled","wall_time_budget_exhausted"])
 def test_r3_invalid_stop_reason_or_mismatched_terminal_event(tmp_path,reason):
     path=tmp_path/"finished.json"
     run_search(path,seed=4,budget=2,elements=256)
@@ -128,3 +127,15 @@ def test_r4_alternate_brief_persistence_and_resume(tmp_path):
     assert saved.inputs.brief.cold_boundary.value==320
     assert len(saved.inputs.design.architecture.layers)==3
     assert saved.evaluation.manufacturing_feasibility=="unknown"
+
+
+def test_r3_impossible_budget_exhaustion_rejected(tmp_path):
+    path=tmp_path/"half.json"
+    first=run_search(path,seed=4,budget=3,elements=256,
+                     cancel_requested=lambda:True)
+    raw=json.loads(path.read_text())
+    raw["stop_reason"]="evaluation_budget_exhausted"
+    raw["termination_event"]={"reason":"evaluation_budget_exhausted","proposal_slots":0}
+    path.write_text(json.dumps(raw))
+    with pytest.raises(ValueError,match="Budget"):
+        open_search(path)

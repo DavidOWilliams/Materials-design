@@ -485,7 +485,7 @@ class Evaluation(Contract):
         raw=self.model_dump(mode='json')
         if not self.constraint_metrics:
             raw.pop('constraint_metrics', None)
-        for key in ('spatial_fields','comparison_context_hash','evidence_status','manufacturing_feasibility'):
+        for key in ('spatial_fields','comparison_context_hash','evidence_status','manufacturing_feasibility','numerical_quality'):
             if raw.get(key) is None: raw.pop(key,None)
         if not self.constraint_outcomes: raw.pop('constraint_outcomes',None)
         return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
@@ -499,6 +499,7 @@ class Evaluation(Contract):
     comparison_context_hash: Digest | None = None
     evidence_status: Literal['synthetic','provisional','supported'] | None = None
     manufacturing_feasibility: Literal['unknown','conditional','infeasible'] | None = None
+    numerical_quality: Literal['qualified','unresolved'] | None = None
     constraint_outcomes: tuple['ConstraintOutcome',...] = ()
     feasibility: Literal['unknown','conditional','infeasible']
     limitations: Annotated[tuple[Text,...], Field(min_length=1)]

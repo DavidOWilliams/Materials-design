@@ -112,7 +112,9 @@ jobs:
       - name: Run five independent review reproductions on unchanged WP2
         env:
           PYTHONPATH: reviewed/foundation:reviewed
-        run: reviewed/.venv-foundation/bin/python foundation/reproduce_reviewed_wp2_defects.py
+        run: |
+          cp foundation/reproduce_reviewed_wp2_defects.py /tmp/reproduce_reviewed_wp2_defects.py
+          reviewed/.venv-foundation/bin/python /tmp/reproduce_reviewed_wp2_defects.py
       - name: Produce original WP2 historical run and replay
         env:
           PYTHONPATH: reviewed/foundation:reviewed

@@ -35,3 +35,18 @@ def test_seed_and_supported_bounds():
     with pytest.raises(ValueError):
         propose(architecture="gradient",pair=("scenario_A","scenario_X"),fraction=.5)
     assert make_catalogue_base(elements=256).settings.property_pack_id=="wp3-neutral-A-B-C"
+
+
+def test_gradient_knot_geometry_varies_without_losing_continuous_identity():
+    first=propose(architecture="gradient",pair=("scenario_A","scenario_C"),
+                  fraction=.4,knot_position=.3,elements=256)
+    second=propose(architecture="gradient",pair=("scenario_A","scenario_C"),
+                   fraction=.4,knot_position=.7,elements=256)
+    assert first.design.architecture.kind == second.design.architecture.kind == "gradient"
+    assert first.design.content_hash != second.design.content_hash
+    assert first.settings.evaluation_context_hash == second.settings.evaluation_context_hash
+    for t in (first,second):
+        assert evaluate(t).status=="complete"
+    with pytest.raises(ValueError):
+        propose(architecture="gradient",pair=("scenario_A","scenario_C"),
+                fraction=.4,knot_position=0.)

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import time
 
@@ -139,6 +140,10 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     if any(not isinstance(x,str) or not x.strip()
            for x in (provider_identity,evaluator_identity) if x is not None):
         raise ValueError("Empty provider or evaluator identity")
+    if wall_time_seconds is not None and (
+            type(wall_time_seconds) not in (int,float)
+            or not math.isfinite(wall_time_seconds) or wall_time_seconds<0):
+        raise ValueError("Invalid wall-time budget")
     config=_config(seed,budget,method,elements,mass_limit)
     config["provider"]=provider_identity or PROVIDER_ID
     config["evaluation_adapter"]=evaluator_identity or "wp2-bounded-2"
@@ -150,6 +155,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             raise ValueError("Cannot resume with a different campaign configuration")
         if ledger["stop_reason"]=="evaluation_budget_exhausted":
             return ledger
+        ledger.setdefault("stop_history",[]).append(ledger["stop_reason"])
         for item in ledger["proposals"]:
             if item["status"]=="created":
                 old=store.load(item["run_id"])
@@ -165,7 +171,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             raise FileExistsError("Search ledger exists; open or resume instead")
         ledger=dict(schema_version=SCHEMA,config=config,
             configuration_hash=hashlib.sha256(_canonical(config).encode()).hexdigest(),
-            proposals=[],unique_evaluations=0,cache_hits=0,
+            proposals=[],stop_history=[],unique_evaluations=0,cache_hits=0,
             nominal_kernel_solves=0,refinement_kernel_solves=0,
             invalid_proposals=0,failed_attempts=0,stop_reason="running",
             qualified_comparison=None)
@@ -206,16 +212,17 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             ledger["proposals"].append(item)
             _write_ledger(path,ledger)
             ledger["unique_evaluations"]+=1
-            ledger["nominal_kernel_solves"]+=1
-            ledger["refinement_kernel_solves"]+=1
             try:
                 result=actual_evaluator(inputs)
                 store.finish(run_id,result)
+                ledger["nominal_kernel_solves"]+=1
+                ledger["refinement_kernel_solves"]+=1
                 item.update(status="complete",evaluation_hash=result.content_hash)
             except Exception as exc:
                 store.fail(run_id,str(exc))
                 item.update(status="failed",reason=str(exc))
                 ledger["failed_attempts"]+=1
+                ledger["kernel_solve_count_uncertain"]=True
             # Already appended before the solve for crash recovery.
         if cached:
             ledger["proposals"].append(item)

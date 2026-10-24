@@ -55,7 +55,13 @@ def test_mesh_refinement_constant_coefficients():
                         400.,300.,300.)
     assert many.hot_to_cold_flux_W_m2==pytest.approx(one.hot_to_cold_flux_W_m2)
     assert many.areal_mass_kg_m2==pytest.approx(one.areal_mass_kg_m2)
-    # Cell-centroid discontinuous temperature samples approximate a continuous\n    # linear profile. Refinement decreases the discrete mismatch, but its\n    # finite-resolution peak is not exactly zero.\n    coarse=evaluate_cells(tuple(material(thickness=.01/16) for _ in range(16)),\n                          400.,300.,300.)\n    assert many.tensile_mismatch_Pa < coarse.tensile_mismatch_Pa
+    coarse=evaluate_cells(tuple(material(thickness=.01/16) for _ in range(16)),
+                          400.,300.,300.)
+    # Exactly linear thermal eigenstrain is representable by membrane+bending.
+    assert coarse.tensile_mismatch_Pa < .05
+    assert many.tensile_mismatch_Pa < .05
+    assert coarse.curvature_per_m == pytest.approx(-.08,abs=2e-9)
+    assert many.curvature_per_m == pytest.approx(-.08,abs=2e-9)
 
 
 @pytest.mark.parametrize('bad',[Cell(.01,0,2000,1e11,1e-5),
@@ -63,3 +69,30 @@ def test_mesh_refinement_constant_coefficients():
     Cell(.01,2.,2000.,1e11,.02)])
 def test_out_of_domain_cannot_default(bad):
     with pytest.raises(ValueError):evaluate_cells((bad,),400.,300.,300.)
+
+
+def test_free_homogeneous_exact_linear_temperature_refinement():
+    for n in (2,16,128,512):
+        r=evaluate_cells(tuple(material(thickness=.01/n) for _ in range(n)),400.,300.,300.)
+        assert r.tensile_mismatch_Pa < .05  # absolute Pa roundoff tolerance
+        assert r.curvature_per_m==pytest.approx(-.08,abs=2e-9)
+        assert r.midplane_strain==pytest.approx(.0004,abs=1e-12)
+
+
+def test_force_and_moment_independent_polynomial_integration():
+    layers=(material(thickness=.004,k=2.,Q=100e9,alpha=5e-6),
+            material(thickness=.006,k=8.,Q=160e9,alpha=12e-6))
+    r=evaluate_cells(layers,400.,300.,300.)
+    total=sum(c.thickness_m for c in layers)
+    z=0.;temperature=400.; force=0.;moment=0.
+    for c in layers:
+        a=z-total/2; b=z+c.thickness_m-total/2
+        next_t=temperature-r.hot_to_cold_flux_W_m2*c.thickness_m/c.conductivity_W_mK
+        slope=(next_t-temperature)/c.thickness_m
+        intercept=r.midplane_strain-c.expansion_per_K*(temperature-300.)+c.expansion_per_K*slope*a
+        gradient=r.curvature_per_m-c.expansion_per_K*slope
+        force+=c.biaxial_modulus_Pa*(intercept*(b-a)+gradient*(b*b-a*a)/2)
+        moment+=c.biaxial_modulus_Pa*(intercept*(b*b-a*a)/2+gradient*(b**3-a**3)/3)
+        z+=c.thickness_m;temperature=next_t
+    assert abs(force)<1e-4
+    assert abs(moment)<1e-6

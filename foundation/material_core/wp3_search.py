@@ -220,7 +220,7 @@ def compare_paired(path,*,seeds=(11,23,37),budget=9,elements=4096,mass_limit=31.
     for seed in seeds:
         row={"seed":seed}
         for method in ("explore","sampling"):
-            ledger=run_search(base/(str(seed)+"-"+method+".json"),
+            ledger=run_search(base/(str(seed)+"-"+method)/"campaign.json",
                 seed=seed,budget=budget,method=method,
                 elements=elements,mass_limit=mass_limit)
             qualified=sum(p.get("qualified",False) for p in ledger["proposals"])
@@ -231,7 +231,7 @@ def compare_paired(path,*,seeds=(11,23,37),budget=9,elements=4096,mass_limit=31.
                 pareto_count=len((ledger["qualified_comparison"] or {}).get("pareto_ids",[])),
                 unique_evaluations=ledger["unique_evaluations"],
                 kernel_solves=ledger["nominal_kernel_solves"]+ledger["refinement_kernel_solves"],
-                cache_hits=ledger["cache_hits"],ledger=str(seed)+"-"+method+".json")
+                cache_hits=ledger["cache_hits"],ledger=str(seed)+"-"+method+"/campaign.json")
         pairs.append(row)
     result=dict(schema_version=1,seeds=list(seeds),budget=budget,
         measured_outcome="qualified and Pareto portfolio coverage; no superiority presupposed",

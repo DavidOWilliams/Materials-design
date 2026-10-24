@@ -126,3 +126,13 @@ def test_cancel_after_first_evaluation_and_resume_without_overwrite(tmp_path):
     assert complete["proposals"][0]["evaluation_hash"]==preserved
     assert "cancelled" in complete["stop_history"]
     assert complete["stop_reason"]=="evaluation_budget_exhausted"
+
+
+def test_wall_time_budget_recorded_and_enforced(tmp_path):
+    path=tmp_path/"timed.json"
+    out=run_search(path,seed=7,budget=3,elements=256,wall_time_seconds=0)
+    assert out["stop_reason"]=="wall_time_budget_exhausted"
+    assert out["config"]["wall_time_seconds"]==0.
+    assert out["proposals"]==[]
+    with pytest.raises(ValueError,match="different campaign"):
+        run_search(path,seed=7,budget=3,elements=256,resume=True)

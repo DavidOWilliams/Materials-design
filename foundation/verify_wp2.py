@@ -57,11 +57,15 @@ def main():
             raise AssertionError('Intended architecture has unequal material budget')
     for name,payload in [('wp2-numerical-results.json',results),
                          ('wp2-separate-process-replay.json',replay)]:
-        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
-    for arch in ('qualified-homogeneous','qualified-layered','qualified-gradient'):
+        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'
+')
+    for arch in ('qualified-homogeneous','qualified-layered','qualified-gradient',
+                 'qualified-estimated-achieved-gradient'):
         if results[arch]['numerical_quality']!='qualified':
             raise AssertionError('Refined three-objective example is not numerically qualified: '+arch)
     print(json.dumps({'status':'passed','runs':len(results),
+        'scenario_numerical_quality':{k:r['numerical_quality'] for k,r in results.items()},
+        'scenario_manufacturing_feasibility':{k:r['manufacturing_feasibility'] for k,r in results.items()},
         'objective_names':list(results['gradient']['objectives']),
         'scenario_curvature_per_m':{k:r['curvature_per_m'] for k,r in results.items()},
         'scenario_results':{k:{m:round(v['value'],8) for m,v in r['objectives'].items()}

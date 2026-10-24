@@ -16,22 +16,22 @@ from .contracts import (
     Objective, Property, Provenance, RunInputs, ThermoelasticSettings, quantity,
 )
 from .wp2_numerical import (
-    comparison_context_hash, property_pack_hash, solver_identity,
+    comparison_context_hash, context_for_run, property_pack_hash, solver_identity,
 )
 
 
-def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.):
+def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,\n                     property_domain=(290.,410.)):
     props=(
         ('scenario_A',2.,2000.,100e9,5e-6),
         ('scenario_B',10.,4000.,160e9,12e-6),
     )
-    manifest=json.dumps(props,separators=(',',':'))
+    manifest=json.dumps({'phases':props,'temperature_domain':property_domain},separators=(',',':'))
     p=Provenance(source_id='wp2-neutral-synthetic-property-catalogue',
-        source_version='scenario-1',source_hash=hashlib.sha256(manifest.encode()).hexdigest(),
+        source_version='scenario-2-domain-versioned',source_hash=hashlib.sha256(manifest.encode()).hexdigest(),
         location='foundation/material_core/wp2_scenarios.py:props',
         reuse_terms='Project-generated synthetic scenario, not external experimental data',
         evidence_kind='synthetic_scenario',
-        conditions='Hypothetical isotropic fully dense phases; constant properties 290–410 K',
+        conditions='Hypothetical isotropic fully dense phases; explicit range in property records',
         extraction='Declared numerical scenario values; not literature extraction')
     materials=[]
     for name,k,rho,Q,alpha in props:
@@ -40,7 +40,7 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.):
         properties=tuple(Property(name=n,quantity=quantity(dim,v),
             convention='SI synthetic isotropic, direct input',
             conditions='Assumed constant between 290–410 K; as-defined scenario',
-            uncertainty=None,provenance=p) for n,dim,v in settings)
+            uncertainty=None,provenance=p,\n            temperature_min=quantity('temperature',property_domain[0]),\n            temperature_max=quantity('temperature',property_domain[1])) for n,dim,v in settings)
         materials.append(MaterialRecord(id=name,version=1,
             label='Hypothetical '+name,state='synthetic ideal isotropic fully dense',
             chemistry='no identified engineering composition',
@@ -103,16 +103,18 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.):
     settings=CoupledThermomechanicalSettings(
         thermal=thermal,mechanics=mechanics,
         density_mapping='volume_additive',
-        property_pack_id='neutral-synthetic-A-B',property_pack_version='scenario-1',
+        property_pack_id='neutral-synthetic-A-B',property_pack_version='scenario-2-domain-versioned',
         property_pack_hash=property_pack_hash(materials),
-        temperature_min=quantity('temperature',290.),
-        temperature_max=quantity('temperature',410.),
+        temperature_min=quantity('temperature',property_domain[0]),
+        temperature_max=quantity('temperature',property_domain[1]),
         evaluation_context_hash='0'*64)
-    settings=settings.model_copy(update={'evaluation_context_hash':
-        comparison_context_hash(brief,settings,'intended')})
-    return RunInputs(brief=brief,design=design,materials=materials,
+    preliminary=RunInputs(brief=brief,design=design,materials=materials,
         solver=solver_identity(),settings=settings,assumption_snapshots=snapshots,
         provenance=(p,))
+    settings=settings.model_copy(update={'evaluation_context_hash':context_for_run(preliminary)})
+    return RunInputs.model_validate_json(json.dumps({
+        **preliminary.model_dump(mode='json'),
+        'settings':settings.model_dump(mode='json')}))
 
 
 def make_wp2_achieved_fixture():
@@ -156,6 +158,6 @@ def make_wp2_achieved_fixture():
     raw['process']=process.model_dump(mode='json')
     raw['estimated_state']=estimate.model_dump(mode='json')
     raw['evaluation_target']='estimated'
-    raw['settings']['evaluation_context_hash']=comparison_context_hash(
-        x.brief,x.settings,'estimated')
+    provisional=RunInputs.model_validate_json(json.dumps(raw))
+    raw['settings']['evaluation_context_hash']=context_for_run(provisional)
     return RunInputs.model_validate_json(json.dumps(raw))

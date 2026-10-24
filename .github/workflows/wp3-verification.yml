@@ -39,11 +39,12 @@ jobs:
           RUN_ID=$(.venv-foundation/bin/python -c "import json; print(json.load(open('/tmp/wp3-result.json'))['run_id'])")
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store --replay "$RUN_ID" > /tmp/wp3-replay.json
           cat /tmp/wp3-replay.json
-      - name: Execute seeded WP3 campaign and reopen in separate process
+      - name: Verify legacy campaign API is explicitly retired
         run: |
-          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/wp3-campaign/campaign.json --seed 17 --budget 3 > /tmp/wp3-campaign-result.json
-          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/wp3-campaign/campaign.json --reopen > /tmp/wp3-campaign-reopen.json
-          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-campaign-result.json')); b=json.load(open('/tmp/wp3-campaign-reopen.json')); assert a==b; assert a['proposals'][0]['constraint_outcomes']['mass_cap']=='violated'; assert a['proposals'][1]['constraint_outcomes']['mass_cap']=='satisfied'; print('Campaign persist/reopen verified', len(a['proposals']))"
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_campaign.py -q
+          if PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/unsupported-v1.json; then
+            echo 'Legacy campaign executed unexpectedly'; exit 1
+          fi
       - name: Run mixed architecture search and separate-process reopen
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-mixed/search.json --budget 9 --seed 17 > /tmp/wp3-mixed-result.json
@@ -69,9 +70,6 @@ jobs:
             /tmp/wp3-result.json
             /tmp/wp3-replay.json
             /tmp/wp3-store/**
-            /tmp/wp3-campaign/**
-            /tmp/wp3-campaign-result.json
-            /tmp/wp3-campaign-reopen.json
             /tmp/wp3-mixed/**
             /tmp/wp3-mixed-result.json
             /tmp/wp3-mixed-reopened.json

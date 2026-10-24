@@ -51,8 +51,7 @@ def main():
             raise AssertionError('Intended architecture has unequal material budget')
     for name,payload in [('wp2-numerical-results.json',results),
                          ('wp2-separate-process-replay.json',replay)]:
-        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'
-')
+        (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
     print(json.dumps({'status':'passed','runs':len(results),
         'objective_names':list(results['gradient']['objectives']),
         'scenario_curvature_per_m':{k:r['curvature_per_m'] for k,r in results.items()},

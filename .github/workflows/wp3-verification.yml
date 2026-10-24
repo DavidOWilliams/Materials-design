@@ -32,6 +32,11 @@ jobs:
           RUN_ID=$(.venv-foundation/bin/python -c "import json; print(json.load(open('/tmp/wp3-result.json'))['run_id'])")
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store --replay "$RUN_ID" > /tmp/wp3-replay.json
           cat /tmp/wp3-replay.json
+      - name: Execute seeded WP3 campaign and reopen in separate process
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/wp3-campaign/campaign.json --seed 17 --budget 3 > /tmp/wp3-campaign-result.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/wp3-campaign/campaign.json --reopen > /tmp/wp3-campaign-reopen.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-campaign-result.json')); b=json.load(open('/tmp/wp3-campaign-reopen.json')); assert a==b; assert a['proposals'][0]['constraint_outcomes']['mass_cap']=='violated'; assert a['proposals'][1]['constraint_outcomes']['mass_cap']=='satisfied'; print('Campaign persist/reopen verified', len(a['proposals']))"
       - name: Store reproducible output
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,4 +46,7 @@ jobs:
             /tmp/wp3-result.json
             /tmp/wp3-replay.json
             /tmp/wp3-store/**
+            /tmp/wp3-campaign/**
+            /tmp/wp3-campaign-result.json
+            /tmp/wp3-campaign-reopen.json
           if-no-files-found: ignore

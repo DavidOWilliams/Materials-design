@@ -35,7 +35,7 @@ def report(result, run_id):
                 'unit':None if m.value is None else m.value.unit,
                 'status':m.status,
             } for m in result.constraint_metrics},
-        'signed_flux_W_m2':result.spatial_fields.signed_hot_to_cold_flux.value
+        'curvature_per_m':result.spatial_fields.curvature_per_m if result.spatial_fields else None,\n        'signed_flux_W_m2':result.spatial_fields.signed_hot_to_cold_flux.value
             if result.spatial_fields else None,
         'limitations':result.limitations,
     }

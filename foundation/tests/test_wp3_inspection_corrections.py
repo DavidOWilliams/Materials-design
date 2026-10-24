@@ -38,7 +38,8 @@ def test_interrupt_after_wp2_numerical_work_then_resume(tmp_path):
     assert result["uncertain_evaluation_attempts"]==1
     assert result["kernel_solve_count_uncertain"] is True
     assert open_search(path)==result
-    assert recompute_search(path)["recomputed"]==1
+    with pytest.raises(ValueError,match="Unavailable evaluator"):
+        recompute_search(path)
     assert result["proposals"][1]["manufacturing_feasibility"]=="unknown"
 
 

@@ -14,7 +14,7 @@ import time
 
 from .store import RunStore
 from .wp2_numerical import evaluate, numerical_comparison_eligible
-from .wp3_provider import BoundedProvider, propose, PROVIDER_ID, CATALOGUE_ID, CATALOGUE_VERSION
+from .wp3_adapters import resolve_provider, DEFAULT, SUPPORTED
 from .wp3_qualified import qualified_pareto
 from .wp3_campaign import _write_ledger
 
@@ -36,27 +36,22 @@ def _config(seed,budget,method,elements,mass_limit):
     if method not in ("explore","sampling"):
         raise ValueError("Unsupported search method")
     return dict(schema_version=SCHEMA,algorithm=ALGORITHM_VERSION,
-        provider=PROVIDER_ID,catalogue_id=CATALOGUE_ID,
-        catalogue_version=CATALOGUE_VERSION, seed=seed,
+        provider=DEFAULT, seed=seed,
         evaluation_budget=budget,method=method,elements=elements,
         mass_limit=float(mass_limit),
-        starting_design="shared homogeneous A/B 0.5",
+        starting_design="scenario-adapter-owned",
         numerical_policy="WP2 mesh doubling on every evaluated design",
         comparison_mode="numerical-only",
-        objectives=("thermal_transmission","areal_mass","tensile_thermal_mismatch"),
+        objectives=(),constraints=(),brief_hash="",property_pack_hash="",
         resource_contract="total proposal slots across resumes, including failed and invalid proposals",
     )
 
 
 def _proposal(provider,index):
-    # Shared starting design in both methods. Next designs are proposed by
-    # distinct, preregistered strategies under exactly the same catalogue.
-    if index==0:
-        return dict(architecture="homogeneous",pair=("scenario_A","scenario_B"),fraction=.5)
-    return provider.proposal(index-1)
+    return provider.start() if index==0 else provider.proposal(index-1)
 
 
-def _derived(ledger, store):
+def _derived(ledger, store, adapter=None):
     """Reconstruct reporting from immutable run rows, not from claimed summaries.
 
     A failed/created numerical attempt may have run either neither, one, or both
@@ -71,6 +66,16 @@ def _derived(ledger, store):
     uncertain=0
     hashes=set()
     previous=None
+    if adapter is None:
+        cfg=result["config"]
+        adapter=resolve_provider(cfg["provider"],cfg["seed"],cfg["method"],
+                                 cfg["elements"],cfg["mass_limit"])
+    baseline=adapter.baseline()
+    if ([x.id for x in baseline.brief.objectives]!=result["config"]["objectives"] or
+            [x.id for x in baseline.brief.constraints]!=result["config"]["constraints"] or
+            baseline.brief.content_hash!=result["config"]["brief_hash"] or
+            baseline.settings.property_pack_hash!=result["config"]["property_pack_hash"]):
+        raise ValueError("Persisted brief, objectives, constraints or catalogue identity mismatch")
     for index,item in enumerate(result["proposals"]):
         if item.get("index")!=index:
             raise ValueError("Proposal sequence/index mismatch")
@@ -88,26 +93,10 @@ def _derived(ledger, store):
         proposal=item.get("proposal")
         if not isinstance(proposal,dict):
             raise ValueError("Proposal description missing")
-        architecture=saved.inputs.design.architecture
-        if proposal.get("architecture")!=architecture.kind:
-            raise ValueError("Proposal architecture differs from immutable design")
-        if architecture.kind=="homogeneous":
-            reference=architecture.composition
-            declared_fraction=reference.fractions[0].fraction
-            declared_knot=.5
-        elif architecture.kind=="layered":
-            reference=architecture.layers[0].composition
-            declared_fraction=architecture.layers[0].end
-            declared_knot=.5
-        else:
-            reference=architecture.knots[0].composition
-            declared_fraction=architecture.knots[1].composition.fractions[0].fraction
-            declared_knot=architecture.knots[1].position
-        if (list(proposal.get("pair",())) !=
-                [x.material_id for x in reference.fractions] or
-                proposal.get("fraction") != declared_fraction or
-                proposal.get("knot_position",.5) != declared_knot):
-            raise ValueError("Proposal parameters differ from immutable design")
+        adapter.validate(proposal,saved.inputs)
+        if (saved.inputs.brief.content_hash!=result["config"]["brief_hash"] or
+                saved.inputs.settings.property_pack_hash!=result["config"]["property_pack_hash"]):
+            raise ValueError("Candidate brief or catalogue differs from declared campaign")
         if item.get("parent_run_id") != saved.parent_run_id:
             raise ValueError("Parent run link mismatch")
         if list(saved.inputs.design.parent_hashes)!=item.get("parent_design_hashes"):
@@ -168,8 +157,8 @@ def _derived(ledger, store):
     return result
 
 
-def _save_search(path,ledger,store):
-    derived=_derived(ledger,store)
+def _save_search(path,ledger,store,adapter=None):
+    derived=_derived(ledger,store,adapter)
     # Preserve live proposal object identity while evaluating: replacing the
     # proposal list would detach the active item's post-evaluation updates.
     for original,reconstructed in zip(ledger["proposals"],derived["proposals"]):

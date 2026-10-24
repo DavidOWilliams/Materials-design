@@ -55,7 +55,7 @@ def _proposal(provider,index):
     return provider.proposal(index-1)
 
 
-def open_search(path):
+def open_search(path, *, verify_decision=True):
     path=Path(path)
     ledger=json.loads(path.read_text())
     if ledger.get("schema_version")!=SCHEMA:
@@ -81,7 +81,28 @@ def open_search(path):
             raise ValueError("Failure status mismatch")
         elif item["status"]=="created" and run.status not in ("created","complete"):
             raise ValueError("Interrupted run status mismatch")
+    if verify_decision and ledger.get("stop_reason")!="running":
+        expected=json.loads(_canonical(ledger))
+        _reconstruct(expected,store)
+        if _canonical(expected.get("qualified_comparison"))!=_canonical(ledger.get("qualified_comparison")):
+            raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
     return ledger
+
+
+def recompute_search(path):
+    """Numerically recompute persisted evaluations, distinct from artifact checking."""
+    record=open_search(path)
+    store=RunStore(Path(path).parent/"run-store")
+    checked=0
+    for item in record["proposals"]:
+        if item["status"]!="complete":
+            continue
+        saved=store.load(item["run_id"])
+        fresh=evaluate(saved.inputs)
+        if fresh.content_hash!=saved.evaluation.content_hash:
+            raise ValueError("Numerical recomputation mismatch at proposal "+str(item["index"]))
+        checked+=1
+    return dict(recomputed=checked,replay="passed",algorithm=record["config"]["algorithm"])
 
 
 def _reconstruct(ledger,store):
@@ -251,12 +272,14 @@ def main():
     p.add_argument("--method",choices=["explore","sampling"],default="explore")
     p.add_argument("--resume",action="store_true")
     p.add_argument("--reopen",action="store_true")
+    p.add_argument("--recompute",action="store_true")
     args=p.parse_args()
     if args.paired:
         result=compare_paired(args.paired,budget=args.budget,
                               elements=args.elements,mass_limit=args.mass_limit)
     elif args.ledger:
-        result=(open_search(args.ledger) if args.reopen else
+        result=(recompute_search(args.ledger) if args.recompute else
+                open_search(args.ledger) if args.reopen else
                 run_search(args.ledger,seed=args.seed,budget=args.budget,
                     elements=args.elements,mass_limit=args.mass_limit,
                     method=args.method,resume=args.resume))

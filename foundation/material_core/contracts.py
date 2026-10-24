@@ -115,7 +115,10 @@ class Brief(Contract):
         require_dimension(self.hot_boundary,'temperature'); require_dimension(self.cold_boundary,'temperature')
         unique([o.id for o in self.objectives],'objectives'); unique([c.id for c in self.constraints],'constraints')
         unique([a.id for a in self.assumptions],'assumptions')
+        per_metric={}
         for c in self.constraints:
+            previous=per_metric.setdefault(c.metric_id,(c.limit.dimension,c.limit.unit))
+            if previous!=(c.limit.dimension,c.limit.unit): raise ValueError('Conflicting constraint units for one metric')
             for o in self.objectives:
                 if c.metric_id == o.id and (c.limit.dimension,c.limit.unit)!=(o.dimension,o.unit):
                     raise ValueError('Constraint/objective dimension mismatch')
@@ -138,9 +141,24 @@ class Property(Contract):
     conditions: Text
     uncertainty: Uncertainty | None
     provenance: Provenance
+    temperature_min: Quantity | None = None
+    temperature_max: Quantity | None = None
+
+    def canonical_json(self) -> str:
+        raw=self.model_dump(mode='json')
+        for key in ('temperature_min','temperature_max'):
+            if raw.get(key) is None: raw.pop(key,None)
+        return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
 
     @model_validator(mode='after')
     def valid_uncertainty(self):
+        if (self.temperature_min is None)!=(self.temperature_max is None):
+            raise ValueError('Property temperature applicability requires both limits')
+        if self.temperature_min is not None:
+            require_dimension(self.temperature_min,'temperature')
+            require_dimension(self.temperature_max,'temperature')
+            if self.temperature_max.value<=self.temperature_min.value:
+                raise ValueError('Invalid property temperature applicability')
         if self.uncertainty is not None:
             if self.uncertainty.dimension != self.quantity.dimension or self.uncertainty.value < 0:
                 raise ValueError('Uncertainty must be nonnegative in property units')
@@ -449,6 +467,14 @@ class SpatialFields(Contract):
         return self
 
 
+class ConstraintOutcome(Contract):
+    constraint_id: Text
+    metric_id: Text
+    outcome: Literal['satisfied','violated','unknown']
+    relation: Literal['le','ge']
+    limit: Quantity
+
+
 class Evaluation(Contract):
     kind: Literal['evaluation'] = 'evaluation'
 
@@ -458,8 +484,9 @@ class Evaluation(Contract):
         raw=self.model_dump(mode='json')
         if not self.constraint_metrics:
             raw.pop('constraint_metrics', None)
-        for key in ('spatial_fields','comparison_context_hash','evidence_status'):
+        for key in ('spatial_fields','comparison_context_hash','evidence_status','manufacturing_feasibility'):
             if raw.get(key) is None: raw.pop(key,None)
+        if not self.constraint_outcomes: raw.pop('constraint_outcomes',None)
         return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
     input_hash: Digest
     brief_hash: Digest
@@ -470,6 +497,8 @@ class Evaluation(Contract):
     spatial_fields: SpatialFields | None = None
     comparison_context_hash: Digest | None = None
     evidence_status: Literal['synthetic','provisional','supported'] | None = None
+    manufacturing_feasibility: Literal['unknown','conditional','infeasible'] | None = None
+    constraint_outcomes: tuple['ConstraintOutcome',...] = ()
     feasibility: Literal['unknown','conditional','infeasible']
     limitations: Annotated[tuple[Text,...], Field(min_length=1)]
     temperature_K: tuple[Positive,...] = ()
@@ -479,12 +508,14 @@ class Evaluation(Contract):
     def complete(self):
         unique([m.objective_id for m in self.metrics],'metric IDs')
         unique([m.metric_id for m in self.constraint_metrics],'constraint metric IDs')
+        unique([m.constraint_id for m in self.constraint_outcomes],'constraint outcome IDs')
         if self.status == 'complete' and (not self.metrics or any(m.status!='computed' for m in self.metrics)): raise ValueError('Incomplete objectives cannot be complete')
         if self.flux_spread is not None: require_dimension(self.flux_spread,'heat_flux')
         return self
 
     def comparison_eligible(self, brief: Brief) -> bool:
         if self.brief_hash != brief.content_hash or self.status != 'complete' or self.feasibility != 'conditional': return False
+        if self.manufacturing_feasibility in ('unknown','infeasible'): return False
         metrics = {m.objective_id:m for m in self.metrics}
         if set(metrics) != {o.id for o in brief.objectives}: return False
         for o in brief.objectives:

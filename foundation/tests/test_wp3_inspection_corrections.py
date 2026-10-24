@@ -124,3 +124,64 @@ def test_budget_is_total_proposal_slots_after_restart(tmp_path):
     with pytest.raises(ValueError,match="different campaign"):
         run_search(path,seed=7,budget=3,elements=256,resume=True,
             evaluation_adapter=evaluate,evaluator_identity="budget-wrapper-v1")
+
+
+def test_after_result_persistence_before_ledger_update_recovers_success(tmp_path,monkeypatch):
+    from material_core.store import RunStore
+    path=tmp_path/"after-store.json"
+    original=RunStore.finish
+    once={"pending":True}
+    def interrupt_after_commit(self,run_id,evaluation):
+        original(self,run_id,evaluation)
+        if once["pending"]:
+            once["pending"]=False
+            raise KeyboardInterrupt("after immutable commit")
+    monkeypatch.setattr(RunStore,"finish",interrupt_after_commit)
+    with pytest.raises(KeyboardInterrupt):
+        run_search(path,seed=4,budget=2,elements=256)
+    monkeypatch.setattr(RunStore,"finish",original)
+    ledger=open_search(path)
+    assert ledger["proposals"][0]["status"]=="created"
+    assert ledger["evaluation_attempts"]==1
+    resumed=run_search(path,seed=4,budget=2,elements=256,resume=True)
+    assert [p["status"] for p in resumed["proposals"]]==["complete","complete"]
+    assert resumed["evaluation_attempts"]==2
+    assert resumed["confirmed_numerical_solves"]==4
+    assert resumed["failed_attempts"]==0
+    assert not resumed["kernel_solve_count_uncertain"]
+
+
+def test_ledger_write_interrupted_after_wp2_commit(tmp_path,monkeypatch):
+    from material_core import wp3_search as search
+    path=tmp_path/"write.json"
+    real=search._write_ledger
+    triggered={"flag":False}
+    def write_fault(path,ledger):
+        if (not triggered["flag"] and ledger["proposals"]
+                and ledger["proposals"][0]["status"]=="complete"):
+            triggered["flag"]=True
+            raise KeyboardInterrupt("ledger write before atomic replacement")
+        return real(path,ledger)
+    monkeypatch.setattr(search,"_write_ledger",write_fault)
+    with pytest.raises(KeyboardInterrupt):
+        run_search(path,seed=4,budget=2,elements=256)
+    monkeypatch.setattr(search,"_write_ledger",real)
+    assert open_search(path)["evaluation_attempts"]==1
+    restored=run_search(path,seed=4,budget=2,elements=256,resume=True)
+    assert [p["status"] for p in restored["proposals"]]==["complete","complete"]
+    assert restored["successful_evaluations"]==2
+
+
+@pytest.mark.parametrize("field,bad",[
+    ("architecture","homogeneous-not-real"),
+    ("fraction",0.111),
+    ("pair",["scenario_A","scenario_C"]),
+])
+def test_tampered_proposal_parameters_rejected(tmp_path,field,bad):
+    path=tmp_path/"proposal.json"
+    run_search(path,seed=4,budget=2,elements=256)
+    record=json.loads(path.read_text())
+    record["proposals"][1]["proposal"][field]=bad
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError,match="Proposal"):
+        open_search(path)

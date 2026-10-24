@@ -196,6 +196,29 @@ def open_search(path, *, verify_decision=True, recovery=False):
     if len(ledger["proposals"])>config["evaluation_budget"]:
         raise ValueError("Budget overrun in ledger")
     store=RunStore(path.parent/"run-store")
+    reason=ledger.get("stop_reason")
+    allowed={"running","cancelled","wall_time_budget_exhausted",
+             "evaluation_budget_exhausted"}
+    if reason not in allowed:
+        raise ValueError("Unsupported campaign stop_reason: "+str(reason))
+    proposals=ledger["proposals"]
+    count=len(proposals)
+    pending=[p for p in proposals if p.get("status")=="created"]
+    terminal=ledger.get("termination_event")
+    if reason=="running":
+        if terminal is not None:
+            raise ValueError("Running campaign carries terminal event")
+        if count==config["evaluation_budget"] and not pending:
+            raise ValueError("Full campaign cannot remain running")
+    else:
+        if pending:
+            raise ValueError("Terminated campaign retains pending work")
+        if not isinstance(terminal,dict) or terminal!={"reason":reason,"proposal_slots":count}:
+            raise ValueError("Campaign termination event mismatch")
+        if reason=="evaluation_budget_exhausted" and count!=config["evaluation_budget"]:
+            raise ValueError("Budget exhaustion requires all proposal slots consumed")
+        if reason in ("cancelled","wall_time_budget_exhausted") and count>=config["evaluation_budget"]:
+            raise ValueError("Early stop cannot claim full-budget exhaustion")
     expected=_derived(ledger,store)
     checked=("evaluation_attempts","unique_evaluations","successful_evaluations",
              "cache_hits","failed_attempts","invalid_proposals",
@@ -208,8 +231,6 @@ def open_search(path, *, verify_decision=True, recovery=False):
         if name not in ledger or ledger[name]!=expected[name]:
             # Old interrupted, incomplete ledgers may not yet have the new
             # counters. Only a pending run allows explicit recovery/migration.
-            if recovery and any(p["status"]=="created" for p in ledger["proposals"]):
-                continue
             raise ValueError("Campaign accounting mismatch: "+name)
     for original,reconstructed in zip(ledger["proposals"],expected["proposals"]):
         if original.get("status")=="complete":
@@ -217,13 +238,10 @@ def open_search(path, *, verify_decision=True, recovery=False):
                          "manufacturing_feasibility","evidence_maturity",
                          "hard_constraint_feasibility","qualified"):
                 if original.get(name)!=reconstructed.get(name):
-                    if recovery and any(p["status"]=="created" for p in ledger["proposals"]):
-                        continue
                     raise ValueError("Persisted evaluation summary mismatch: "+name)
     if verify_decision and ledger.get("stop_reason")!="running":
         if _canonical(expected.get("qualified_comparison"))!=_canonical(ledger.get("qualified_comparison")):
-            if not (recovery and any(p["status"]=="created" for p in ledger["proposals"])):
-                raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
+            raise ValueError("Persisted qualified comparison disagrees with immutable evaluations")
     return ledger
 
 
@@ -294,6 +312,8 @@ def run_search(path,*,seed=17,budget=9,method="explore",
         if ledger["stop_reason"]=="evaluation_budget_exhausted":
             return ledger
         ledger.setdefault("stop_history",[]).append(ledger["stop_reason"])
+        ledger["stop_reason"]="running"
+        ledger["termination_event"]=None
         for item in ledger["proposals"]:
             if item["status"]=="created":
                 old=store.load(item["run_id"])
@@ -311,7 +331,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             proposals=[],stop_history=[],unique_evaluations=0,cache_hits=0,
             nominal_kernel_solves=0,refinement_kernel_solves=0,
             invalid_proposals=0,failed_attempts=0,stop_reason="running",
-            qualified_comparison=None)
+            qualified_comparison=None,termination_event=None)
     provider=(provider_factory(seed,method) if provider_factory is not None
               else BoundedProvider(seed,method))
     actual_evaluator=evaluation_adapter or evaluate
@@ -374,6 +394,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
         _save_search(path,ledger,store)
     else:
         ledger["stop_reason"]="evaluation_budget_exhausted"
+    ledger["termination_event"]={"reason":ledger["stop_reason"],"proposal_slots":len(ledger["proposals"])}
     ledger["elapsed_seconds_this_execution"]=time.monotonic()-start
     _reconstruct(ledger,store)
     _save_search(path,ledger,store)

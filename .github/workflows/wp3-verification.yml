@@ -21,6 +21,8 @@ jobs:
         run: bash foundation/setup.sh
       - name: Check installed requirements
         run: .venv-foundation/bin/python -m pip check
+      - name: Reproduce reported inspection defects against unchanged source
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/inspection_reproduce_wp3_defects.py -q
       - name: Run WP3 and WP2 foundation plus recovered WP0 regressions
         run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
       - name: Verify corrected WP2 reference scenarios

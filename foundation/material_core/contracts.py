@@ -8,7 +8,7 @@ import hashlib
 import json
 import math
 from typing import Annotated, Literal, Protocol
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, model_serializer
 
 Text = Annotated[str, Field(min_length=1, pattern=r'.*\S.*')]
 Positive = Annotated[float, Field(gt=0, allow_inf_nan=False)]
@@ -144,11 +144,12 @@ class Property(Contract):
     temperature_min: Quantity | None = None
     temperature_max: Quantity | None = None
 
-    def canonical_json(self) -> str:
-        raw=self.model_dump(mode='json')
+    @model_serializer(mode='wrap')
+    def omit_optional_domain_for_legacy(self, handler):
+        raw=handler(self)
         for key in ('temperature_min','temperature_max'):
             if raw.get(key) is None: raw.pop(key,None)
-        return json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False)
+        return raw
 
     @model_validator(mode='after')
     def valid_uncertainty(self):

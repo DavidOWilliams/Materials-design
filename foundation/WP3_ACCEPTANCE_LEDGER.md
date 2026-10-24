@@ -120,3 +120,20 @@ The run's event was `pull_request`, and `GITHUB_SHA` was the temporary merge com
 **Exploration is structured seeded sampling**, not an adaptive optimiser. Earlier three-seed comparisons do not establish superiority. New paired comparisons retain exactly the same budget/count semantics and fixed start within the default provider. These scientific boundaries and the distinct numerical qualification/hard-feasibility/manufacturing/evidence statuses remain mandatory.
 
 **Gate 3 remains pending separately commissioned independent re-review** of the corrected, exact-commit review package.
+
+## R1–R4 corrected implementation verification — pre-freeze source at 912979a
+
+**Verified code SHA:** `912979a039a024bb37396aca09311c6c67ef018d` • **Actions run:** [40133732881](https://github.com/DavidOWilliams/Materials-design/actions/runs/40133732881), event `pull_request`. **All four jobs completed successfully.**
+
+| Job and ID | Actual checked-out revision | Outcome |
+| --- | --- | --- |
+| `wp3-contract-and-vertical` 120990735142 | Temporary PR merge `f043a486085014a616d42b4160e30c873393bec8` | **200 foundation/recovery tests passed**, corrected WP2 reference, schema-1 refusal, schema-2 campaigns and replays, alternate three-layer standalone campaign (3 completed, reopens and recomputes), three-seed paired comparison and independently checked paired export |
+| `wp3-exact-branch-head` 120990735183 | **Direct branch head `912979a039a024bb37396aca09311c6c67ef018d`** | **24 focused tests passed**, corrected WP2 reference passed |
+| `wp3-legacy-regression` 120990734945 | PR merge `f043a486085014a616d42b4160e30c873393bec8` | **1,148 tests passed, 10 warnings** |
+| `wp3-original-review-reproduction` 120990735194 | **Exact inspected original `d62023d7205d48beba11269d4c358a7380ab9ca4`** | All **four original defective behaviours reproduced** |
+
+Artifact `12576390427`, `wp3-vertical-output`, approximately 2.67 MB, contains complete default, alternate and paired campaign run stores and separate-process replay/recompute records; source metadata points to `912979a...`. Artifact `12576126846`, `wp3-branch-head-corrections`, approximately 397 KB, contains direct-head corrected WP2 numerical reference records. Their digest values are listed in GitHub Actions metadata.
+
+**Evidence interpretation:** the PR merge checkout and direct head checkout are different Git commits, and have separately identified jobs and test scopes. The original reviewed checkout establishes before-fix failure, not approval. This is the validated implementation-owned *pre-freeze* result; any new commit (including this evidence ledger update) must receive a matching CI run before its exact HEAD may be described as tested.
+
+**R1–R4 implementation-owned closure:** accepted for re-review based on the tests and reproducible artifacts above; Gate 3 remains **PENDING** independent numerical and architecture sign-off. Existing software and scientific limitations, especially unvalidated historical schema-1 campaigns, synthetic materials, uncertain interrupted compute, unsupported concurrency and no process manufacture evidence, remain fully in force.

@@ -185,3 +185,16 @@ def test_tampered_proposal_parameters_rejected(tmp_path,field,bad):
     path.write_text(json.dumps(record))
     with pytest.raises(ValueError,match="Proposal"):
         open_search(path)
+
+
+def test_paired_export_rechecked_against_underlying_campaigns(tmp_path):
+    from material_core.wp3_search import compare_paired,reopen_paired
+    base=tmp_path/"paired"
+    original=compare_paired(base,seeds=(11,),budget=2,elements=256)
+    assert reopen_paired(base)==original
+    path=base/"comparison.json"
+    raw=json.loads(path.read_text())
+    raw["pairs"][0]["explore"]["qualified_count"]=999
+    path.write_text(json.dumps(raw))
+    with pytest.raises(ValueError,match="Paired summary"):
+        reopen_paired(base)

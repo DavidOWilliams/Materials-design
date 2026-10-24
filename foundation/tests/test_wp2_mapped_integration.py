@@ -8,7 +8,7 @@ import pytest
 from material_core.contracts import RunInputs, quantity
 from material_core.store import RunStore
 from material_core.wp2_numerical import (
-    compatible_comparison, evaluate, property_pack_hash, comparison_context_hash, context_for_run,
+    compatible_comparison, numerical_comparison_eligible, evaluate, property_pack_hash, comparison_context_hash, context_for_run,
 )
 from material_core.wp2_scenarios import make_wp2_fixture, make_wp2_achieved_fixture
 
@@ -24,7 +24,8 @@ def test_three_objectives_equal_budget_and_store(tmp_path,arch):
         'thermal_transmission','areal_mass','tensile_thermal_mismatch']
     assert all(m.status=='computed' for m in y.metrics)
     assert y.metrics[1].value.value==pytest.approx(30.,abs=1e-8)
-    assert y.comparison_eligible(x.brief)
+    assert not y.comparison_eligible(x.brief)
+    assert numerical_comparison_eligible(y,x.brief)
     assert y.spatial_fields is not None
     assert len(y.spatial_fields.coordinate_from_hot_m)>=128
     assert len(y.spatial_fields.signed_equibiaxial_stress_Pa)==len(y.spatial_fields.temperature_K)
@@ -118,7 +119,8 @@ from material_core.wp2_numerical import evaluate
 r=RunStore(sys.argv[1]).load(sys.argv[2])
 got=evaluate(r.inputs)
 assert got.content_hash==r.evaluation.content_hash
-assert got.comparison_eligible(r.inputs.brief)
+from material_core.wp2_numerical import numerical_comparison_eligible
+assert numerical_comparison_eligible(got,r.inputs.brief)
 print(got.metrics[0].value.value)
 """
     process=subprocess.run([sys.executable,'-c',program,str(tmp_path),run_id],
@@ -173,9 +175,9 @@ def test_actual_numeric_mass_constraint_with_mass_not_an_objective(tmp_path):
         'thermal_transmission','tensile_thermal_mismatch']
     assert y.constraint_metrics[0].metric_id=='areal_mass'
     assert y.constraint_metrics[0].value.value==pytest.approx(30.)
-    assert y.comparison_eligible(constrained.brief)
+    assert numerical_comparison_eligible(y,constrained.brief)
     store=RunStore(tmp_path);run=store.create(constrained);store.finish(run,y)
-    assert store.load(run).evaluation.comparison_eligible(constrained.brief)
+    assert numerical_comparison_eligible(store.load(run).evaluation,constrained.brief)
 
 
 def test_wp2_open_assumptions_are_immutable_and_historical_versions_retained():

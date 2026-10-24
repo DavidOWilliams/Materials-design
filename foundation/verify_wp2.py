@@ -23,13 +23,18 @@ def main():
     args.output.mkdir(parents=True,exist_ok=True)
     results={}
     replay={}
-    for architecture in ('homogeneous','layered','gradient','estimated-achieved-gradient'):
+    for architecture in ('homogeneous','layered','gradient','estimated-achieved-gradient',
+                         'qualified-homogeneous','qualified-layered','qualified-gradient',
+                         'qualified-estimated-achieved-gradient'):
         store=args.output/'store'/architecture
         runargs=['--store',str(store)]
-        if architecture=='estimated-achieved-gradient':
+        label=architecture.removeprefix('qualified-')
+        if architecture.startswith('qualified-'):
+            runargs+=['--elements','4096']
+        if label=='estimated-achieved-gradient':
             runargs+=['--architecture','gradient','--achieved']
         else:
-            runargs+=['--architecture',architecture]
+            runargs+=['--architecture',label]
         created=call(*runargs)
         checked=call('--store',str(store),'--replay',created['run_id'])
         if checked['replay']!='passed':
@@ -43,7 +48,8 @@ def main():
             'status':'passed',
             'flux_W_m2':created['objectives']['thermal_transmission']['value'],
         }
-    for arch in ('homogeneous','layered','gradient'):
+    for arch in ('homogeneous','layered','gradient','qualified-homogeneous',
+                 'qualified-layered','qualified-gradient'):
         values=results[arch]['objectives']
         if set(values)!={'thermal_transmission','areal_mass','tensile_thermal_mismatch'}:
             raise AssertionError('Objective vector incomplete')
@@ -52,6 +58,9 @@ def main():
     for name,payload in [('wp2-numerical-results.json',results),
                          ('wp2-separate-process-replay.json',replay)]:
         (args.output/name).write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+    for arch in ('qualified-homogeneous','qualified-layered','qualified-gradient'):
+        if results[arch]['numerical_quality']!='qualified':
+            raise AssertionError('Refined three-objective example is not numerically qualified: '+arch)
     print(json.dumps({'status':'passed','runs':len(results),
         'objective_names':list(results['gradient']['objectives']),
         'scenario_curvature_per_m':{k:r['curvature_per_m'] for k,r in results.items()},

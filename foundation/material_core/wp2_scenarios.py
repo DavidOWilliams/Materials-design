@@ -27,12 +27,15 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,
         ('scenario_B',10.,4000.,160e9,12e-6),
     )
     manifest=json.dumps({'phases':props,'temperature_domain':property_domain},separators=(',',':'))
+    pack_revision=('scenario-2-290-410' if tuple(property_domain)==(290.,410.)
+                   else 'scenario-3-revised-' + '-'.join(str(int(x)) for x in property_domain))
+    domain_description=f'{property_domain[0]:g}–{property_domain[1]:g} K'
     p=Provenance(source_id='wp2-neutral-synthetic-property-catalogue',
-        source_version='scenario-2-domain-versioned',source_hash=hashlib.sha256(manifest.encode()).hexdigest(),
+        source_version=pack_revision,source_hash=hashlib.sha256(manifest.encode()).hexdigest(),
         location='foundation/material_core/wp2_scenarios.py:props',
         reuse_terms='Project-generated synthetic scenario, not external experimental data',
         evidence_kind='synthetic_scenario',
-        conditions='Hypothetical isotropic fully dense phases; explicit range in property records',
+        conditions='Hypothetical isotropic fully dense phases; explicit '+domain_description,
         extraction='Declared numerical scenario values; not literature extraction')
     materials=[]
     for name,k,rho,Q,alpha in props:
@@ -40,7 +43,7 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,
                   ('biaxial_modulus','stress',Q),('expansion','expansion',alpha))
         properties=tuple(Property(name=n,quantity=quantity(dim,v),
             convention='SI synthetic isotropic, direct input',
-            conditions='Assumed constant between 290–410 K; as-defined scenario',
+            conditions='Assumed constant on '+domain_description+'; as-defined synthetic scenario',
             uncertainty=None,provenance=p,
             temperature_min=quantity('temperature',property_domain[0]),
             temperature_max=quantity('temperature',property_domain[1])) for n,dim,v in settings)
@@ -106,7 +109,7 @@ def make_wp2_fixture(architecture='homogeneous', elements=128, mass_limit=31.,
     settings=CoupledThermomechanicalSettings(
         thermal=thermal,mechanics=mechanics,
         density_mapping='volume_additive',
-        property_pack_id='neutral-synthetic-A-B',property_pack_version='scenario-2-domain-versioned',
+        property_pack_id='neutral-synthetic-A-B',property_pack_version=pack_revision,
         property_pack_hash=property_pack_hash(materials),
         temperature_min=quantity('temperature',property_domain[0]),
         temperature_max=quantity('temperature',property_domain[1]),

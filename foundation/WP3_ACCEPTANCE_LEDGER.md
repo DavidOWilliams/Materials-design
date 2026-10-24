@@ -8,15 +8,15 @@
 
 | ID | Executable evidence | Acceptance status |
 | --- | --- | --- |
-| F01 | `foundation/setup.sh`, `pip check`, `verify_wp2.py`, foundation/recovery CI jobs | Passed at corrected run 40126875288 (PR integration); final review freeze pending |
-| F02 | `test_wp3_provider.py`, `test_wp3_search.py`: homogeneous/layered/gradient, A/B/C synthetic catalogue and new gradients | Implementation tests passed at corrected run 40126875288; final freeze pending |
+| F01 | `foundation/setup.sh`, `pip check`, `verify_wp2.py`, foundation/recovery CI jobs | Passed at 40127435140 (185 foundation/recovery and corrected WP2 checks); direct-head focused job also passed |
+| F02 | `test_wp3_provider.py`, `test_wp3_search.py`: homogeneous/layered/gradient, A/B/C synthetic catalogue and new gradients | Passed in corrected foundation/PR integration CI 40127435140; independent review pending |
 | F03 | `test_wp3_evaluation_integration.py`, `test_wp3_search.py`, `wp3_qualified.py`: WP2 eligibility, common context, Pareto | Implementation + tests; independent ranking review pending |
 | F04 | `test_changed_hard_constraint_and_no_solution`: 31 vs 1 kg/m² cap; separate immutable scenarios | Implemented; note this is a changed constraint, not a changed duty |
 | F05 | Impossible 1 kg/m² bound; no numerically eligible Pareto members | Implemented |
 | F06 | `compare_paired` with seeds 11, 23, 37 and equal caps; two isolated stores per paired seed | Implemented; actual three-seed outcomes in results below; no superiority claim |
-| F07 | `open_search` and `recompute_search`, subprocess CLI and immutable `RunStore` | Implementation-owned tests passed; corruption tests added, final freeze pending |
-| F08 | Cancellation before/after a completed evaluation, `stop_history`, resumable append-only ledger | Reproduced interrupted evaluation; retained failed attempt, unknown solve count and durable resumption validated; final freeze pending |
-| F09 | Current foundation + recovery + legacy jobs, WP2 verifier, old run-store contracts | Correction run foundation 183 passing; legacy job and final freeze check required |
+| F07 | `open_search` and `recompute_search`, subprocess CLI and immutable `RunStore` | CI 40127435140 passed tamper, replay and hash/checksum checks; independent review pending |
+| F08 | Cancellation before/after a completed evaluation, `stop_history`, resumable append-only ledger | CI 40127435140 passed interruption, failed attempt uncertainty, crash-after-store and atomic-write fault injection; independent review pending |
+| F09 | Current foundation + recovery + legacy jobs, WP2 verifier, old run-store contracts | CI 40127435140: 185 foundation/recovery and 1,148 legacy/recovery passed; direct-head correction job 24 passed |
 | F10 | `test_replaceable_provider_and_evaluator_contract` and generic `wp3_pareto.py` objective ordering | Software modularity tests, not additional scientific capability |
 
 ## Challenge gate
@@ -85,3 +85,21 @@ At publication, record the tested commit SHA, run IDs, outcomes of each job, art
 - Corrected run [40126875288](https://github.com/DavidOWilliams/Materials-design/actions/runs/40126875288) logged `event=pull_request`, ordinary check-out `f60588f9cc87ff06644d0acbd18d1338d5014604`, and explicit `wp3-exact-branch-head` check-out `47f4cd9ce288b3bbe62c93e9642318e33923c801`. The latter ran focused correction tests and corrected WP2 reference verification.
 - Subsequent commits require a **fresh** matching run, with independent head and temporary merge job results, artifact metadata, exact test counts and completion events recorded. Do not substitute a prior green run.
 - Gate 3 **remains PENDING a separately tasked numerical and architecture reviewer**. Engineering CI and this findings-to-tests ledger are not independent approval.
+
+## Verified corrected pre-review source — CI and artifacts
+
+At commit **`8500ce4ff87118ab693bc4a17a9fdaa0f25b2a46`**, GitHub Actions [run 40127435140](https://github.com/DavidOWilliams/Materials-design/actions/runs/40127435140) finished with **all three jobs successful**.
+
+| Job | Actual checkout SHA | Result | Job ID |
+| --- | --- | --- | --- |
+| `wp3-contract-and-vertical` | PR integration merge `598a16216ebca3dc49d8bf643fa66a8e10e55ed1` | **185 passed**, corrected WP2 reference, campaign/reopen/recompute and paired-report validation passed | 120971765610 |
+| `wp3-legacy-regression` | PR integration merge `598a16216ebca3dc49d8bf643fa66a8e10e55ed1` | **1,148 passed; 10 warnings** | 120971765539 |
+| `wp3-exact-branch-head` | Explicit branch head `8500ce4ff87118ab693bc4a17a9fdaa0f25b2a46` | **24 focused inspection tests passed**; corrected WP2 reference verifier passed | 120971765373 |
+
+The run's event was `pull_request`, and `GITHUB_SHA` was the temporary merge commit; workflow artifact metadata separately reports head source SHA `8500ce4...`. The checked-out SHAs above were confirmed from the respective job logs rather than assumed from artifact labels.
+
+- Campaign and separate-process replay output: artifact **12572624132**, 2,924,264 bytes, **115 files**, 17 SQLite stores, ZIP integrity test passed.
+- Explicit-head corrected WP2 reference evidence: artifact **12573134325**, 396,840 bytes, **26 files**, ZIP integrity test passed.
+- These artifacts and jobs are test evidence for their precise source revisions. Any subsequent documentation-only commit must obtain a matching final-head run; do not copy prior results forward as direct proof of a newer HEAD.
+
+**Implementation-owned Gate 1 and Gate 2:** supported for the declared synthetic WP3 domain at the tested revision above. **Gate 3 remains PENDING** independent scientific and architecture review. No independent reviewer has approved the correction.

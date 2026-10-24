@@ -16,7 +16,11 @@ from material_core.store import RunStore
 def edited(x, action, *, refresh=True):
     raw=x.model_dump(mode='json')
     action(raw)
-    if raw['materials']!=x.model_dump(mode='json')['materials']:\n        from material_core.contracts import MaterialRecord\n        raw['settings']['property_pack_hash']=property_pack_hash(tuple(\n            MaterialRecord.model_validate_json(json.dumps(m)) for m in raw['materials']))\n    candidate=RunInputs.model_validate_json(json.dumps(raw))
+    if raw['materials']!=x.model_dump(mode='json')['materials']:
+        from material_core.contracts import MaterialRecord
+        raw['settings']['property_pack_hash']=property_pack_hash(tuple(
+            MaterialRecord.model_validate_json(json.dumps(m)) for m in raw['materials']))
+    candidate=RunInputs.model_validate_json(json.dumps(raw))
     if refresh:
         raw['settings']['evaluation_context_hash']=context_for_run(candidate)
         candidate=RunInputs.model_validate_json(json.dumps(raw))

@@ -201,8 +201,8 @@ class RunStore:
         for metric in evaluation.constraint_metrics:
             if metric.metric_id not in constraints:
                 raise ValueError('Result contains an undeclared constraint metric')
-            expected = constraints[metric.metric_id].limit
-            if metric.value is not None and (metric.value.dimension,metric.value.unit) != (expected.dimension,expected.unit):
+            expected = [c.limit for c in inputs.brief.constraints if c.metric_id==metric.metric_id]
+            if metric.value is not None and any((metric.value.dimension,metric.value.unit) != (c.dimension,c.unit) for c in expected):
                 raise ValueError('Constraint result units differ from declared constraint')
             shared = metrics.get(metric.metric_id)
             if shared is not None and (shared.value != metric.value or shared.status != metric.status):
@@ -213,17 +213,39 @@ class RunStore:
         # Historic WP1 thermal artifacts have none of these fields.
         from .contracts import CoupledThermomechanicalSettings
         if isinstance(inputs.settings, CoupledThermomechanicalSettings):
-            from .wp2_numerical import property_pack_hash, comparison_context_hash
+            from .wp2_numerical import property_pack_hash, comparison_context_hash, context_for_run
             if inputs.settings.property_pack_hash != property_pack_hash(inputs.materials):
                 raise ValueError('Stored property-pack identity mismatch')
-            expected = comparison_context_hash(inputs.brief, inputs.settings,
-                                               inputs.evaluation_target)
+            legacy_wp2=inputs.solver.version=='wp2-bounded-1'
+            expected=(comparison_context_hash(inputs.brief,inputs.settings,
+                     inputs.evaluation_target) if legacy_wp2 else context_for_run(inputs))
             if inputs.settings.evaluation_context_hash != expected:
                 raise ValueError('Input comparison context identity mismatch')
             if evaluation.comparison_context_hash != expected:
                 raise ValueError('Evaluation comparison context identity mismatch')
             if evaluation.evidence_status is None:
                 raise ValueError('Mapped evaluation must declare evidence maturity')
+            if not legacy_wp2:
+                if evaluation.manufacturing_feasibility is None:
+                    raise ValueError('Manufacturing feasibility must be explicit')
+                ids={c.id:c for c in inputs.brief.constraints}
+                if {o.constraint_id for o in evaluation.constraint_outcomes}!=set(ids):
+                    raise ValueError('Missing or extra constraint outcomes')
+                evaluated={m.metric_id:m for m in evaluation.constraint_metrics}
+                for outcome in evaluation.constraint_outcomes:
+                    constraint=ids[outcome.constraint_id]
+                    if (outcome.metric_id,outcome.relation,outcome.limit)!=(constraint.metric_id,constraint.relation,constraint.limit):
+                        raise ValueError('Constraint outcome interpretation mismatch')
+                    metric=evaluated.get(constraint.metric_id,metrics.get(constraint.metric_id))
+                    status=('unknown' if metric is None or metric.status!='computed'
+                            else 'satisfied' if (
+                                (constraint.relation=='le' and metric.value.value<=constraint.limit.value) or
+                                (constraint.relation=='ge' and metric.value.value>=constraint.limit.value))
+                            else 'violated')
+                    if outcome.outcome!=status:
+                        raise ValueError('Constraint outcome value mismatch')
+                if inputs.evaluation_target=='estimated' and evaluation.manufacturing_feasibility!=inputs.estimated_state.feasibility:
+                    raise ValueError('Achieved-state manufacturing feasibility mismatch')
             fields = evaluation.spatial_fields
             if evaluation.status == 'complete' and fields is None:
                 raise ValueError('Complete mapped result lacks spatial fields')

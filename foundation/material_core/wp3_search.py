@@ -67,6 +67,10 @@ def open_search(path):
     if len(ledger["proposals"])>config["evaluation_budget"]:
         raise ValueError("Budget overrun in ledger")
     for item in ledger["proposals"]:
+        if item["status"]=="invalid":
+            if "reason" not in item:
+                raise ValueError("Invalid proposal lacks reason")
+            continue
         run=store.load(item["run_id"])
         if run.inputs.content_hash!=item["input_hash"]:
             raise ValueError("Input identity mismatch")
@@ -110,7 +114,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     store=RunStore(path.parent/"run-store")
     if resume:
         ledger=open_search(path)
-        if ledger["config"]!=config:
+        if _canonical(ledger["config"])!=_canonical(config):
             raise ValueError("Cannot resume with a different campaign configuration")
         if ledger["stop_reason"]=="evaluation_budget_exhausted":
             return ledger

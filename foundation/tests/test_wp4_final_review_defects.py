@@ -28,7 +28,7 @@ def _case(tmp_path,*,elements=4096,budget=4,feedback=True,alternate=False,stop_a
         record=resume(path,elements=elements,budget=budget,feedback=feedback,output=output,verify=verify)
     finally:
         fb.evaluate=original
-    assert len(calls)==record["accounting"]["completed_evaluations"]
+    assert len(calls)==record["accounting"]["completed_evaluations"]+record["accounting"]["verification_evaluations"]
     assert record["accounting"]["reused_candidates"]==stop_after
     assert fb.reopen(output)["accounting"]==record["accounting"]
     return record,output,prior,len(calls)

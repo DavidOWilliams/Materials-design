@@ -119,7 +119,8 @@ def read_attempts(path,missing_ok=False):
             payload["sequence"]!=len(events)):
             raise ValueError("Corrupt durable attempt event chain")
         events.append(dict(kind=payload["kind"],detail=payload["detail"],
-                           _event_sha256=envelope["sha256"]))
+                           _event_sha256=envelope["sha256"],_event_previous=payload["previous"],
+                           _event_sequence=payload["sequence"]))
         previous=envelope["sha256"]
     return events
 
@@ -171,8 +172,10 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         if baseline_event is None or not isinstance(baseline_event["detail"],dict):
             raise ValueError("Missing persisted baseline evaluation; legacy journal cannot resume")
         baseline=Evaluation.model_validate_json(json.dumps(baseline_event["detail"]))
+        from .wp4_feedback import _terminal_for_prefix
+        stop=_terminal_for_prefix(base,prior,budget,feedback)
         provisional=_assemble(base,baseline,process,manifest["transformer_identity"],
-             elements,mass_limit,layer,feed,budget,feedback,route,prior,"cancelled")
+             elements,mass_limit,layer,feed,budget,feedback,route,prior,stop or "cancelled")
         temp=Path(str(path)+".validation.tmp.json")
         temp.write_text(json.dumps(dict(record=provisional,record_sha256=_digest(provisional))))
         try: reopen(temp)
@@ -189,6 +192,8 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
     # Store baseline result in resume record; no numerical baseline recomputation.
     def checkpoint(rows):
         journal.checkpoint(rows)
+    journal.event("continuation_started",dict(reused_candidates=len(prior),
+        checkpoint_sha256=journal.previous))
     result=run(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
         budget=budget,feedback=feedback,route=route,base_inputs=base,
         resume_record=provisional,checkpoint=checkpoint,attempt_event=journal.event)
@@ -205,12 +210,20 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
     result["cumulative_evaluations"]=completed+failed
     result["cumulative_attempts"]=started
     result["attempt_events"]=events
-    if output is not None:
-        save(output,result)
     if verify:
         if output is None:
             raise ValueError("Verification requires output dossier")
         from .wp4_feedback import recompute
-        recompute(output)
+        # Verification uses a separate ephemeral dossier; historical journal remains immutable.
+        temp=Path(str(output)+".verification-pending.tmp")
+        save(temp,result)
+        try:
+            recompute(temp)
+        finally:
+            temp.unlink()
         result["accounting"]["verification_evaluations"]=len(result["records"])+1
+        result["verification"]=dict(status="passed",evaluations=len(result["records"])+1,
+            method="separate numerical recomputation of baseline and achieved candidates")
+    if output is not None:
+        save(output,result)
     return result

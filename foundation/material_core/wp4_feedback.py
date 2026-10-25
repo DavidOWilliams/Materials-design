@@ -35,8 +35,8 @@ def _composition(f, ids):
 def starting_inputs(elements=4096,mass_limit=31.):
     base=make_wp2_fixture("gradient",elements=elements,mass_limit=mass_limit)
     ids=("scenario_A","scenario_B")
-    arch=Gradient(knots=(Knot(position=0.,composition=_composition(.3,ids)),
-                         Knot(position=1.,composition=_composition(.1,ids))))
+    arch=Gradient(knots=(Knot(position=0.,composition=_composition(.25,ids)),
+                         Knot(position=1.,composition=_composition(.05,ids))))
     d=IntendedDesign(id="wp4-binding-gradient",thickness=base.design.thickness,
         architecture=arch,proposal_method="declared synthetic binding-constraint example",
         assumptions=base.design.assumptions)

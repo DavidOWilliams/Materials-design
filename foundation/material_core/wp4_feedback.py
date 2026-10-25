@@ -265,7 +265,6 @@ def _validate_recovery_evidence(record):
                 if baseline!="started": raise ValueError("Baseline evaluation event ordering mismatch")
                 baseline="completed" if kind.endswith("completed") else "failed"
         elif kind=="continuation_started":
-            if continuation_seen: raise ValueError("Duplicate continuation marker")
             continuation_seen=True
             if not isinstance(detail,dict) or type(detail.get("reused_candidates")) is not int:
                 raise ValueError("Invalid continuation evidence")

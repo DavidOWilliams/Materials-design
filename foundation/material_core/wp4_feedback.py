@@ -98,23 +98,37 @@ def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
 def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None,
-        route="synthetic_ideal_planar_deposition"):
+        route="synthetic_ideal_planar_deposition",base_inputs=None,attempt_event=None):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
-    base=starting_inputs(elements,mass_limit)
+    base=base_inputs if base_inputs is not None else starting_inputs(elements,mass_limit)
+    if base_inputs is not None and (base.settings is None or base.brief is None):
+        raise ValueError("Invalid supplied duty baseline")
     process=scenario(layer,feed,route)
     transformer_identity,_=resolve(process)
     # Freeze common intended/estimated contexts before selecting any result.
     records=[]
-    intended=evaluate(base)
+    if attempt_event is not None: attempt_event("baseline_started",None)
+    try:
+        intended=evaluate(base)
+    except Exception as exc:
+        if attempt_event is not None: attempt_event("baseline_failed",str(exc))
+        raise
+    if attempt_event is not None: attempt_event("baseline_completed",None)
     design=base.design
     stop="evaluation_budget_exhausted"
     for i in range(budget):
         if cancel_requested is not None and cancel_requested():
             stop="cancelled"
             break
-        candidate=_replace_design(base,design)
-        achieved=estimated_inputs(candidate,process)
-        result=evaluate(achieved)
+        if attempt_event is not None: attempt_event("candidate_started",i)
+        try:
+            candidate=_replace_design(base,design)
+            achieved=estimated_inputs(candidate,process)
+            result=evaluate(achieved)
+        except Exception as exc:
+            if attempt_event is not None: attempt_event("candidate_failed",dict(index=i,error=str(exc)))
+            raise
+        if attempt_event is not None: attempt_event("candidate_completed",i)
         limit=mass_limit
         actual=next((m.value.value for m in result.metrics
                      if m.objective_id=="areal_mass" and m.value is not None),None)
@@ -185,6 +199,14 @@ def reopen(path):
         raise ValueError("Recorded transform registry identity mismatch")
     previous=None
     previous_feedback=None
+    if record["config"]["feedback"] is False and len(record["records"])>1:
+        raise ValueError("Feedback-disabled campaign cannot contain revisions")
+    if record["config"]["feedback"] is True and record["stop_reason"]=="feedback_disabled":
+        raise ValueError("Feedback-enabled campaign cannot stop as disabled")
+    if record["config"]["route"]!=process.route:
+        raise ValueError("Campaign route mismatch")
+    if record["config"]["layer"]!=process.layer_resolution.value or record["config"]["feed"]!=process.feed_fraction_resolution:
+        raise ValueError("Campaign resolution mismatch")
     if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):
         raise ValueError("Campaign accounting mismatch")
     if not 0<=len(record["records"])<=record["config"]["budget"]:
@@ -224,6 +246,8 @@ def reopen(path):
         feasible=(eligible and expected_feedback is None and result.feasibility=="conditional" and result.manufacturing_feasibility=="conditional")
         if row["feasible"]!=feasible:
             raise ValueError("Persisted feasibility mismatch")
+        if i and (not record["config"]["feedback"] or previous_feedback is None or record["records"][i-1]["feasible"]):
+            raise ValueError("Impossible feedback continuation")
         if i and record["config"]["feedback"] and previous_feedback is not None:
             previous_design=IntendedDesign.model_validate_json(json.dumps(record["records"][i-1]["intended_design"]))
             if _revise(RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])),previous_design,previous_feedback).content_hash!=inputs.design.content_hash:
@@ -234,7 +258,7 @@ def reopen(path):
     last=record["records"][-1] if record["records"] else None
     if reason=="qualified_scenario_feasible" and (last is None or not last["feasible"]):
         raise ValueError("False qualified completion")
-    if reason=="feedback_disabled" and (record["config"]["feedback"] or last is None or len(record["records"])!=1):
+    if reason=="feedback_disabled" and (record["config"]["feedback"] or last is None or len(record["records"])!=1 or last["feasible"]):
         raise ValueError("Invalid feedback-disabled terminal state")
     if reason=="no_supported_revision_trigger" and (last is None or last["feedback"] is not None or last["feasible"]):
         raise ValueError("Invalid no-trigger terminal state")
@@ -242,6 +266,8 @@ def reopen(path):
         raise ValueError("Invalid budget exhaustion state")
     if reason=="no_improvement_possible" and (last is None or last["feedback"] is None or last["feasible"]):
         raise ValueError("Invalid no-improvement state")
+    if last is not None and last["feasible"] and reason!="qualified_scenario_feasible":
+        raise ValueError("Feasible candidate with contradictory stop state")
     if reason!="cancelled" and not record["records"]:
         raise ValueError("Empty non-cancelled campaign")
     return record

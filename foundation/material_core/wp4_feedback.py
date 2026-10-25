@@ -306,7 +306,8 @@ def main():
         rec=run(elements=args.elements,mass_limit=args.mass_limit,layer=args.layer,
             feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
             route=args.route,
-            checkpoint=journal.checkpoint if journal else None)
+            checkpoint=journal.checkpoint if journal else None,
+            attempt_event=journal.event if journal else None)
         save(args.path,rec)
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
             feasible=[r["feasible"] for r in rec["records"]])))
@@ -316,7 +317,8 @@ def main():
             layer=args.layer,feed=args.feed,budget=args.budget,
             feedback=not args.no_feedback,route=args.route)
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
-            resumed_journal=args.path)))
+            resumed_journal=args.path,cumulative_evaluations=rec["cumulative_evaluations"],
+            cumulative_attempts=rec["cumulative_attempts"])))
     elif args.action=="reopen":
         print(json.dumps(dict(stop_reason=reopen(args.path)["stop_reason"],status="validated")))
     else:

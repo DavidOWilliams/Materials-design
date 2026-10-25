@@ -59,3 +59,12 @@ Three post-`54c8674` independent defects are addressed by `test_wp4_final_review
 - **Optional verification:** a separate recomputation completes before a new immutable final dossier is saved. The returned and saved records agree on verified solver-call counts. Verification failure leaves no successful final dossier; prior journal/manifest remain intact.
 
 The earlier 65/271 passing results are **historical** evidence for `54c8674`. This follow-up requires its own passing workflow, actual checkout SHA and archive before independent closure. Gate 3 has been performed and returned changes required; it is not independently closed.
+
+
+## R2 checkpoint-write independent closure follow-up
+
+The independent reviewer reproduced on `ed84a8f0f45758b9a291604c006c706719a268df`: numerical candidate evaluation completed but the checkpoint callback failed before writing; resume produced a dossier that failed reopening with `Reused candidate count unsupported by completed work`. This is historical failing evidence, not a new physics failure.
+
+The corrective boundary distinguishes (1) evaluation starts, (2) completed evaluation attempts, (3) durable candidate checkpoints, and (4) checkpoints reused on continuation. A failed checkpoint after completed numerical work is recorded as a completed attempt and failed checkpoint; reevaluation produces a separate candidate proposal, transform and numerical attempt. `completed_evaluations` counts **all** completed attempts including repeats, while `reused_candidates` is bounded by actual persisted prefix and the durable continuation marker. The event validator permits a legitimate retry after `checkpoint_failed` but still rejects fabricated, altered or incorrectly ordered events. `resume` validates complete embedded recovery evidence and reopens the final saved dossier before reporting success.
+
+Executable challenges: `foundation/tests/test_wp4_checkpoint_write_recovery.py` (failure before first/second/third checkpoint, final feasible, alternate duty and repeated resume); `foundation/wp4_review_evidence.py` (independent evaluator-call audit and raw journals/dossiers under `wp4-review/*write-failure*`). Previous R1/R2/R3/R4 and numerical regression tests remain in the focused and full suites. **Final CI source SHA, actual checkout SHA, test totals and archive must be taken from the final run, not inferred from this text.** Gate 3 has been performed; independent closure remains outstanding.

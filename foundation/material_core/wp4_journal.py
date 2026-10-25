@@ -56,3 +56,35 @@ def recover(path):
             records.append(payload["record"])
             previous=envelope["sha256"]
     return records
+
+def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
+           feedback=True,route="synthetic_ideal_planar_deposition"):
+    """Deterministic full recomputation with prefix verification and append.
+
+    This re-evaluates already completed candidates; it does not resume a solver
+    kernel or skip numerical cost. It refuses any mismatched historical prefix.
+    """
+    from .wp4_feedback import run
+    path=Path(path)
+    prior=recover(path)
+    if len(prior)>budget:
+        raise ValueError("Journal exceeds resumed budget")
+    journal=object.__new__(Journal)
+    journal.path=path
+    journal.previous="0"*64
+    if prior:
+        with path.open(encoding="utf-8") as f:
+            for line in f:
+                journal.previous=json.loads(line)["sha256"]
+    def checkpoint(records):
+        index=len(records)-1
+        if index<len(prior):
+            if digest(records[-1])!=digest(prior[index]):
+                raise ValueError("Recomputed prefix differs from immutable journal")
+        else:
+            journal.checkpoint(records)
+    result=run(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
+        budget=budget,feedback=feedback,route=route,checkpoint=checkpoint)
+    if len(result["records"])<len(prior):
+        raise ValueError("Resumed run ended before historical prefix")
+    return result

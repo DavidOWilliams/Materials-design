@@ -28,7 +28,7 @@ class Journal:
         path=self.path.with_suffix(self.path.suffix+".attempts.jsonl")
         event=dict(kind=kind,detail=detail)
         with path.open("a",encoding="utf-8") as f:
-            f.write(json.dumps(event,sort_keys=True)+"\\n")
+            f.write(json.dumps(event,sort_keys=True)+"\n")
             f.flush()
             os.fsync(f.fileno())
 
@@ -96,7 +96,9 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         budget=budget,feedback=feedback,route=route,checkpoint=checkpoint,
         attempt_event=journal.event)
     attempts=read_attempts(path)
-    result["cumulative_evaluations"]=sum(e["kind"] in ("baseline_completed","candidate_completed","baseline_failed","candidate_failed") for e in attempts)
+    if not any(e["kind"]=="baseline_started" for e in attempts[:-1]):
+        result["prior_unjournaled_evaluations_lower_bound"]=len(prior)+1
+    result["cumulative_evaluations"]=sum(e["kind"] in ("baseline_completed","candidate_completed","baseline_failed","candidate_failed") for e in attempts)+result.get("prior_unjournaled_evaluations_lower_bound",0)
     result["cumulative_attempts"]=sum(e["kind"] in ("baseline_started","candidate_started") for e in attempts)
     result["replayed_evaluations"]=len(prior)+1
     result["attempt_events"]=attempts
@@ -111,7 +113,7 @@ def read_attempts(path):
     events=[]
     with sidecar.open(encoding="utf-8") as f:
         for line in f:
-            if not line.endswith("\\n"):
+            if not line.endswith("\n"):
                 raise ValueError("Truncated attempt event")
             events.append(json.loads(line))
     return events

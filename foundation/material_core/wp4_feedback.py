@@ -222,7 +222,7 @@ def reopen(path):
         raise ValueError("Invalid campaign budget or feedback type")
     if cfg["elements"]!=base.settings.mechanics.mesh.elements:
         raise ValueError("Campaign numerical mesh mismatch")
-    if cfg["mass_limit"]!=next(c.limit.value for c in base.brief.constraints if c.id=="areal_mass"):
+    if cfg["mass_limit"]!=next(c.limit.value for c in base.brief.constraints if c.metric_id=="areal_mass"):
         raise ValueError("Campaign mass constraint mismatch")
     if cfg["route"]!=process.route:
         raise ValueError("Campaign route mismatch")

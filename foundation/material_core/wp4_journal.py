@@ -182,7 +182,7 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         if baseline_event is None:
             raise ValueError("Interrupted baseline without persisted evaluation; exact resume unsupported")
         from .contracts import Evaluation
-        baseline=Evaluation.model_validate(baseline_event["detail"])
+        baseline=Evaluation.model_validate_json(json.dumps(baseline_event["detail"]))
         from .wp4_feedback import _assemble
         provisional=_assemble(base,baseline,process,manifest["transformer_identity"],
             elements,mass_limit,layer,feed,budget,feedback,route,[],"cancelled")

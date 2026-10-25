@@ -171,12 +171,11 @@ def reopen(path):
     if record.get("algorithm")!=VERSION or record.get("measured_evidence") is not None:
         raise ValueError("Unsupported dossier or invented measured evidence")
     process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
-    previous=None
-    if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):\n        raise ValueError("Campaign accounting mismatch")\n    if not 1<=len(record["records"])<=record["config"]["budget"]:\n        raise ValueError("Campaign budget mismatch")\n    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):\n        raise ValueError("Invalid campaign stop state")\n    for i,row in enumerate(record["records"]):
+    previous=None\n    previous_feedback=None\n    if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):\n        raise ValueError("Campaign accounting mismatch")\n    if not 1<=len(record["records"])<=record["config"]["budget"]:\n        raise ValueError("Campaign budget mismatch")\n    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):\n        raise ValueError("Invalid campaign stop state")\n    for i,row in enumerate(record["records"]):
         inputs=RunInputs.model_validate_json(json.dumps(row["estimated_inputs"]))
-        if row["index"]!=i or inputs.process!=process:
+        if row["index"]!=i or inputs.process!=process or inputs.evaluation_target!="estimated":
             raise ValueError("Scenario or ordering mismatch")
-        if inputs.design.content_hash!=row["intended_hash"]:
+        if inputs.design.content_hash!=row["intended_hash"] or inputs.design.model_dump(mode="json")!=row["intended_design"]:\n            raise ValueError("Intended design artifact mismatch")\n        if inputs.design.content_hash!=row["intended_hash"]:
             raise ValueError("Design lineage mismatch")
         if i and inputs.design.parent_hashes!=(previous,):
             raise ValueError("Revision parent mismatch")

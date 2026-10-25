@@ -22,9 +22,9 @@ Estimated geometry assumes perfect deposition and perfect interfaces only. No mi
 WP3's search engine and WP2's numerical solver are unchanged. No new scientific physics is introduced. Independent Gate 3 review remains separate.
 
 ## Outstanding work and deferred requirements
-- No full process/evaluator registry; current transform route is a hard-coded bounded capability.
-- No alternative-duty campaign, resumable crash recovery, or failed-attempt durable journal.
-- No separate measured validation, evidence-based ceramic calibration or process prediction.
+- An explicit two-route synthetic transform registry is implemented; there is no independent evaluator registry or empirically calibrated process delegate.
+- An alternate-duty WP3 adapter is exercised through WP4, and a second uniform-batch synthetic transform is registered. Automated crash recovery/resume and durable failed-attempt journal are not implemented.
+- No measured validation, evidence-based ceramic calibration or process prediction.
 - No independently signed evidence manifest or formal Gate 1/2/3 acceptance ledger.
 - No WP5 interface or full D1 product completion.
 

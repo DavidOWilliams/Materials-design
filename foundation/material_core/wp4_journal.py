@@ -25,7 +25,7 @@ class Journal:
 
     def event(self,kind,detail):
         """Durable event ledger in a separate sidecar file."""
-        path=self.path.with_suffix(self.path.suffix+".attempts.jsonl")
+        path=Path(str(self.path)+".attempts.jsonl")
         event=dict(kind=kind,detail=detail)
         with path.open("a",encoding="utf-8") as f:
             f.write(json.dumps(event,sort_keys=True)+"\n")
@@ -66,18 +66,83 @@ def recover(path):
             previous=envelope["sha256"]
     return records
 
-def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
-           feedback=True,route="synthetic_ideal_planar_deposition"):
-    """Deterministic full recomputation with prefix verification and append.
+def manifest_path(path):
+    return Path(str(path)+".manifest.json")
 
-    This re-evaluates already completed candidates; it does not resume a solver
-    kernel or skip numerical cost. It refuses any mismatched historical prefix.
+def initialize(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
+               feedback=True,route="synthetic_ideal_planar_deposition",base_inputs=None):
+    """Freeze source inputs and process identity before executing a solver."""
+    from .wp4_feedback import starting_inputs,scenario,REVISION_ID,EVALUATOR_ID,VERSION
+    from .wp4_registry import resolve
+    base=base_inputs if base_inputs is not None else starting_inputs(elements,mass_limit)
+    process=scenario(layer,feed,route)
+    identity,_=resolve(process)
+    config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
+                budget=budget,feedback=feedback,route=route)
+    manifest=dict(schema_version=1,algorithm=VERSION,config=config,
+                  baseline_intended_inputs=base.model_dump(mode="json"),
+                  process=process.model_dump(mode="json"),
+                  transformer_identity=identity,revision_identity=REVISION_ID,
+                  evaluator_identity=EVALUATOR_ID)
+    journal=Journal(path)
+    mp=manifest_path(path)
+    with mp.open("x",encoding="utf-8") as f:
+        json.dump(dict(manifest=manifest,sha256=digest(manifest)),f,sort_keys=True)
+        f.flush();os.fsync(f.fileno())
+    return journal,base
+
+def read_manifest(path):
+    mp=manifest_path(path)
+    if not mp.exists():
+        raise ValueError("Legacy journal missing original configuration and baseline; exact continuation unavailable")
+    obj=json.loads(mp.read_text())
+    if digest(obj["manifest"])!=obj["sha256"]:
+        raise ValueError("Corrupt recovery manifest")
+    return obj["manifest"]
+
+def read_attempts(path):
+    sidecar=Path(str(path)+".attempts.jsonl")
+    if not sidecar.exists():
+        raise ValueError("Missing durable attempt history; exact work accounting unavailable")
+    events=[]
+    for line in sidecar.read_text().splitlines(keepends=True):
+        if not line.endswith("\n"):
+            raise ValueError("Truncated attempt event")
+        events.append(json.loads(line))
+    return events
+
+def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
+           feedback=True,route="synthetic_ideal_planar_deposition",verify=False,
+           output=None):
+    """Continue from persisted completed candidates without numerical replay.
+
+    Optional numerical verification is separate and explicitly counted.
     """
-    from .wp4_feedback import run
+    from .wp4_feedback import run,reopen,save,_digest
+    from .contracts import RunInputs
     path=Path(path)
+    manifest=read_manifest(path)
+    expected=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
+                  budget=budget,feedback=feedback,route=route)
+    if manifest["config"]!=expected:
+        raise ValueError("Resume configuration mismatch; original configuration is immutable")
+    from .wp4_feedback import VERSION,REVISION_ID,EVALUATOR_ID
+    from .wp4_registry import resolve
+    from .contracts import ProcessScenario
+    base=RunInputs.model_validate(manifest["baseline_intended_inputs"])
+    process=ProcessScenario.model_validate(manifest["process"])
+    if (manifest["algorithm"]!=VERSION or manifest["revision_identity"]!=REVISION_ID or
+        manifest["evaluator_identity"]!=EVALUATOR_ID or
+        manifest["transformer_identity"]!=resolve(process)[0]):
+        raise ValueError("Unavailable recovery implementation identity")
     prior=recover(path)
-    if len(prior)>budget:
-        raise ValueError("Journal exceeds resumed budget")
+    events=read_attempts(path)
+    # A checkpointed candidate must have an observed completed evaluation.
+    for i in range(len(prior)):
+        if not any(e["kind"]=="candidate_evaluation_completed" and e["detail"]==i for e in events):
+            raise ValueError("Historical completed candidate lacks durable evaluation event")
+    if not any(e["kind"]=="baseline_evaluation_completed" for e in events):
+        raise ValueError("Historical baseline lacks durable completion event")
     journal=object.__new__(Journal)
     journal.path=path
     journal.previous="0"*64
@@ -85,35 +150,55 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         with path.open(encoding="utf-8") as f:
             for line in f:
                 journal.previous=json.loads(line)["sha256"]
-    def checkpoint(records):
-        index=len(records)-1
-        if index<len(prior):
-            if digest(records[-1])!=digest(prior[index]):
-                raise ValueError("Recomputed prefix differs from immutable journal")
-        else:
-            journal.checkpoint(records)
+    # Validate complete stored prefix with the same campaign invariants.
+    # Reopening does not invoke numerical physics.
+    if prior:
+        from .wp4_feedback import _assemble
+        from .contracts import Evaluation
+        baseline_event=next((e for e in events if e["kind"]=="baseline_evaluation_completed"),None)
+        if baseline_event is None or not isinstance(baseline_event["detail"],dict):
+            raise ValueError("Missing persisted baseline evaluation; legacy journal cannot resume")
+        baseline=Evaluation.model_validate(baseline_event["detail"])
+        provisional=_assemble(base,baseline,process,manifest["transformer_identity"],
+             elements,mass_limit,layer,feed,budget,feedback,route,prior,"cancelled")
+        temp=Path(str(path)+".validation.tmp.json")
+        temp.write_text(json.dumps(dict(record=provisional,record_sha256=_digest(provisional))))
+        try: reopen(temp)
+        finally: temp.unlink()
+    else:
+        baseline_event=next((e for e in events if e["kind"]=="baseline_evaluation_completed"),None)
+        if baseline_event is None:
+            raise ValueError("Interrupted baseline without persisted evaluation; exact resume unsupported")
+        from .contracts import Evaluation
+        baseline=Evaluation.model_validate(baseline_event["detail"])
+        from .wp4_feedback import _assemble
+        provisional=_assemble(base,baseline,process,manifest["transformer_identity"],
+            elements,mass_limit,layer,feed,budget,feedback,route,[],"cancelled")
+    # Store baseline result in resume record; no numerical baseline recomputation.
+    def checkpoint(rows):
+        journal.checkpoint(rows)
     result=run(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
-        budget=budget,feedback=feedback,route=route,checkpoint=checkpoint,
-        attempt_event=journal.event)
-    attempts=read_attempts(path)
-    if not any(e["kind"]=="baseline_started" for e in attempts[:-1]):
-        result["prior_unjournaled_evaluations_lower_bound"]=len(prior)+1
-    result["cumulative_evaluations"]=sum(e["kind"] in ("baseline_completed","candidate_completed","baseline_failed","candidate_failed") for e in attempts)+result.get("prior_unjournaled_evaluations_lower_bound",0)
-    result["cumulative_attempts"]=sum(e["kind"] in ("baseline_started","candidate_started") for e in attempts)
-    result["replayed_evaluations"]=len(prior)+1
-    result["attempt_events"]=attempts
-    if len(result["records"])<len(prior):
-        raise ValueError("Resumed run ended before historical prefix")
+        budget=budget,feedback=feedback,route=route,base_inputs=base,
+        resume_record=provisional,checkpoint=checkpoint,attempt_event=journal.event)
+    events=read_attempts(path)
+    completed=sum(e["kind"] in ("baseline_evaluation_completed","candidate_evaluation_completed") for e in events)
+    failed=sum(e["kind"] in ("baseline_evaluation_failed","candidate_evaluation_failed") for e in events)
+    started=sum(e["kind"] in ("baseline_evaluation_started","candidate_evaluation_started") for e in events)
+    result["accounting"]=dict(completed_evaluations=completed,failed_evaluations=failed,
+        started_evaluations=started,unresolved_evaluation_starts=max(0,started-completed-failed),
+        transform_attempts=sum(e["kind"]=="transform_started" for e in events),
+        transform_failures=sum(e["kind"]=="transform_failed" for e in events),
+        reused_candidates=len(prior),reused_baseline=True,
+        verification_evaluations=0,unknown_historical_effort=False)
+    result["cumulative_evaluations"]=completed+failed
+    result["cumulative_attempts"]=started
+    result["attempt_events"]=events
+    if output is not None:
+        save(output,result)
+    if verify:
+        if output is None:
+            raise ValueError("Verification requires output dossier")
+        from .wp4_feedback import recompute
+        recompute(output)
+        result["accounting"]["verification_evaluations"]=len(result["records"])+1
     return result
-
-def read_attempts(path):
-    sidecar=Path(path).with_suffix(Path(path).suffix+".attempts.jsonl")
-    if not sidecar.exists():
-        return []
-    events=[]
-    with sidecar.open(encoding="utf-8") as f:
-        for line in f:
-            if not line.endswith("\n"):
-                raise ValueError("Truncated attempt event")
-            events.append(json.loads(line))
-    return events

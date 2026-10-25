@@ -89,3 +89,22 @@ def test_verify_return_and_persisted_equal(tmp_path):
     assert fb.reopen(out)["accounting"]==record["accounting"]
     assert fb.reopen(out)["verification"]==record["verification"]
     assert fb.recompute(out)["status"]=="passed"
+
+def test_failed_verification_does_not_claim_success(tmp_path,monkeypatch):
+    from material_core.wp4_journal import initialize,resume
+    path=tmp_path/"failed-verification.jsonl"
+    journal,base=initialize(path,elements=256,budget=4)
+    def stop(rows):
+        journal.checkpoint(rows)
+        raise RuntimeError("interrupted")
+    with pytest.raises(RuntimeError):
+        fb.run(elements=256,budget=4,base_inputs=base,
+            checkpoint=stop,attempt_event=journal.event)
+    def fail(_):
+        raise RuntimeError("injected verification failure")
+    monkeypatch.setattr(fb,"recompute",fail)
+    out=tmp_path/"verified.json"
+    with pytest.raises(RuntimeError,match="verification failure"):
+        resume(path,elements=256,budget=4,output=out,verify=True)
+    assert not out.exists()
+    assert not (tmp_path/"verified.json.verification-pending.tmp").exists()

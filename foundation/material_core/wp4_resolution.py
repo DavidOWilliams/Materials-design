@@ -103,7 +103,7 @@ def transform(design: IntendedDesign, process: ProcessScenario):
         commands=tuple(commands),provenance=provenance)
     geometry=IntendedDesign(id=design.id+"-estimated-geometry",parent_hashes=(design.content_hash,),
         thickness=design.thickness,architecture=(Homogeneous(composition=layers[0].composition) if n==1 else Layered(layers=tuple(layers),
-        interface_condition="ideal deposited layers")),proposal_method="estimated geometry container only",
+        interface_condition="perfect")),proposal_method="estimated geometry container only",
         assumptions=design.assumptions)
     achieved=EstimatedAchievedState(id=design.id+"-estimated",
         intended_design_hash=design.content_hash,process_hash=process.content_hash,

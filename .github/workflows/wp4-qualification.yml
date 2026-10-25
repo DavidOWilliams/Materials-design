@@ -33,6 +33,10 @@ jobs:
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-impossible.json --elements 256 --budget 4 --mass-limit 1
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; assert recover("/tmp/wp4-checkpoints.jsonl")'
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_alternate import alternate_duty; print(alternate_duty(elements=256)["adapter"])'
+      - name: Preregistered resolution sensitivity and paired comparison
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_comparisons import sensitivity,paired; json.dump(sensitivity(elements=256,budget=4),open("/tmp/wp4-sensitivity.json","w"),sort_keys=True,indent=2); json.dump(paired(elements=256,budget=4),open("/tmp/wp4-paired.json","w"),sort_keys=True,indent=2)'
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_export import export; json.dump(export("/tmp/wp4-dossier.json"),open("/tmp/wp4-export.json","w"),sort_keys=True,indent=2)'
       - name: Freeze actual branch checkout identity
         run: |
           git rev-parse HEAD | tee /tmp/wp4-tested-sha.txt
@@ -46,6 +50,9 @@ jobs:
             /tmp/wp4-no-feedback.json
             /tmp/wp4-impossible.json
             /tmp/wp4-checkpoints.jsonl
+            /tmp/wp4-sensitivity.json
+            /tmp/wp4-paired.json
+            /tmp/wp4-export.json
             /tmp/wp4-tested-sha.txt
             /tmp/wp4-python.txt
           if-no-files-found: warn

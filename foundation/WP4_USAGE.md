@@ -18,3 +18,10 @@ The `run` service supports cooperative cancellation between candidate evaluation
 **Scientific limits:** synthetic ideal deposition, no empirical ceramic measurements, CFD, sintering, porosity or manufacturing residual-stress prediction. Thermal stress can increase while mass and heat transmission improve.
 
 **Review:** independent Gate 3 performed; changes required; corrected evidence awaits independent closure. The acceptance matrix and final CI checkout SHA are authoritative.
+
+
+## Optional verification and final checkpoint recovery
+
+`resume(journal_path, verify=True, output="new-verified-dossier.json")` numerically recomputes the baseline and each candidate **after** continuation, and saves the immutable final dossier only after verification succeeds. The returned record and saved dossier both report `accounting.verification_evaluations` and the `verification` proof. A verification failure does not create a successful final dossier. Reuse and numerical verification are separately accounted. Do not reuse an existing output path.
+
+A journal interrupted after its final feasible candidate has been checkpointed is recognised as already terminal and produces a dossier with **zero additional continuation evaluations**. The same applies to supported budget and no-feedback terminal decisions. The manifest, checkpoint journal and event sidecar must remain together; embedded event history preserves hash-chain fields and a continuation marker for reopening.

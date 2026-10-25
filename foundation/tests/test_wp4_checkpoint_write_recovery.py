@@ -56,3 +56,35 @@ def test_final_feasible_checkpoint_write_failure(tmp_path,monkeypatch):
     assert result["accounting"]["reused_candidates"]==2
     assert fb.reopen(tmp_path/"final.json")["stop_reason"]=="qualified_scenario_feasible"
     assert fb.recompute(tmp_path/"final.json")["status"]=="passed"
+
+def test_alternate_duty_checkpoint_write_failure_and_repeated_resume(tmp_path,monkeypatch):
+    from material_core.wp3_adapters import resolve_provider,ALTERNATE
+    path=tmp_path/"alternate.jsonl"
+    base=resolve_provider(ALTERNATE,17,"explore",4096,31.).baseline()
+    journal,base=initialize(path,elements=4096,budget=4,base_inputs=base)
+    original=fb.evaluate
+    calls=[]
+    def evaluate(inputs):
+        calls.append(inputs.evaluation_target)
+        return original(inputs)
+    monkeypatch.setattr(fb,"evaluate",evaluate)
+    def checkpoint(rows):
+        if len(rows)==2: raise RuntimeError("alternate checkpoint write failure")
+        journal.checkpoint(rows)
+    with pytest.raises(RuntimeError,match="alternate checkpoint"):
+        fb.run(elements=4096,budget=4,base_inputs=base,checkpoint=checkpoint,
+               attempt_event=journal.event)
+    before=len(calls)
+    first=resume(path,elements=4096,budget=4,output=tmp_path/"first.json")
+    assert len(calls)==before+1
+    assert first["accounting"]["completed_evaluations"]==len(calls)
+    assert first["accounting"]["reused_candidates"]==1
+    assert fb.reopen(tmp_path/"first.json")["accounting"]==first["accounting"]
+    assert fb.recompute(tmp_path/"first.json")["status"]=="passed"
+    before=len(calls)
+    second=resume(path,elements=4096,budget=4,output=tmp_path/"second.json")
+    assert len(calls)==before
+    assert second["accounting"]["reused_candidates"]==len(first["records"])
+    assert second["accounting"]["completed_evaluations"]==first["accounting"]["completed_evaluations"]
+    assert fb.reopen(tmp_path/"second.json")["accounting"]==second["accounting"]
+    assert fb.recompute(tmp_path/"second.json")["status"]=="passed"

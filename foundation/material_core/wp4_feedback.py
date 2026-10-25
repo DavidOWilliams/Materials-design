@@ -243,6 +243,7 @@ def _validate_recovery_evidence(record):
     state={}
     baseline="idle"
     completions=set()
+    completion_attempts=0
     checkpoint_count=0
     reused=None
     continuation_seen=False
@@ -269,7 +270,7 @@ def _validate_recovery_evidence(record):
             if not isinstance(detail,dict) or type(detail.get("reused_candidates")) is not int:
                 raise ValueError("Invalid continuation evidence")
             reused=detail["reused_candidates"]
-            if reused<0 or reused!=len(completions) or reused>len(record["records"]):
+            if reused<0 or reused>len(completions) or reused>len(record["records"]):
                 raise ValueError("Reused candidate count unsupported by completed work")
             if type(detail.get("checkpoint_sha256")) is not str or len(detail["checkpoint_sha256"])!=64:
                 raise ValueError("Missing checkpoint identity in continuation evidence")
@@ -295,9 +296,10 @@ def _validate_recovery_evidence(record):
                 if status!="transformed": raise ValueError("Evaluation start ordering mismatch")
                 state[idx]="evaluation_started"
             elif kind=="candidate_evaluation_completed":
-                if status!="evaluation_started" or idx in completions:
+                if status!="evaluation_started":
                     raise ValueError("Evaluation completion ordering mismatch")
                 state[idx]="evaluated"
+                completion_attempts+=1
                 completions.add(idx)
             elif kind=="candidate_evaluation_failed":
                 if status!="evaluation_started": raise ValueError("Evaluation failure ordering mismatch")
@@ -310,7 +312,7 @@ def _validate_recovery_evidence(record):
     if not continuation_seen or reused is None:
         raise ValueError("Missing durable continuation marker")
     accounting=record["accounting"]
-    expected=dict(completed_evaluations=1+len(completions),
+    expected=dict(completed_evaluations=1+completion_attempts,
         failed_evaluations=sum(e["kind"] in ("baseline_evaluation_failed","candidate_evaluation_failed") for e in events),
         started_evaluations=sum(e["kind"] in ("baseline_evaluation_started","candidate_evaluation_started") for e in events),
         unresolved_evaluation_starts=0,

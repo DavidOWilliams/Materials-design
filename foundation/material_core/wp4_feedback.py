@@ -230,6 +230,20 @@ def reopen(path):
                 raise ValueError("Revision was not generated from previous feedback")
         previous_feedback=row["feedback"]
         previous=row["intended_hash"]
+    reason=record["stop_reason"]
+    last=record["records"][-1] if record["records"] else None
+    if reason=="qualified_scenario_feasible" and (last is None or not last["feasible"]):
+        raise ValueError("False qualified completion")
+    if reason=="feedback_disabled" and (record["config"]["feedback"] or last is None or len(record["records"])!=1):
+        raise ValueError("Invalid feedback-disabled terminal state")
+    if reason=="no_supported_revision_trigger" and (last is None or last["feedback"] is not None or last["feasible"]):
+        raise ValueError("Invalid no-trigger terminal state")
+    if reason=="evaluation_budget_exhausted" and (len(record["records"])!=record["config"]["budget"] or last["feasible"]):
+        raise ValueError("Invalid budget exhaustion state")
+    if reason=="no_improvement_possible" and (last is None or last["feedback"] is None or last["feasible"]):
+        raise ValueError("Invalid no-improvement state")
+    if reason!="cancelled" and not record["records"]:
+        raise ValueError("Empty non-cancelled campaign")
     return record
 
 def recompute(path):

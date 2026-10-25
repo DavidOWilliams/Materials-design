@@ -96,7 +96,7 @@ def _replace_design(base,design):
 def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
-def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True):
+def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=starting_inputs(elements,mass_limit)
     process=scenario(layer,feed)
@@ -106,6 +106,9 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
     design=base.design
     stop="evaluation_budget_exhausted"
     for i in range(budget):
+        if cancel_requested is not None and cancel_requested():
+            stop="cancelled"
+            break
         candidate=_replace_design(base,design)
         achieved=estimated_inputs(candidate,process)
         result=evaluate(achieved)
@@ -175,9 +178,9 @@ def reopen(path):
     previous_feedback=None
     if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):
         raise ValueError("Campaign accounting mismatch")
-    if not 1<=len(record["records"])<=record["config"]["budget"]:
+    if not 0<=len(record["records"])<=record["config"]["budget"]:
         raise ValueError("Campaign budget mismatch")
-    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):
+    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible","cancelled"):
         raise ValueError("Invalid campaign stop state")
     for i,row in enumerate(record["records"]):
         inputs=RunInputs.model_validate_json(json.dumps(row["estimated_inputs"]))

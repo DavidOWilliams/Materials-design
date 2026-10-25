@@ -7,6 +7,8 @@ shrinkage, sintering or residual-stress prediction is implied.
 """
 from __future__ import annotations
 import math
+import hashlib
+from pathlib import Path
 from .contracts import (
     IntendedDesign, ProcessScenario, Composition, ConstituentFraction,
     Homogeneous, Layered, Gradient, Layer, ManufacturingCommands, Command,
@@ -94,14 +96,14 @@ def transform(design: IntendedDesign, process: ProcessScenario):
         layers.append(Layer(start=a,end=b,composition=composition))
         commands.append(Command(sequence=i,composition=composition,volume=None))
     provenance=Provenance(source_id=TRANSFORM_ID,source_version=TRANSFORM_VERSION,
-        source_hash="0"*64,location="WP4 synthetic software transform",
+        source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),location="WP4 synthetic software transform",
         reuse_terms="demonstration only",evidence_kind="estimated",
         conditions="ideal deposition; unit area",extraction="deterministic integration and feed quantisation")
     cmd=ManufacturingCommands(design_hash=design.content_hash,process_hash=process.content_hash,
         commands=tuple(commands),provenance=provenance)
     geometry=IntendedDesign(id=design.id+"-estimated-geometry",parent_hashes=(design.content_hash,),
-        thickness=design.thickness,architecture=Layered(layers=tuple(layers),
-        interface_condition="ideal deposited layers"),proposal_method="estimated geometry container only",
+        thickness=design.thickness,architecture=(Homogeneous(composition=layers[0].composition) if n==1 else Layered(layers=tuple(layers),
+        interface_condition="ideal deposited layers")),proposal_method="estimated geometry container only",
         assumptions=design.assumptions)
     achieved=EstimatedAchievedState(id=design.id+"-estimated",
         intended_design_hash=design.content_hash,process_hash=process.content_hash,

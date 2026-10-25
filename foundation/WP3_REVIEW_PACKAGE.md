@@ -81,3 +81,11 @@ Then review the corrected independent acceptance suite `foundation/tests/test_wp
 The re-review acceptance decision must be made on the precise tested branch SHA and recorded PR-merge SHA. A successful four-defect historical reproduction, an implementation-owned regression run or a CI success does **not** supply independent scientific or architecture approval. Maintain the explicit synthetic-data and manufacturing-unknown boundary, and do not infer D1/V1/WP4 progress from WP3 tests.
 
 **Independent re-review status: PENDING.**
+
+## R4 evaluator identity follow-up — reviewer checks
+
+Inspected code `d6aea423c24eee4f1278e8f867c191796cbfd46e` accepted a custom `evaluation_adapter` without a declared evaluator identity and stored `wp2-bounded-2`, which meant stored outcomes could subsequently be recomputed through a different implementation. The original-case reproducer is `foundation/reproduce_evaluator_identity_gap.py`, intended only for execution against the inspected code.
+
+Review `wp3_evaluators.py` and `test_wp3_evaluator_identity.py`. Verify no custom callable is invoked or campaign directory is created before a nonempty versioned identity is supplied. Verify reserved standard and registered alternate identities accept only their exact implementation. Check `wp2-delegate-test-v1` executes, persists and recomputes through the same versioned callable, while an explicitly named unregistered test adapter can be inspected but is refused numerical recomputation. Confirm the existing fault-injection tests still carry clear labels and never claim scientifically supported independent replay.
+
+The registered delegate only calls corrected WP2. It is a **software identity test**, not new validation, a new constitutive model or a general-purpose evaluator extension. Unknown manufacturing remains unknown. Gate 3 remains **pending independent re-review**.

@@ -1,22 +1,15 @@
-# WP4 independent review — pending external reviewer
+# WP4 independent Gate 3 review — changes required; corrective submission
 
-**Gate 3 status: NOT STARTED.** This document is a reviewer handoff, not an implementation self-approval.
+An independent reviewer **has performed Gate 3 review** of earlier WP4 commits and identified five areas needing correction. That review did not approve WP4. The corrected branch must be reviewed again; implementation authors cannot independently close findings.
 
-## Reviewer assignment
-A separately tasked reviewer should pin the exact final WP4 branch SHA and actual checkout SHA, inspect raw source and CI artifacts, independently derive command/balance and thermal-reference values, reconstruct feedback causality and numerical feasibility from raw vectors, and challenge the F01–F12/C01–C12 ledger. The reviewer must not infer measured material properties from synthetic fixtures.
+## Findings and review evidence
+- R1: Reopen the forged schema=999, no-improvement, baseline-input-hash, feedback-disabled and resolution-mismatch dossiers; all must fail without relying on numerical recomputation.
+- R2: Independently count evaluator calls before/after interruption and confirm durable completed work is reused; inspect event sidecar, manifest, checkpoint and cumulative counters; reject legacy incomplete history.
+- R3: Confirm exported baseline hash is canonical content hash and changes with design content even when readable ID does not.
+- R4: Interrupt and resume alternate duty, preserving original WP3 380/320 K baseline, property pack and numerical settings; reject unavailable transform, evaluator and revision identities.
+- R5: Cross-check each F01–F12/C01–C12 row against the exact tested checkout and archived logs, and resolve any outstanding limitations.
 
-## Priority review questions
-1. Does a violated **estimated** achieved-state material cap cause a new intended constituent design, and is it re-evaluated with the original duty, property pack and process scenario?
-2. Are intended, estimated and absent measured states labelled and hashed without implicit fallback?
-3. Are quantised commands physically interpretable on a unit-area basis and are signed constituent changes independently conserved?
-4. Can an independently calculated small layered/gradient reference reproduce integration, tie-breaking, thermal flux and elastic force/moment?
-5. Can coordinated resealed changes to stored results, process identity, eligibility or feedback decisions pass reopening? What remains undetectable without an authenticated external manifest?
-6. Do fixed-budget on/off and sensitivity campaigns disclose all attempted candidates, consumed evaluations and unsuccessful cases?
-7. Does the checkpoint journal retain partial evidence after a simulated failure, and does it claim **only** last-complete-record inspection rather than unimplemented resume?
-8. Does the alternate-duty adapter preserve the original scientific applicability and does a second manufacturing transformer genuinely exist?
+## Handover
+Freeze source SHA and actual CI checkout SHA; record workflow IDs, artifact SHA, reviewer identity, independent methods, finding dispositions and any new failures. Historical test evidence is not proof for a later source revision. Do not merge PR #4 or begin WP5.
 
-## Required finding record
-For each finding record: reviewer identity and role; frozen source SHA; evidence artifact SHA; independent method and result; severity; code correction SHA; retest run; status. No independent reviewer identity or approval is recorded here.
-
-## Scope of approval
-Software/scientific-model review is distinct from experimental ceramic validation. An independent Gate 3 pass does not establish real manufacturability, residual stress from manufacturing or D1/V1 completion.
+**Scope:** bounded synthetic software and numerical qualification only. No measured ceramic evidence, physical manufacturability or manufacturing residual-stress claim.

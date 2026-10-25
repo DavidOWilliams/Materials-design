@@ -151,7 +151,11 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
             feasible=feasible,feedback=feedback_record,
             balances=balances(design,achieved.commands,achieved.estimated_state)))
         if checkpoint is not None:
-            checkpoint(tuple(records))
+            try:
+                checkpoint(tuple(records))
+            except Exception as exc:
+                if attempt_event is not None: attempt_event("checkpoint_failed",dict(index=i,error=str(exc)))
+                raise
         if feasible:
             stop="qualified_scenario_feasible"
             break

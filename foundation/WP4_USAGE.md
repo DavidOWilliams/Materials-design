@@ -25,3 +25,10 @@ The `run` service supports cooperative cancellation between candidate evaluation
 `resume(journal_path, verify=True, output="new-verified-dossier.json")` numerically recomputes the baseline and each candidate **after** continuation, and saves the immutable final dossier only after verification succeeds. The returned record and saved dossier both report `accounting.verification_evaluations` and the `verification` proof. A verification failure does not create a successful final dossier. Reuse and numerical verification are separately accounted. Do not reuse an existing output path.
 
 A journal interrupted after its final feasible candidate has been checkpointed is recognised as already terminal and produces a dossier with **zero additional continuation evaluations**. The same applies to supported budget and no-feedback terminal decisions. The manifest, checkpoint journal and event sidecar must remain together; embedded event history preserves hash-chain fields and a continuation marker for reopening.
+
+
+## R2 checkpoint-write recovery
+
+A numerical evaluation may finish without a candidate checkpoint being durably committed. When a checkpoint callback fails before writing, the original completed numerical attempt and the failed checkpoint remain in the append-only attempt ledger. Because the candidate was not durably checkpointed, continuation performs a **new** transform/evaluation attempt for that candidate, counts the extra numerical work, and reports only actually persisted candidates as reused. A callback that writes successfully and then raises retains the committed candidate and does **not** trigger reevaluation.
+
+`resume` validates the embedded event ledger and reopens any saved dossier before returning success. The evidence archive includes `default-write-failure-*`, `alternate-write-failure-*`, and `default-final-write-failure-*` artifacts with independent evaluator-call audits. Optional `verify=True` remains a separate, recorded numerical replay, not continuation work. Mid-solver restart is not supported.

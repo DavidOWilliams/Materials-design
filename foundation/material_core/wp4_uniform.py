@@ -22,6 +22,11 @@ def transform(design:IntendedDesign,process:ProcessScenario):
         raise ValueError("Uniform-batch feed resolution is required")
     if process.layer_resolution is not None and process.layer_resolution.value!=design.thickness.value:
         raise ValueError("Uniform batch must use a single full-thickness layer")
+    arch=design.architecture
+    first=(arch.composition if hasattr(arch,"composition") else
+           arch.layers[0].composition if hasattr(arch,"layers") else arch.knots[0].composition)
+    if first.basis!="volume":
+        raise ValueError("Uniform batch supports only volume fractions")
     average=_integrated_layer(design,0.,1.)
     mix=_quantize(average,process.feed_fraction_resolution)
     comp=Composition(basis="volume",fractions=tuple(

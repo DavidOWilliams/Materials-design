@@ -44,3 +44,18 @@ def test_resume_after_baseline_before_first_candidate(tmp_path):
     result=resume(path,elements=256,budget=4,output=tmp_path/"early-resumed.json")
     assert result["accounting"]["reused_candidates"]==0
     assert result["accounting"]["completed_evaluations"]==len(result["records"])+1
+
+def test_attempt_event_chain_rejects_resealed_summary_with_tampered_log(tmp_path):
+    import json
+    path=tmp_path/"chain.jsonl"
+    journal,base=initialize(path,elements=256,budget=4)
+    fb.run(elements=256,budget=4,base_inputs=base,
+        checkpoint=journal.checkpoint,attempt_event=journal.event)
+    sidecar=path.with_suffix(path.suffix+".attempts.jsonl")
+    lines=sidecar.read_text().splitlines()
+    entry=json.loads(lines[1])
+    entry["payload"]["kind"]="candidate_evaluation_completed"
+    lines[1]=json.dumps(entry)
+    sidecar.write_text("\n".join(lines)+"\n")
+    with pytest.raises(ValueError,match="Corrupt durable attempt"):
+        read_attempts(path)

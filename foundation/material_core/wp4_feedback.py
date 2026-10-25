@@ -256,10 +256,14 @@ def main():
     parser.add_argument("--feed",type=float,default=.25)
     parser.add_argument("--budget",type=int,default=4)
     parser.add_argument("--no-feedback",action="store_true")
+    parser.add_argument("--journal",default=None,help="New append-only per-candidate checkpoint journal")
     args=parser.parse_args()
     if args.action=="run":
+        from .wp4_journal import Journal
+        journal=Journal(args.journal) if args.journal else None
         rec=run(elements=args.elements,mass_limit=args.mass_limit,layer=args.layer,
-            feed=args.feed,budget=args.budget,feedback=not args.no_feedback)
+            feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
+            checkpoint=journal.checkpoint if journal else None)
         save(args.path,rec)
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
             feasible=[r["feasible"] for r in rec["records"]])))

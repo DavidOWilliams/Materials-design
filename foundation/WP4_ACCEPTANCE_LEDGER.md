@@ -13,22 +13,26 @@ This ledger is implementation-owned and **not** independent Gate 3 acceptance. S
 | F07 | Partial | Paired on/off service, same maximum budget; cost comparability and raw constraint export incomplete |
 | F08 | Partial | Preregistered five-point grid; raw evidence archive and independent assessment outstanding |
 | F09 | Partial | Save/reopen/recompute tests; separate-process portable full-store evidence outstanding |
-| F10 | Partial | Cooperative cancellation between evaluations; crash recovery and resumable journal missing |
-| F11 | Not met | Second process capability and alternate duty through common WP4 services missing |
-| F12 | Partial | Synthetic/measured distinction explicit; export and forged measured evidence challenge incomplete |
+| F10 | Partial | Cooperative cancellation and fsynced append-only candidate journal with corruption checks; automatic resume and mid-kernel recovery missing |
+| F11 | Partial | Existing WP3 alternate-duty adapter uses common WP4 transform/evaluator bridge; distinct second manufacturing transformer missing |
+| F12 | Partial | Export marks measured evidence absent; resealed fabricated measured-evidence challenge added; broader provenance challenges incomplete |
 | C01 | Partial | Non-divisible thickness and basic validity tests; coarse/fine extremes incomplete |
 | C02 | Partial | Two-phase feed quantisation; multi-constituent and tie challenge incomplete |
 | C03 | Partial | Binding budget and signed balances; full fidelity-limit policy missing |
 | C04 | Partial | WP2 missing geometry rejection inherited; missing data challenge incomplete |
-| C05 | Not met | Full synthetic-to-measured forgery challenge missing |
+| C05 | Partial | Resealed fabricated measured-evidence field rejected; coordinated nested-state forgery not yet covered |
 | C06 | Partial | Context identity and process hashes; registry/version/cache challenge incomplete |
 | C07 | Partial | Numerical eligibility enforced; failed transform evidence journal missing |
 | C08 | Partial | Resealed summary, feasibility, feedback, counters and lineage mutation tests; adversarial coordinated rewrite not covered |
-| C09 | Not met | Crash-boundary recovery journal missing |
-| C10 | Not met | Explicit transform/evaluator registry with replay identity rejection missing |
+| C09 | Partial | Fsynced checkpoint journal and truncated-tail rejection; resumable continuation missing |
+| C10 | Partial | Explicit fail-closed transform registry and replay identity checks; second transform and evaluator registry incomplete |
 | C11 | Partial | Deterministic bounded policy; Pareto tie and ordering challenge incomplete |
 | C12 | Partial | Impossible budget and cancellation; zero/tiny budget and reversal challenges incomplete |
 
 **Gate 1:** OPEN. **Gate 2:** OPEN. **Gate 3:** NOT STARTED (must be independent).
 
 Historical accepted WP3 implementation: `790c3521f09e3f61615702de3b149c9f315e9e74`. WP4 stacked PR #4 is not merged. No physical ceramic validation is claimed.
+
+## Added qualification path
+
+Dedicated workflow `.github/workflows/wp4-qualification.yml` runs locked WP4 focused and full foundation/recovery tests, executes a direct-branch feedback campaign, separately reopens/recomputes its dossier, exercises an impossible budget and alternate duty, and uploads raw dossiers plus tested SHA. Its passing outcome is not presumed until the run completes. Existing WP3 PR CI remains a separate integration regression.

@@ -101,7 +101,8 @@ def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
 def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None,
-        route="synthetic_ideal_planar_deposition",base_inputs=None,attempt_event=None):
+        route="synthetic_ideal_planar_deposition",base_inputs=None,attempt_event=None,
+        resume_record=None):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=base_inputs if base_inputs is not None else starting_inputs(elements,mass_limit)
     if base_inputs is not None and (base.settings is None or base.brief is None):
@@ -109,29 +110,54 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
     process=scenario(layer,feed,route)
     transformer_identity,_=resolve(process)
     # Freeze common intended/estimated contexts before selecting any result.
-    records=[]
-    if attempt_event is not None: attempt_event("baseline_started",None)
-    try:
-        intended=evaluate(base)
-    except Exception as exc:
-        if attempt_event is not None: attempt_event("baseline_failed",str(exc))
-        raise
-    if attempt_event is not None: attempt_event("baseline_completed",None)
+    records=list(resume_record["records"]) if resume_record is not None else []
+    if resume_record is None:
+        if attempt_event is not None: attempt_event("baseline_evaluation_started",None)
+        try:
+            intended=evaluate(base)
+        except Exception as exc:
+            if attempt_event is not None: attempt_event("baseline_evaluation_failed",str(exc))
+            raise
+        if attempt_event is not None: attempt_event("baseline_evaluation_completed",None)
+    else:
+        intended=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(resume_record["baseline_intended_evaluation"]))
     design=base.design
     stop="evaluation_budget_exhausted"
-    for i in range(budget):
+    if records:
+        last=records[-1]
+        if last["feasible"]:
+            stop="qualified_scenario_feasible"
+        elif not feedback:
+            stop="feedback_disabled"
+        elif last["feedback"] is None:
+            stop="no_supported_revision_trigger"
+        else:
+            previous=IntendedDesign.model_validate_json(json.dumps(last["intended_design"]))
+            design=_revise(base,previous,last["feedback"])
+            if design.architecture==previous.architecture:
+                stop="no_improvement_possible"
+        if stop!="evaluation_budget_exhausted":
+            return _assemble(base,intended,process,transformer_identity,elements,mass_limit,layer,feed,budget,feedback,route,records,stop)
+    for i in range(len(records),budget):
         if cancel_requested is not None and cancel_requested():
             stop="cancelled"
             break
-        if attempt_event is not None: attempt_event("candidate_started",i)
+        if attempt_event is not None: attempt_event("candidate_proposed",i)
         try:
             candidate=_replace_design(base,design)
+            if attempt_event is not None: attempt_event("transform_started",i)
             achieved=estimated_inputs(candidate,process)
+            if attempt_event is not None: attempt_event("transform_completed",i)
+        except Exception as exc:
+            if attempt_event is not None: attempt_event("transform_failed",dict(index=i,error=str(exc)))
+            raise
+        if attempt_event is not None: attempt_event("candidate_evaluation_started",i)
+        try:
             result=evaluate(achieved)
         except Exception as exc:
-            if attempt_event is not None: attempt_event("candidate_failed",dict(index=i,error=str(exc)))
+            if attempt_event is not None: attempt_event("candidate_evaluation_failed",dict(index=i,error=str(exc)))
             raise
-        if attempt_event is not None: attempt_event("candidate_completed",i)
+        if attempt_event is not None: attempt_event("candidate_evaluation_completed",i)
         limit=mass_limit
         actual=next((m.value.value for m in result.metrics
                      if m.objective_id=="areal_mass" and m.value is not None),None)
@@ -175,6 +201,9 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
             stop="no_improvement_possible"
             break
         design=new_design
+    return _assemble(base,intended,process,transformer_identity,elements,mass_limit,layer,feed,budget,feedback,route,records,stop)
+
+def _assemble(base,intended,process,transformer_identity,elements,mass_limit,layer,feed,budget,feedback,route,records,stop):
     return dict(schema_version=1,algorithm=VERSION,
         baseline_intended_inputs=base.model_dump(mode="json"),
         baseline_intended_evaluation=intended.model_dump(mode="json"),

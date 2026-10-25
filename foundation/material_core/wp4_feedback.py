@@ -13,6 +13,7 @@ from .contracts import (RunInputs, IntendedDesign, Gradient, Homogeneous, Layere
 from .wp2_scenarios import make_wp2_fixture
 from .wp2_numerical import evaluate, numerical_comparison_eligible, context_for_run
 from .wp4_bridge import estimated_inputs
+from .wp4_balances import balances
 from .wp4_resolution import TRANSFORM_ID, TRANSFORM_VERSION
 
 VERSION="wp4-feedback-v1"
@@ -131,7 +132,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
             estimated_geometry_hash=achieved.estimated_state.geometry.content_hash,
             evaluation=result.model_dump(mode="json"),evaluation_hash=result.content_hash,
             objectives=_metrics(result),numerical_quality=result.numerical_quality,
-            feasible=feasible,feedback=feedback_record))
+            feasible=feasible,feedback=feedback_record,\n            balances=balances(design,achieved.commands,achieved.estimated_state)))
         if feasible:
             stop="qualified_scenario_feasible"
             break
@@ -207,7 +208,7 @@ def reopen(path):
             actual=actual,excess=actual-record["config"]["mass_limit"],units="kg/m2",
             location="whole coupon",evidence="synthetic WP2 estimated achieved-state",
             revision_variables=["constituent volume fraction"]))
-        if row["feedback"]!=expected_feedback:
+        if row["balances"]!=balances(inputs.design,inputs.commands,inputs.estimated_state):\n            raise ValueError("Constituent balance mismatch")\n        if row["feedback"]!=expected_feedback:
             raise ValueError("Feedback decision mismatch")
         eligible=numerical_comparison_eligible(result,inputs.brief)
         feasible=(eligible and expected_feedback is None and result.feasibility=="conditional" and result.manufacturing_feasibility=="conditional")

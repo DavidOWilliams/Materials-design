@@ -6,9 +6,11 @@ resolutions. Registry identity is separate from numerical solver identity.
 """
 from __future__ import annotations
 from .wp4_resolution import transform, TRANSFORM_ID, TRANSFORM_VERSION
+from .wp4_uniform import transform as uniform_transform, ID as UNIFORM_ID, VERSION as UNIFORM_VERSION, ROUTE as UNIFORM_ROUTE
 
 REGISTRY_VERSION=1
-ROUTES={"synthetic_ideal_planar_deposition":(TRANSFORM_ID,TRANSFORM_VERSION,transform)}
+ROUTES={"synthetic_ideal_planar_deposition":(TRANSFORM_ID,TRANSFORM_VERSION,transform),
+        UNIFORM_ROUTE:(UNIFORM_ID,UNIFORM_VERSION,uniform_transform)}
 
 def resolve(process):
     try:

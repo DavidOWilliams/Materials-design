@@ -249,7 +249,7 @@ def recompute(path):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument("action",choices=("run","reopen","recompute"))
+    parser.add_argument("action",choices=("run","reopen","recompute","resume"))
     parser.add_argument("path")
     parser.add_argument("--elements",type=int,default=4096)
     parser.add_argument("--mass-limit",type=float,default=31.)
@@ -270,6 +270,13 @@ def main():
         save(args.path,rec)
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
             feasible=[r["feasible"] for r in rec["records"]])))
+    elif args.action=="resume":
+        from .wp4_journal import resume
+        rec=resume(args.path,elements=args.elements,mass_limit=args.mass_limit,
+            layer=args.layer,feed=args.feed,budget=args.budget,
+            feedback=not args.no_feedback,route=args.route)
+        print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
+            resumed_journal=args.path)))
     elif args.action=="reopen":
         print(json.dumps(dict(stop_reason=reopen(args.path)["stop_reason"],status="validated")))
     else:

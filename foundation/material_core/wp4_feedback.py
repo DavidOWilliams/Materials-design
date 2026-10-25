@@ -136,7 +136,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
             design=_revise(base,previous,last["feedback"])
             if design.architecture==previous.architecture:
                 stop="no_improvement_possible"
-        if stop!="evaluation_budget_exhausted":
+        if stop!="evaluation_budget_exhausted" or len(records)>=budget:
             return _assemble(base,intended,process,transformer_identity,elements,mass_limit,layer,feed,budget,feedback,route,records,stop)
     for i in range(len(records),budget):
         if cancel_requested is not None and cancel_requested():

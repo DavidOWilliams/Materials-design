@@ -1,0 +1,51 @@
+name: WP4 manufacturing feedback qualification
+on:
+  push:
+    branches:
+      - wp4-manufacturing-feedback-2026-10-25
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "foundation/**"
+      - ".github/workflows/wp4-qualification.yml"
+jobs:
+  wp4-direct-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Locked environment
+        run: bash foundation/setup.sh
+      - name: Dependency health
+        run: .venv-foundation/bin/python -m pip check
+      - name: WP4 focused tests
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp4_*.py -q
+      - name: Full foundation and recovery regression
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: WP4 campaign and portable reopen/recompute
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-dossier.json --journal /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-dossier.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-dossier.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-no-feedback.json --elements 256 --budget 4 --no-feedback
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-impossible.json --elements 256 --budget 4 --mass-limit 1
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; assert recover("/tmp/wp4-checkpoints.jsonl")'
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_alternate import alternate_duty; print(alternate_duty(elements=256)["adapter"])'
+      - name: Freeze actual branch checkout identity
+        run: |
+          git rev-parse HEAD | tee /tmp/wp4-tested-sha.txt
+          .venv-foundation/bin/python --version | tee /tmp/wp4-python.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp4-qualification-dossiers
+          path: |
+            /tmp/wp4-dossier.json
+            /tmp/wp4-no-feedback.json
+            /tmp/wp4-impossible.json
+            /tmp/wp4-checkpoints.jsonl
+            /tmp/wp4-tested-sha.txt
+            /tmp/wp4-python.txt
+          if-no-files-found: warn

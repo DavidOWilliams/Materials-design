@@ -172,7 +172,7 @@ def reopen(path):
         raise ValueError("Unsupported dossier or invented measured evidence")
     process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
     previous=None
-    for i,row in enumerate(record["records"]):
+    if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):\n        raise ValueError("Campaign accounting mismatch")\n    if not 1<=len(record["records"])<=record["config"]["budget"]:\n        raise ValueError("Campaign budget mismatch")\n    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):\n        raise ValueError("Invalid campaign stop state")\n    for i,row in enumerate(record["records"]):
         inputs=RunInputs.model_validate_json(json.dumps(row["estimated_inputs"]))
         if row["index"]!=i or inputs.process!=process:
             raise ValueError("Scenario or ordering mismatch")
@@ -184,7 +184,7 @@ def reopen(path):
             raise ValueError("Transform artifact mismatch")
         if inputs.content_hash!=row["estimated_hash"]:
             raise ValueError("Input identity mismatch")
-        previous=row["intended_hash"]
+        result=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(row["evaluation"]))\n        if result.content_hash!=row["evaluation_hash"] or result.input_hash!=inputs.content_hash:\n            raise ValueError("Evaluation identity mismatch")\n        if row["objectives"]!=_metrics(result) or row["numerical_quality"]!=result.numerical_quality:\n            raise ValueError("Persisted objective summary mismatch")\n        actual=row["objectives"].get("areal_mass")\n        expected_feedback=(None if actual is None or actual<=record["config"]["mass_limit"] else dict(\n            metric="areal_mass",relation="le",limit=record["config"]["mass_limit"],\n            actual=actual,excess=actual-record["config"]["mass_limit"],units="kg/m2",\n            location="whole coupon",evidence="synthetic WP2 estimated achieved-state",\n            revision_variables=["constituent volume fraction"]))\n        if row["feedback"]!=expected_feedback:\n            raise ValueError("Feedback decision mismatch")\n        eligible=numerical_comparison_eligible(result,inputs.brief)\n        feasible=(eligible and expected_feedback is None and result.feasibility=="conditional" and result.manufacturing_feasibility=="conditional")\n        if row["feasible"]!=feasible:\n            raise ValueError("Persisted feasibility mismatch")\n        if i and record["config"]["feedback"] and previous_feedback is not None:\n            previous_design=IntendedDesign.model_validate_json(json.dumps(record["records"][i-1]["intended_design"]))\n            if _revise(RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])),previous_design,previous_feedback).content_hash!=inputs.design.content_hash:\n                raise ValueError("Revision was not generated from previous feedback")\n        previous_feedback=row["feedback"]\n        previous=row["intended_hash"]
     return record
 
 def recompute(path):

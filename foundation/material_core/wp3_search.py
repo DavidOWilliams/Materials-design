@@ -15,6 +15,7 @@ import time
 from .store import RunStore
 from .wp2_numerical import evaluate, numerical_comparison_eligible
 from .wp3_adapters import resolve_provider, DEFAULT, SUPPORTED
+from .wp3_evaluators import for_run, for_replay
 from .wp3_qualified import qualified_pareto
 from .wp3_campaign import _write_ledger
 
@@ -237,15 +238,14 @@ def open_search(path, *, verify_decision=True, recovery=False):
 def recompute_search(path):
     """Numerically recompute persisted evaluations, distinct from artifact checking."""
     record=open_search(path)
-    if record["config"]["evaluation_adapter"]!="wp2-bounded-2":
-        raise ValueError("Unavailable evaluator for numerical recomputation: "+record["config"]["evaluation_adapter"])
+    replay_evaluator=for_replay(record["config"]["evaluation_adapter"])
     store=RunStore(Path(path).parent/"run-store")
     checked=0
     for item in record["proposals"]:
         if item["status"]!="complete":
             continue
         saved=store.load(item["run_id"])
-        fresh=evaluate(saved.inputs)
+        fresh=replay_evaluator(saved.inputs)
         if fresh.content_hash!=saved.evaluation.content_hash:
             raise ValueError("Numerical recomputation mismatch at proposal "+str(item["index"]))
         checked+=1
@@ -281,8 +281,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     """
     if provider_factory is not None:
         raise ValueError("Unregistered factory cannot provide durable independent replay")
-    if evaluator_identity not in (None,"wp2-bounded-2") and evaluation_adapter is None:
-        raise ValueError("Unavailable evaluator implementation: "+str(evaluator_identity))
+    resolved_id,actual_evaluator=for_run(evaluation_adapter,evaluator_identity)
     if wall_time_seconds is not None and (
             type(wall_time_seconds) not in (int,float)
             or not math.isfinite(wall_time_seconds) or wall_time_seconds<0):
@@ -296,7 +295,7 @@ def run_search(path,*,seed=17,budget=9,method="explore",
     config["constraints"]=[c.id for c in base.brief.constraints]
     config["brief_hash"]=base.brief.content_hash
     config["property_pack_hash"]=base.settings.property_pack_hash
-    config["evaluation_adapter"]=evaluator_identity or "wp2-bounded-2"
+    config["evaluation_adapter"]=resolved_id
     config["wall_time_seconds"]=None if wall_time_seconds is None else float(wall_time_seconds)
     path=Path(path)
     store=RunStore(path.parent/"run-store")
@@ -327,7 +326,6 @@ def run_search(path,*,seed=17,budget=9,method="explore",
             nominal_kernel_solves=0,refinement_kernel_solves=0,
             invalid_proposals=0,failed_attempts=0,stop_reason="running",
             qualified_comparison=None,termination_event=None)
-    actual_evaluator=evaluation_adapter or evaluate
     # Reconstruct the seeded generator state even when reopening.
     for i in range(len(ledger["proposals"])):
         _proposal(provider,i)

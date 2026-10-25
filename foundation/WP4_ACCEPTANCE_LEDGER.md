@@ -36,3 +36,13 @@ Historical accepted WP3 implementation: `790c3521f09e3f61615702de3b149c9f315e9e7
 ## Added qualification path
 
 Dedicated workflow `.github/workflows/wp4-qualification.yml` runs locked WP4 focused and full foundation/recovery tests, executes a direct-branch feedback campaign, separately reopens/recomputes its dossier, exercises an impossible budget and alternate duty, and uploads raw dossiers plus tested SHA. Its passing outcome is not presumed until the run completes. Existing WP3 PR CI remains a separate integration regression.
+
+## Independent reviewer R1–R5 corrective work (25 October 2026)
+
+- **R1:** `reopen` rejects multi-candidate records marked feedback-disabled, impossible continuations, mismatched process resolution, and terminal states inconsistent with candidate feasibility. Challenge: `test_wp4_r1_r4_review_closure.py`.
+- **R2:** Each evaluation attempt and checkpoint failure is durably recorded in a sidecar event log; resumed runs disclose per-invocation `evaluations` separately from `cumulative_evaluations` and `replayed_evaluations`. For old journals without event sidecars, a lower bound is inferred and explicitly labelled. The journal is still not an independently authenticated ledger.
+- **R3:** Exported baseline intended hash is the canonical `IntendedDesign.content_hash`, not the readable design ID.
+- **R4:** Alternate-duty adapter now passes its typed baseline to the same `run` feedback campaign and exposes the complete campaign record, rather than invoking a one-shot transform.
+- **R5:** This ledger is reconciled with `WP4_COMPLETION_REPORT.md`, `WP4_ARCHITECTURE_AND_DECISIONS.md` and `WP4_CHALLENGE_TEST_REPORT.md` at the final verified commit. Independent Gate 3 closure remains **OPEN** until that review.
+
+**Do not interpret R1–R5 code changes as independently closed without a pinned passing CI run.**

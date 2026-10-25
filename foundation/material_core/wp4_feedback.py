@@ -21,10 +21,10 @@ VERSION="wp4-feedback-v1"
 def _digest(obj):
     return hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
 
-def scenario(layer=0.005,feed=0.25):
+def scenario(layer=0.005,feed=0.25,route="synthetic_ideal_planar_deposition"):
     p=make_wp2_fixture().provenance[0]
-    return ProcessScenario(id="wp4-ideal-resolution",version=1,
-        route="synthetic_ideal_planar_deposition",layer_resolution=quantity("length",layer),
+    return ProcessScenario(id="wp4-"+route,version=1,
+        route=route,layer_resolution=quantity("length",layer),
         feed_fraction_resolution=feed,status="assumed",provenance=p,assumptions=(),
         excluded_mechanisms=("mixing lag","shrinkage","porosity","sintering","CFD","manufacturing residual stress"))
 
@@ -97,10 +97,11 @@ def _replace_design(base,design):
 def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
-def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None):
+def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None,
+        route="synthetic_ideal_planar_deposition"):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=starting_inputs(elements,mass_limit)
-    process=scenario(layer,feed)
+    process=scenario(layer,feed,route)
     transformer_identity,_=resolve(process)
     # Freeze common intended/estimated contexts before selecting any result.
     records=[]
@@ -159,7 +160,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
         process=process.model_dump(mode="json"),
         transformer_identity=transformer_identity,
         config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
-            budget=budget,feedback=feedback),
+            budget=budget,feedback=feedback,route=route),
         records=records,stop_reason=stop,proposals=len(records),
         transforms=len(records),evaluations=len(records)+1,
         refinement_solves=2*(len(records)+1),measured_evidence=None)
@@ -256,6 +257,7 @@ def main():
     parser.add_argument("--feed",type=float,default=.25)
     parser.add_argument("--budget",type=int,default=4)
     parser.add_argument("--no-feedback",action="store_true")
+    parser.add_argument("--route",default="synthetic_ideal_planar_deposition")
     parser.add_argument("--journal",default=None,help="New append-only per-candidate checkpoint journal")
     args=parser.parse_args()
     if args.action=="run":
@@ -263,6 +265,7 @@ def main():
         journal=Journal(args.journal) if args.journal else None
         rec=run(elements=args.elements,mass_limit=args.mass_limit,layer=args.layer,
             feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
+            route=args.route,
             checkpoint=journal.checkpoint if journal else None)
         save(args.path,rec)
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],

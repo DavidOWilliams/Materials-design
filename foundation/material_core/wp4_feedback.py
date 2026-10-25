@@ -97,7 +97,7 @@ def _replace_design(base,design):
 def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
-def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None):
+def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=starting_inputs(elements,mass_limit)
     process=scenario(layer,feed)
@@ -135,6 +135,8 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
             objectives=_metrics(result),numerical_quality=result.numerical_quality,
             feasible=feasible,feedback=feedback_record,
             balances=balances(design,achieved.commands,achieved.estimated_state)))
+        if checkpoint is not None:
+            checkpoint(tuple(records))
         if feasible:
             stop="qualified_scenario_feasible"
             break

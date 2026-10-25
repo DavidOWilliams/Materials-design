@@ -89,6 +89,7 @@ def _revise(base, parent, feedback, step=0.25):
 def _replace_design(base,design):
     raw=base.model_dump(mode="json")
     raw["design"]=design.model_dump(mode="json")
+    raw["settings"]["evaluation_context_hash"]=context_for_run(RunInputs.model_validate_json(json.dumps(raw)))
     return RunInputs.model_validate_json(json.dumps(raw))
 
 def _metrics(e):

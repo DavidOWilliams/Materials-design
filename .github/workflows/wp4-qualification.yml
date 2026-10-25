@@ -33,6 +33,8 @@ jobs:
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-impossible.json --elements 256 --budget 4 --mass-limit 1
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; assert recover("/tmp/wp4-checkpoints.jsonl")'
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_alternate import alternate_duty; print(alternate_duty(elements=256)["adapter"])'
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-uniform.json --route synthetic_ideal_uniform_batch_deposition --layer 0.01 --elements 256 --budget 4
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-uniform.json
       - name: Higher-resolution qualified-candidate challenge
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-higher-resolution.json --elements 4096 --budget 4
@@ -56,6 +58,7 @@ jobs:
             /tmp/wp4-no-feedback.json
             /tmp/wp4-impossible.json
             /tmp/wp4-checkpoints.jsonl
+            /tmp/wp4-uniform.json
             /tmp/wp4-higher-resolution.json
             /tmp/wp4-sensitivity.json
             /tmp/wp4-paired.json

@@ -30,3 +30,10 @@ PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_jou
 The checkpoint journal flushes each complete candidate and rejects partial trailing writes. It is single-writer and **not** a resumable execution engine; after interruption, previously committed records can be inspected, but automated continuation is not supported. This is deliberately different from WP3's campaign store.
 
 The explicit transform registry (`wp4_registry.py`) rejects unknown process routes. `wp4_alternate.py` runs the accepted WP3 alternate-duty adapter through the same transform/evaluator bridge. Both are synthetic software scenarios, not distinct empirically calibrated manufacturing processes.
+
+## Resume and second manufacturing capability
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback resume /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-uniform-dossier.json --route synthetic_ideal_uniform_batch_deposition --layer 0.01 --elements 256 --budget 4
+```

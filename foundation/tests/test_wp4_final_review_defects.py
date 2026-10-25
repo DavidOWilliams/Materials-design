@@ -135,3 +135,19 @@ def test_no_improvement_terminal_checkpoint_without_recomputation(tmp_path):
     assert record["stop_reason"]=="no_improvement_possible"
     assert len(calls)==before
     assert fb.reopen(tmp_path/"saturated.json")["stop_reason"]=="no_improvement_possible"
+
+def test_repeated_resume_sessions_have_distinct_durable_markers(tmp_path):
+    from material_core.wp4_journal import initialize,resume
+    path=tmp_path/"twice.jsonl"
+    journal,base=initialize(path,elements=256,budget=4)
+    def stop(rows):
+        journal.checkpoint(rows)
+        raise RuntimeError("after checkpoint")
+    with pytest.raises(RuntimeError):
+        fb.run(elements=256,budget=4,base_inputs=base,
+            checkpoint=stop,attempt_event=journal.event)
+    first=resume(path,elements=256,budget=4,output=tmp_path/"first.json")
+    second=resume(path,elements=256,budget=4,output=tmp_path/"second.json")
+    assert second["accounting"]["reused_candidates"]==len(first["records"])
+    assert second["accounting"]["completed_evaluations"]==first["accounting"]["completed_evaluations"]
+    assert fb.reopen(tmp_path/"second.json")["accounting"]==second["accounting"]

@@ -108,3 +108,30 @@ def test_failed_verification_does_not_claim_success(tmp_path,monkeypatch):
         resume(path,elements=256,budget=4,output=out,verify=True)
     assert not out.exists()
     assert not (tmp_path/"verified.json.verification-pending.tmp").exists()
+
+def test_no_improvement_terminal_checkpoint_without_recomputation(tmp_path):
+    from material_core.wp4_journal import initialize,resume
+    path=tmp_path/"saturated.jsonl"
+    journal,base=initialize(path,elements=256,mass_limit=10.,budget=8)
+    original=fb.evaluate
+    calls=[]
+    def counted(inputs):
+        calls.append(inputs.evaluation_target)
+        return original(inputs)
+    fb.evaluate=counted
+    def checkpoint(rows):
+        journal.checkpoint(rows)
+        if len(rows)==5:
+            raise RuntimeError("saturated checkpoint")
+    try:
+        with pytest.raises(RuntimeError,match="saturated checkpoint"):
+            fb.run(elements=256,mass_limit=10.,budget=8,base_inputs=base,
+                checkpoint=checkpoint,attempt_event=journal.event)
+        before=len(calls)
+        record=resume(path,elements=256,mass_limit=10.,budget=8,
+            output=tmp_path/"saturated.json")
+    finally:
+        fb.evaluate=original
+    assert record["stop_reason"]=="no_improvement_possible"
+    assert len(calls)==before
+    assert fb.reopen(tmp_path/"saturated.json")["stop_reason"]=="no_improvement_possible"

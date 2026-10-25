@@ -14,7 +14,7 @@ from .wp2_scenarios import make_wp2_fixture
 from .wp2_numerical import evaluate, numerical_comparison_eligible, context_for_run
 from .wp4_bridge import estimated_inputs
 from .wp4_balances import balances
-from .wp4_resolution import TRANSFORM_ID, TRANSFORM_VERSION
+from .wp4_registry import resolve
 
 VERSION="wp4-feedback-v1"
 
@@ -101,6 +101,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=starting_inputs(elements,mass_limit)
     process=scenario(layer,feed)
+    transformer_identity,_=resolve(process)
     # Freeze common intended/estimated contexts before selecting any result.
     records=[]
     intended=evaluate(base)
@@ -154,6 +155,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
         baseline_intended_inputs=base.model_dump(mode="json"),
         baseline_intended_evaluation=intended.model_dump(mode="json"),
         process=process.model_dump(mode="json"),
+        transformer_identity=transformer_identity,
         config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
             budget=budget,feedback=feedback),
         records=records,stop_reason=stop,proposals=len(records),
@@ -176,6 +178,8 @@ def reopen(path):
     if record.get("algorithm")!=VERSION or record.get("measured_evidence") is not None:
         raise ValueError("Unsupported dossier or invented measured evidence")
     process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
+    if record.get("transformer_identity")!=resolve(process)[0]:
+        raise ValueError("Recorded transform registry identity mismatch")
     previous=None
     previous_feedback=None
     if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):

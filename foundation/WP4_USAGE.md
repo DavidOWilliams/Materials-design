@@ -1,50 +1,20 @@
-# WP4 usage — bounded synthetic feedback prototype
+# WP4 execution, recovery and evidence
 
-WP4 remains an **assumption-based software demonstration**, not measured ceramic validation.
-
-Run in the locked foundation environment described in `foundation/ENVIRONMENT.md`, with `PYTHONPATH=foundation` and the locked Python interpreter:
+Run from repository root after `bash foundation/setup.sh`.
 
 ```bash
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-dossier.json --elements 4096 --mass-limit 31 --layer 0.005 --feed 0.25 --budget 4
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-dossier.json
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-dossier.json
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-no-feedback.json --no-feedback --budget 4
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-impossible.json --mass-limit 1 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-dossier.json --journal /tmp/wp4-journal.jsonl --elements 4096 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback resume /tmp/wp4-journal.jsonl --elements 4096 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-journal.jsonl.resumed.json
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-journal.jsonl.resumed.json
 ```
 
-Each run path must not exist already; this prevents overwriting historical dossiers. `reopen` validates recorded identities and decisions without running the numerical model; `recompute` regenerates the deterministic transformer output and WP2 numerical evaluations.
+The journal, `.manifest.json` and `.attempts.jsonl` sidecar must be retained together. The manifest freezes the original typed baseline, process, solver and implementation identities **before** numerical work. Resumption reuses completed baseline/candidate evaluations and appends only newly completed candidates; it does not restart an interrupted solver kernel. Missing legacy manifests or attempt histories are rejected rather than inventing exact costs. `recompute` is a separate optional verification process whose solver calls are **not** continuation cost.
 
-The reference coupon is 10 mm thick. Default layers are 5 mm. Feed fraction step is 0.25. Constituent volume fractions are discretised; the resulting estimated geometry is **not** a measurement. Commands are an ideal-deposition recipe on a unit-area basis, not machine G-code. Missing shrinkage, porosity, mixing lag, CFD and sintering remain unknown.
+For the alternate duty, run with `--adapter wp3-alternate-duty-layered-provider-v1` and a journal, then resume with the same resolution, budget and route options. The manifest preserves the original 380/320 K duty; it does not substitute the default 400/300 K fixture. A second synthetic route is `--route synthetic_ideal_uniform_batch_deposition --layer 0.01`.
 
-The initial campaign uses a synthetic A/B gradient, then attempts bounded density-guided revisions when estimated achieved areal mass violates the common mass cap. A numerical qualification or conditional scenario result is **not** global manufacturing feasibility.
+The `run` service supports cooperative cancellation between candidate evaluations; no mid-solver cancellation/restart is promised. `wp4_export.export(dossier_path)` exports the canonical intended design hash and marks measured evidence unavailable.
 
-The present campaign API does not support interruption recovery or independent Gate 3 approval; these are open requirements and must not be inferred from WP3's accepted functionality.
+**Scientific limits:** synthetic ideal deposition, no empirical ceramic measurements, CFD, sintering, porosity or manufacturing residual-stress prediction. Thermal stress can increase while mass and heat transmission improve.
 
-## Append-only checkpoint mode
-
-```bash
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-checkpointed-dossier.json --journal /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
-PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; print(len(recover("/tmp/wp4-checkpoints.jsonl")))'
-```
-
-The checkpoint journal flushes each complete candidate and rejects partial trailing writes. It is single-writer and **not** a resumable execution engine; after interruption, previously committed records can be inspected, but automated continuation is not supported. This is deliberately different from WP3's campaign store.
-
-The explicit transform registry (`wp4_registry.py`) rejects unknown process routes. `wp4_alternate.py` runs the accepted WP3 alternate-duty adapter through the same transform/evaluator bridge. Both are synthetic software scenarios, not distinct empirically calibrated manufacturing processes.
-
-## Resume and second manufacturing capability
-
-```bash
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback resume /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
-PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-uniform-dossier.json --route synthetic_ideal_uniform_batch_deposition --layer 0.01 --elements 256 --budget 4
-```
-
-## Explicit cancellation and evidence export
-
-The CLI is synchronous. Cooperative cancellation is exposed at the service boundary between candidate evaluations, not as an operating-system signal handler:
-
-```bash
-PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_feedback import run,save; save("/tmp/wp4-cancelled.json",run(elements=256,cancel_requested=lambda: True))'
-PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_export import export; json.dump(export("/tmp/wp4-dossier.json"),open("/tmp/wp4-evidence-export.json","w"),indent=2)'
-```
-
-The export is derived from the validated complete dossier and explicitly labels measured evidence unavailable. Do not substitute it for the full source record or claim experimentally established manufacture feasibility.
+**Review:** independent Gate 3 performed; changes required; corrected evidence awaits independent closure. The acceptance matrix and final CI checkout SHA are authoritative.

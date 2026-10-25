@@ -23,3 +23,8 @@ GitHub Actions WP4 direct-branch run **40203174983** executed source `597504cbf0
 5. Freeze final implementation and submit a complete Gate 3 review package; Gate 3 remains separate.
 
 No ceramic measurements, physical manufacturability, manufacturing residual-stress prediction, D1 release or WP5 work is claimed.
+
+
+## Independent review corrections R1–R5 (25 October 2026)
+
+The independent review identified five substantive defects. The corrective branch adds campaign causal validation (R1), durable attempt event records and cumulative resume accounting (R2), canonical exported content hash (R3), complete shared campaign lifecycle for alternate duty (R4), and reconciled acceptance statements (R5). Regression challenges are in `foundation/tests/test_wp4_r1_r4_review_closure.py`. The previously cited 46/252 passing tests belong to **earlier** source revision `80048d0572653508ad62e54144f6d6891fd6aeac`; they **do not qualify** these corrections. Final acceptance requires a new passing run tied to the exact corrective commit and independent re-review. Gate 3 remains OPEN.

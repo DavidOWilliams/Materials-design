@@ -29,3 +29,8 @@ WP3's search engine and WP2's numerical solver are unchanged. No new scientific 
 - No WP5 interface or full D1 product completion.
 
 Do not treat a passing regression suite as acceptance of these missing capabilities.
+
+
+## Independent review corrections R1–R5 (25 October 2026)
+
+The independent review identified five substantive defects. The corrective branch adds campaign causal validation (R1), durable attempt event records and cumulative resume accounting (R2), canonical exported content hash (R3), complete shared campaign lifecycle for alternate duty (R4), and reconciled acceptance statements (R5). Regression challenges are in `foundation/tests/test_wp4_r1_r4_review_closure.py`. The previously cited 46/252 passing tests belong to **earlier** source revision `80048d0572653508ad62e54144f6d6891fd6aeac`; they **do not qualify** these corrections. Final acceptance requires a new passing run tied to the exact corrective commit and independent re-review. Gate 3 remains OPEN.

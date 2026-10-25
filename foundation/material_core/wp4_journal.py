@@ -224,6 +224,10 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         result["accounting"]["verification_evaluations"]=len(result["records"])+1
         result["verification"]=dict(status="passed",evaluations=len(result["records"])+1,
             method="separate numerical recomputation of baseline and achieved candidates")
+    # Never report a successful continuation that cannot reopen its own evidence.
+    from .wp4_feedback import _validate_recovery_evidence
+    _validate_recovery_evidence(result)
     if output is not None:
         save(output,result)
+        reopen(output)
     return result

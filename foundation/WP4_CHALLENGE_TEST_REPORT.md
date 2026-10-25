@@ -23,3 +23,8 @@ No ceramic processing measurements are used. No claim of material manufacturing 
 ## Execution
 
 Dedicated WP4 workflow: `.github/workflows/wp4-qualification.yml`. Review its actual run ID, checked-out SHA, job logs and uploaded dossiers. Earlier WP3 CI is inherited regression evidence only. **Gate 1 and Gate 2 remain open until individually audited against the final revision.**
+
+
+## Independent review corrections R1–R5 (25 October 2026)
+
+The independent review identified five substantive defects. The corrective branch adds campaign causal validation (R1), durable attempt event records and cumulative resume accounting (R2), canonical exported content hash (R3), complete shared campaign lifecycle for alternate duty (R4), and reconciled acceptance statements (R5). Regression challenges are in `foundation/tests/test_wp4_r1_r4_review_closure.py`. The previously cited 46/252 passing tests belong to **earlier** source revision `80048d0572653508ad62e54144f6d6891fd6aeac`; they **do not qualify** these corrections. Final acceptance requires a new passing run tied to the exact corrective commit and independent re-review. Gate 3 remains OPEN.

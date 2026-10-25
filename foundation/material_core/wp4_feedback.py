@@ -382,12 +382,16 @@ def main():
     parser.add_argument("--no-feedback",action="store_true")
     parser.add_argument("--route",default="synthetic_ideal_planar_deposition")
     parser.add_argument("--journal",default=None,help="New append-only per-candidate checkpoint journal")
+    parser.add_argument("--adapter",choices=("wp4-default","wp3-alternate-duty-layered-provider-v1"),default="wp4-default")
     args=parser.parse_args()
     if args.action=="run":
         from .wp4_journal import initialize
+        from .wp3_adapters import resolve_provider,ALTERNATE
+        supplied=(resolve_provider(ALTERNATE,17,"explore",args.elements,args.mass_limit).baseline()
+                  if args.adapter==ALTERNATE else None)
         journal,base=initialize(args.journal,elements=args.elements,mass_limit=args.mass_limit,
             layer=args.layer,feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
-            route=args.route) if args.journal else (None,None)
+            route=args.route,base_inputs=supplied) if args.journal else (None,supplied)
         rec=run(elements=args.elements,mass_limit=args.mass_limit,layer=args.layer,
             feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
             route=args.route,base_inputs=base,
@@ -402,7 +406,7 @@ def main():
             layer=args.layer,feed=args.feed,budget=args.budget,
             feedback=not args.no_feedback,route=args.route,output=args.path+".resumed.json")
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
-            resumed_journal=args.path,cumulative_evaluations=rec["cumulative_evaluations"],
+            resumed_dossier=args.path+".resumed.json",resumed_journal=args.path,cumulative_evaluations=rec["cumulative_evaluations"],
             cumulative_attempts=rec["cumulative_attempts"])))
     elif args.action=="reopen":
         print(json.dumps(dict(stop_reason=reopen(args.path)["stop_reason"],status="validated")))

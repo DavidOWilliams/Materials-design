@@ -23,7 +23,7 @@ WP3's search engine and WP2's numerical solver are unchanged. No new scientific 
 
 ## Outstanding work and deferred requirements
 - An explicit two-route synthetic transform registry is implemented; there is no independent evaluator registry or empirically calibrated process delegate.
-- An alternate-duty WP3 adapter is exercised through WP4, and a second uniform-batch synthetic transform is registered. Automated crash recovery/resume and durable failed-attempt journal are not implemented.
+- An alternate-duty WP3 adapter is exercised through WP4, and a second uniform-batch synthetic transform is registered. Deterministic recompute-and-append resume and durable attempt events are implemented; solver-kernel restart, tamper-authenticated attempt logs and avoiding replay computation are not implemented.
 - No measured validation, evidence-based ceramic calibration or process prediction.
 - No independently signed evidence manifest or formal Gate 1/2/3 acceptance ledger.
 - No WP5 interface or full D1 product completion.

@@ -14,7 +14,7 @@ This ledger is implementation-owned and **not** independent Gate 3 acceptance. S
 | F08 | Partial | Preregistered five-point grid; raw evidence archive and independent assessment outstanding |
 | F09 | Partial | Save/reopen/recompute tests; separate-process portable full-store evidence outstanding |
 | F10 | Partial | Cooperative cancellation and fsynced append-only candidate journal with corruption checks; automatic resume and mid-kernel recovery missing |
-| F11 | Partial | Existing WP3 alternate-duty adapter uses common WP4 transform/evaluator bridge; distinct second manufacturing transformer missing |
+| F11 | Partial | Distinct synthetic uniform-batch transform registered and tested through WP2; existing WP3 alternate-duty adapter uses common WP4 bridge; raw final-run evidence pending |
 | F12 | Partial | Export marks measured evidence absent; resealed fabricated measured-evidence challenge added; broader provenance challenges incomplete |
 | C01 | Partial | Non-divisible thickness and basic validity tests; coarse/fine extremes incomplete |
 | C02 | Partial | Two-phase feed quantisation; multi-constituent and tie challenge incomplete |
@@ -25,7 +25,7 @@ This ledger is implementation-owned and **not** independent Gate 3 acceptance. S
 | C07 | Partial | Numerical eligibility enforced; failed transform evidence journal missing |
 | C08 | Partial | Resealed summary, feasibility, feedback, counters and lineage mutation tests; adversarial coordinated rewrite not covered |
 | C09 | Partial | Fsynced checkpoint journal and truncated-tail rejection; resumable continuation missing |
-| C10 | Partial | Explicit fail-closed transform registry and replay identity checks; second transform and evaluator registry incomplete |
+| C10 | Partial | Two registered synthetic transforms, fail-closed route and replay identity checks; independent evaluator registry and coordinated identity mutations incomplete |
 | C11 | Partial | Deterministic bounded policy; Pareto tie and ordering challenge incomplete |
 | C12 | Partial | Impossible budget and cancellation; zero/tiny budget and reversal challenges incomplete |
 

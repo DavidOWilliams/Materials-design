@@ -60,6 +60,12 @@ jobs:
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --reopen > /tmp/wp3-alternate-reopened.json
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --recompute > /tmp/wp3-alternate-recomputed.json
           .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-alternate-result.json')); b=json.load(open('/tmp/wp3-alternate-reopened.json')); c=json.load(open('/tmp/wp3-alternate-recomputed.json')); assert a==b and len(a['proposals'])==3 and c['recomputed']==3; assert a['config']['provider']=='wp3-alternate-duty-layered-provider-v1'; print('Alternate scenario persisted, reopened and numerically recomputed')"
+      - name: Verify registered evaluator in isolated process
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -c "from material_core.wp3_search import run_search; from material_core.wp3_evaluators import DELEGATE; run_search('/tmp/wp3-evaluator/campaign.json',seed=7,budget=2,elements=256,evaluator_identity=DELEGATE)"
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-evaluator/campaign.json --reopen > /tmp/wp3-evaluator-open.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-evaluator/campaign.json --recompute > /tmp/wp3-evaluator-replay.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-evaluator-open.json')); b=json.load(open('/tmp/wp3-evaluator-replay.json')); assert a['config']['evaluation_adapter']=='wp2-delegate-test-v1' and b['recomputed']==2"
       - name: Run preregistered paired sampling comparison
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --paired /tmp/wp3-paired --budget 3 --elements 4096 > /tmp/wp3-paired-result.json
@@ -84,6 +90,9 @@ jobs:
             /tmp/wp3-alternate-result.json
             /tmp/wp3-alternate-reopened.json
             /tmp/wp3-alternate-recomputed.json
+            /tmp/wp3-evaluator/**
+            /tmp/wp3-evaluator-open.json
+            /tmp/wp3-evaluator-replay.json
             /tmp/wp3-paired/**
             /tmp/wp3-paired-result.json
             /tmp/wp3-paired-reopened.json

@@ -84,4 +84,12 @@ if __name__=="__main__":
             p=base/name;p.mkdir()
             fn(p)
         reproduce_r4()
+        def wrapper(inputs):
+            return evaluate(inputs)
+        from material_core.wp3_search import recompute_search
+        older=base/"evaluator.json"
+        old_result=run_search(older,seed=4,budget=1,elements=256,evaluation_adapter=wrapper)
+        assert old_result["config"]["evaluation_adapter"]=="wp2-bounded-2"
+        assert recompute_search(older)["recomputed"]==1
+        print("Original evaluator identity gap reproduced")
     print("Four original independent-review findings reproduced on inspected source")

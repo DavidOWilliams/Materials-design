@@ -118,7 +118,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
         except Exception as exc:
             if attempt_event is not None: attempt_event("baseline_evaluation_failed",str(exc))
             raise
-        if attempt_event is not None: attempt_event("baseline_evaluation_completed",None)
+        if attempt_event is not None: attempt_event("baseline_evaluation_completed",intended.model_dump(mode="json"))
     else:
         intended=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(resume_record["baseline_intended_evaluation"]))
     design=base.design
@@ -265,6 +265,25 @@ def reopen(path):
         raise ValueError("Campaign route mismatch")
     if record["config"]["layer"]!=process.layer_resolution.value or record["config"]["feed"]!=process.feed_fraction_resolution:
         raise ValueError("Campaign resolution mismatch")
+    if "accounting" in record:
+        events=record.get("attempt_events")
+        if not isinstance(events,list):
+            raise ValueError("Recovery accounting missing durable event evidence")
+        completed=sum(e["kind"] in ("baseline_evaluation_completed","candidate_evaluation_completed") for e in events)
+        failed=sum(e["kind"] in ("baseline_evaluation_failed","candidate_evaluation_failed") for e in events)
+        started=sum(e["kind"] in ("baseline_evaluation_started","candidate_evaluation_started") for e in events)
+        expected=dict(completed_evaluations=completed,failed_evaluations=failed,
+            started_evaluations=started,unresolved_evaluation_starts=max(0,started-completed-failed),
+            transform_attempts=sum(e["kind"]=="transform_started" for e in events),
+            transform_failures=sum(e["kind"]=="transform_failed" for e in events),
+            reused_candidates=record["accounting"]["reused_candidates"],reused_baseline=True,
+            verification_evaluations=0,unknown_historical_effort=False)
+        if record["accounting"]!=expected or record.get("cumulative_evaluations")!=completed+failed or record.get("cumulative_attempts")!=started:
+            raise ValueError("Recovery accounting mismatch")
+        if expected["reused_candidates"]>len(record["records"]):
+            raise ValueError("Impossible reused-candidate count")
+    elif "cumulative_evaluations" in record or "attempt_events" in record:
+        raise ValueError("Unverifiable recovery counters")
     if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):
         raise ValueError("Campaign accounting mismatch")
     if not 0<=len(record["records"])<=record["config"]["budget"]:
@@ -365,11 +384,13 @@ def main():
     parser.add_argument("--journal",default=None,help="New append-only per-candidate checkpoint journal")
     args=parser.parse_args()
     if args.action=="run":
-        from .wp4_journal import Journal
-        journal=Journal(args.journal) if args.journal else None
+        from .wp4_journal import initialize
+        journal,base=initialize(args.journal,elements=args.elements,mass_limit=args.mass_limit,
+            layer=args.layer,feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
+            route=args.route) if args.journal else (None,None)
         rec=run(elements=args.elements,mass_limit=args.mass_limit,layer=args.layer,
             feed=args.feed,budget=args.budget,feedback=not args.no_feedback,
-            route=args.route,
+            route=args.route,base_inputs=base,
             checkpoint=journal.checkpoint if journal else None,
             attempt_event=journal.event if journal else None)
         save(args.path,rec)
@@ -379,7 +400,7 @@ def main():
         from .wp4_journal import resume
         rec=resume(args.path,elements=args.elements,mass_limit=args.mass_limit,
             layer=args.layer,feed=args.feed,budget=args.budget,
-            feedback=not args.no_feedback,route=args.route)
+            feedback=not args.no_feedback,route=args.route,output=args.path+".resumed.json")
         print(json.dumps(dict(stop_reason=rec["stop_reason"],proposals=rec["proposals"],
             resumed_journal=args.path,cumulative_evaluations=rec["cumulative_evaluations"],
             cumulative_attempts=rec["cumulative_attempts"])))

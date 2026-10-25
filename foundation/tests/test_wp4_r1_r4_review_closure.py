@@ -42,6 +42,7 @@ def test_r2_failed_candidate_attempt_is_durable(tmp_path):
     events=read_attempts(path)
     assert any(e["kind"]=="candidate_started" for e in events)
     assert any(e["kind"]=="candidate_completed" for e in events)
+    assert any(e["kind"]=="checkpoint_failed" for e in events)
 
 def test_r3_export_contains_real_sha256(tmp_path):
     record=run(elements=256,budget=1)

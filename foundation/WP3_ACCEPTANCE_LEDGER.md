@@ -1,4 +1,52 @@
-# WP3 requirement-to-evidence ledger — candidate freeze
+# WP3 acceptance record — independent closure, 25 October 2026
+
+## Current decision and exact scope
+
+**ACCEPTED for the agreed bounded synthetic WP3 software and numerical scope at source revision `790c3521f09e3f61615702de3b149c9f315e9e74`.** Gates 1 (functional), 2 (challenge testing), and 3 (separate scientific/architecture AI review) are closed for that revision and scope. No remaining blocking finding was identified in the closure review. WP4 may use this pinned baseline.
+
+**Reviewer:** the separately tasked ChatGPT/Codex review conversation acting for David Williams, distinct from the WP3 implementation conversation. This is independent AI review, not human materials-expert certification, experimental validation, or an exhaustive proof of correctness. David authorised recording this decision on 25 October 2026.
+
+This section supersedes the pending-review statuses in the historical ledger below. Earlier evidence and decisions are preserved as dated history, not current acceptance states. Acceptance attaches to the exact source revision above; this documentation-only recording commit is not represented as the revision on which the tests were run. Any later implementation changes require appropriate verification and review. PR #3 remains draft and unmerged; this record does not authorise a merge or claim WP4 implementation has begun.
+
+## Independent review and closure evidence
+
+| Finding | Independent result |
+| --- | --- |
+| Interrupted accounting and falsified derived evidence | Corrections examined through source review, implementation regressions and independent corruption/interruption probes during the review sequence; later R1–R3 challenges below addressed remaining bypasses. |
+| R1: unprotected schema-1 campaign | Normal run/reopen APIs retired; independent call confirmed refusal. Explicit archival reader labels records UNVALIDATED_LEGACY_V1 and not review-eligible. |
+| R2: completed corruption during pending recovery | Independent reproduction confirmed rejection of altered completed objective summary even while another proposal was pending; original ledger bytes preserved on rejection. |
+| R3: unsupported stop reason | Independent alteration to manufacturing_validated rejected. Closed reasons, terminal-event and proposal-budget/pending consistency checks inspected. |
+| R4: fixture-coupled orchestration | Scenario construction and validation moved behind versioned adapters. Independent alternate three-layer 380/320 K scenario execution and numerical recomputation succeeded through shared orchestration. |
+| R4 follow-up: evaluator identity | Independent tests rejected unnamed adapters and misuse of both reserved registered identities before campaign files existed. Registered alternate evaluator executed and recomputed two evaluations successfully in a fresh process. |
+| Historical evaluator reproduction | Reviewer executed foundation/reproduce_evaluator_identity_gap.py against exact historical checkout d6aea423c24eee4f1278e8f867c191796cbfd46e, explicitly confirming imported implementation path and Git HEAD. Original unnamed-wrapper/default-identity defect reproduced. The previously pending historical evidence gap is closed. |
+
+Independent scientific checks in the preceding review included 50 separately constructed quadrature/equilibrium references for thermal forces and moments, with strain/curvature agreement at floating-point precision; 100 independently calculated mixed-direction Pareto cases; additional homogeneous/layered/gradient refinement; and a nine-candidate campaign with all nine evaluations numerically recomputed. The WP2 numerical kernel, numerical adapter, contracts and run store remained unchanged through closure, so those checks remain applicable. They establish bounded model implementation behaviour, not physical ceramic validity.
+
+## Final revision execution evidence
+
+- Reviewer independently ran `PYTHONPATH=foundation ../wp2-review-env/bin/python -m pytest foundation/tests recovered_wp0 -q` in an isolated checkout of `790c3521...`: **206 passed in 30.40 seconds**. This used an existing local review environment, not a new locked installation.
+- [GitHub Actions run 40169273479](https://github.com/DavidOWilliams/Materials-design/actions/runs/40169273479): all four jobs completed successfully; actual job logs inspected by reviewer.
+- Integration job **121096641475**, actual temporary PR merge checkout `81cce6f8366afa5c18e4728b7bf917969280597a`: **206 foundation/recovery tests passed**, corrected WP2 verification and campaign/replay checks passed.
+- Legacy job **121096641495**, same PR merge: **1,148 passed, 10 warnings**.
+- Direct branch job **121096641258**, actual checkout `790c3521f09e3f61615702de3b149c9f315e9e74`: **30 focused tests passed**, corrected WP2 verifier passed.
+- Historical R1–R4 job **121096641373** checks `d62023d...`; it is distinct from the reviewer's later evaluator-specific historical check of `d6aea423...`.
+- Implementer-reported evidence archives: **12589352008** (wp3-vertical-output) and **12589662810** (wp3-branch-head-corrections). The reviewer checked source, independent execution and CI logs but did **not** independently download and inspect every archived artifact or rerun the full legacy suite locally.
+
+## Retained limitations and WP4 handover conditions
+
+- Synthetic planar thermal–mechanical demonstration; no measured ceramic/material-process validation. Numerical completion, qualification, hard constraints, manufacturing feasibility and evidence maturity remain distinct.
+- Manufacturing feasibility remains unknown where unsupported. WP3 is not D1, V1, WP4 or WP5 completion.
+- Structured seeded sampling, not adaptive optimisation; the small paired study does not establish general superiority or global optimality.
+- Supported scenario/evaluator identities must be preserved through execution, persistence and replay. Unregistered named test adapters cannot claim supported numerical replay.
+- Historical schema-1 campaigns remain explicitly unvalidated. No silent conversion into acceptance evidence.
+- Single-writer operation; concurrent writers unsupported. An orphan run can remain in the create-to-journal crash window. Unobserved partial solver work remains uncertain.
+- Integrity checks do not protect against coordinated rewriting of database, artifacts, ledger and hashes. Wall-time control is per invocation and cooperative between evaluations.
+- WP4 should inherit the pinned baseline and regression evidence, implement versioned manufacturing-resolution feedback within its own brief, and retain assumptions, uncertainty, provenance and intended/estimated/measured distinctions.
+
+---
+
+# Historical requirement-to-evidence ledger
+
 
 **Authority:** WP3 New Chat Takeover and GitHub Brief v1.0, Vision v3 and Product Definition v1; corrected WP2 ancestor `7009189d9be4dfd5940999c88cbb5c3c70c8ce56`.
 **Scientific boundary:** synthetic planar thermal–mechanical demonstration. Manufacturing feasibility remains **unknown** for intended-only designs; an eligible numerical ranking is not manufacture validation.

@@ -26,7 +26,10 @@ class Journal:
     def event(self,kind,detail):
         """Durable event ledger in a separate sidecar file."""
         path=Path(str(self.path)+".attempts.jsonl")
-        event=dict(kind=kind,detail=detail)
+        existing=read_attempts(self.path,missing_ok=True)
+        previous=(existing[-1]["_event_sha256"] if existing else "0"*64)
+        payload=dict(sequence=len(existing),previous=previous,kind=kind,detail=detail)
+        event=dict(payload=payload,sha256=digest(payload))
         with path.open("a",encoding="utf-8") as f:
             f.write(json.dumps(event,sort_keys=True)+"\n")
             f.flush()
@@ -100,15 +103,24 @@ def read_manifest(path):
         raise ValueError("Corrupt recovery manifest")
     return obj["manifest"]
 
-def read_attempts(path):
+def read_attempts(path,missing_ok=False):
     sidecar=Path(str(path)+".attempts.jsonl")
     if not sidecar.exists():
+        if missing_ok: return []
         raise ValueError("Missing durable attempt history; exact work accounting unavailable")
     events=[]
+    previous="0"*64
     for line in sidecar.read_text().splitlines(keepends=True):
         if not line.endswith("\n"):
             raise ValueError("Truncated attempt event")
-        events.append(json.loads(line))
+        envelope=json.loads(line)
+        payload=envelope["payload"]
+        if (digest(payload)!=envelope["sha256"] or payload["previous"]!=previous or
+            payload["sequence"]!=len(events)):
+            raise ValueError("Corrupt durable attempt event chain")
+        events.append(dict(kind=payload["kind"],detail=payload["detail"],
+                           _event_sha256=envelope["sha256"]))
+        previous=envelope["sha256"]
     return events
 
 def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,

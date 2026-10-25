@@ -19,3 +19,14 @@ The reference coupon is 10 mm thick. Default layers are 5 mm. Feed fraction step
 The initial campaign uses a synthetic A/B gradient, then attempts bounded density-guided revisions when estimated achieved areal mass violates the common mass cap. A numerical qualification or conditional scenario result is **not** global manufacturing feasibility.
 
 The present campaign API does not support interruption recovery or independent Gate 3 approval; these are open requirements and must not be inferred from WP3's accepted functionality.
+
+## Append-only checkpoint mode
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-checkpointed-dossier.json --journal /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; print(len(recover("/tmp/wp4-checkpoints.jsonl")))'
+```
+
+The checkpoint journal flushes each complete candidate and rejects partial trailing writes. It is single-writer and **not** a resumable execution engine; after interruption, previously committed records can be inspected, but automated continuation is not supported. This is deliberately different from WP3's campaign store.
+
+The explicit transform registry (`wp4_registry.py`) rejects unknown process routes. `wp4_alternate.py` runs the accepted WP3 alternate-duty adapter through the same transform/evaluator bridge. Both are synthetic software scenarios, not distinct empirically calibrated manufacturing processes.

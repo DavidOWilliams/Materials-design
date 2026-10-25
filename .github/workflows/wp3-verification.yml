@@ -125,7 +125,7 @@ jobs:
       - name: Check dependencies
         run: .venv-foundation/bin/python -m pip check
       - name: Reproduce corrected interruption and tamper acceptance
-        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_inspection_corrections.py -q
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_inspection_corrections.py foundation/tests/test_wp3_evaluator_identity.py -q
       - name: Verify WP2 numerical references
         run: PYTHONPATH=foundation .venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp3-head-wp2-reference
       - name: Upload exact-head evidence

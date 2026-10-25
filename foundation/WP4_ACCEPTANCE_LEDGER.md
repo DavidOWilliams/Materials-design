@@ -48,3 +48,14 @@ R1: unsupported schema 999, forged no-improvement, wrong baseline input hash, fa
 - Scientific trade-off: mass and thermal transmission improve, thermal stress rises slightly; no blanket multi-objective improvement claim.
 
 **Revision caveat:** The evidence above is for source head `3f9f9d6`. This ledger update is documentation-only; its own final source SHA must be verified by a subsequent workflow before independent submission.
+
+
+## Final independent-review follow-up: terminal recovery, event evidence, verification
+
+Three post-`54c8674` independent defects are addressed by `test_wp4_final_review_defects.py` and `wp4_review_evidence.py`:
+
+- **Terminal checkpoint:** a durably persisted feasible final candidate is reopened with its actual `qualified_scenario_feasible` stop, without numerical reevaluation. Budget exhaustion, feedback-disabled, intermediate and alternate-duty checkpoints are covered.
+- **Embedded event history:** hash-chain sequence, previous-hash linkage, supported event kinds, candidate identity, stage order and a durable continuation marker bind reused-candidate accounting to completed work. Negative reuse and changed candidate ID with unchanged event hash fail closed.
+- **Optional verification:** a separate recomputation completes before a new immutable final dossier is saved. The returned and saved records agree on verified solver-call counts. Verification failure leaves no successful final dossier; prior journal/manifest remain intact.
+
+The earlier 65/271 passing results are **historical** evidence for `54c8674`. This follow-up requires its own passing workflow, actual checkout SHA and archive before independent closure. Gate 3 has been performed and returned changes required; it is not independently closed.

@@ -13,7 +13,7 @@ This ledger is implementation-owned and **not** independent Gate 3 acceptance. S
 | F07 | Partial | Paired on/off service, same maximum budget; cost comparability and raw constraint export incomplete |
 | F08 | Partial | Preregistered five-point grid; raw evidence archive and independent assessment outstanding |
 | F09 | Partial | Save/reopen/recompute tests; separate-process portable full-store evidence outstanding |
-| F10 | Partial | Cooperative cancellation and fsynced append-only candidate journal with corruption checks; automatic resume and mid-kernel recovery missing |
+| F10 | Partial | Cooperative cancellation, fsynced append-only candidate journal and deterministic recompute-and-append resume with prefix checks; mid-kernel recovery unsupported |
 | F11 | Partial | Distinct synthetic uniform-batch transform registered and tested through WP2; existing WP3 alternate-duty adapter uses common WP4 bridge; raw final-run evidence pending |
 | F12 | Partial | Export marks measured evidence absent; resealed fabricated measured-evidence challenge added; broader provenance challenges incomplete |
 | C01 | Partial | Non-divisible thickness and basic validity tests; coarse/fine extremes incomplete |
@@ -24,7 +24,7 @@ This ledger is implementation-owned and **not** independent Gate 3 acceptance. S
 | C06 | Partial | Context identity and process hashes; registry/version/cache challenge incomplete |
 | C07 | Partial | Numerical eligibility enforced; failed transform evidence journal missing |
 | C08 | Partial | Resealed summary, feasibility, feedback, counters and lineage mutation tests; adversarial coordinated rewrite not covered |
-| C09 | Partial | Fsynced checkpoint journal and truncated-tail rejection; resumable continuation missing |
+| C09 | Partial | Fsynced checkpoint journal, truncated-tail rejection and deterministic recompute-and-append resume; independent crash/restart qualification outstanding |
 | C10 | Partial | Two registered synthetic transforms, fail-closed route and replay identity checks; independent evaluator registry and coordinated identity mutations incomplete |
 | C11 | Partial | Deterministic bounded policy; Pareto tie and ordering challenge incomplete |
 | C12 | Partial | Impossible budget and cancellation; zero/tiny budget and reversal challenges incomplete |

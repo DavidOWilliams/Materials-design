@@ -87,3 +87,45 @@ for name,base,terminal in (
         returned_equals_persisted=result["accounting"]==stored["accounting"])
     (out/(name+"-verification-audit.json")).write_text(json.dumps(report,indent=2))
     print(json.dumps(report))
+
+# R2 final checkpoint-write failure evidence: completed solver work without durable candidate.
+for name,base,fail_at in (
+    ("default-write-failure",None,1),
+    ("alternate-write-failure",resolve_provider(ALTERNATE,17,"explore",4096,31.).baseline(),2),
+    ("default-final-write-failure",None,3),
+):
+    path=out/(name+".jsonl")
+    journal,inputs=initialize(path,elements=4096,budget=4,base_inputs=base)
+    original=feedback.evaluate
+    calls=[]
+    def counted(inp):
+        calls.append(inp.evaluation_target)
+        return original(inp)
+    feedback.evaluate=counted
+    def fail_before_write(rows):
+        if len(rows)==fail_at:
+            raise RuntimeError("checkpoint unavailable before write")
+        journal.checkpoint(rows)
+    try:
+        try:
+            feedback.run(elements=4096,budget=4,base_inputs=inputs,
+                checkpoint=fail_before_write,attempt_event=journal.event)
+        except RuntimeError as exc:
+            if "checkpoint unavailable before write" not in str(exc): raise
+        before=len(calls)
+        result=resume(path,elements=4096,budget=4,output=out/(name+"-resumed.json"))
+        after=len(calls)
+    finally:
+        feedback.evaluate=original
+    stored=feedback.reopen(out/(name+"-resumed.json"))
+    assert stored["accounting"]==result["accounting"]
+    assert result["accounting"]["completed_evaluations"]==after
+    assert result["accounting"]["reused_candidates"]==fail_at-1
+    assert after>before
+    audit=dict(name=name,actual_before=before,actual_additional=after-before,
+        actual_total=after,recorded_completed=result["accounting"]["completed_evaluations"],
+        reused_checkpoints=result["accounting"]["reused_candidates"],
+        repeated_evaluations=1,failed_checkpoint_events=sum(
+            e["kind"]=="checkpoint_failed" for e in result["attempt_events"]))
+    (out/(name+"-audit.json")).write_text(json.dumps(audit,indent=2))
+    print(json.dumps(audit))

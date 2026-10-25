@@ -1,36 +1,17 @@
-# WP4 architecture and decisions — bounded synthetic capability
+# WP4 architecture and bounded decisions
 
-## Design/state separation
-The authoritative `IntendedDesign` is immutable. `ProcessScenario` declares layer and feed resolution. `ManufacturingCommands` records discrete per-layer composition. `EstimatedAchievedState` encloses a geometry container whose type happens to be `IntendedDesign`; it is **not** a second original intention. `MeasuredAchievedState` is never populated by this synthetic implementation. `RunInputs.evaluation_target='estimated'` routes WP2 to estimated geometry, without fallback.
+## Lifecycle
+Typed intended baseline (unchanged WP2/WP3 contract) → explicit versioned synthetic process scenario → registered transform → manufacturing commands and **estimated** achieved geometry → WP2 evaluation under the same brief, solver and property pack → feedback-driven intended constituent revision → repeat until supported stop condition.
 
-## Mapping
-Coordinates run hot face to cold face over normalized thickness [0,1]. The physical coupon thickness is unchanged. The number of layers must be a positive integer <=10,000; non-divisible thickness is rejected. Each layer command uses analytically integrated intended fractions across its interval, respecting layered discontinuities and gradient knots. A two-constituent feed is rounded to the nearest step, with ties to the lower first-sorted constituent level. Endpoints are included. Unsupported non-volume composition bases and unsupported routes are rejected. Commands declare a **unit projected area** rather than inventing an absolute coupon volume.
+The two registered synthetic process routes are ideal layer-resolved deposition and ideal uniform-batch deposition. Neither models ceramic manufacturing physics. The revision policy is the explicit `wp4-density-guided-revision-v1`; numerical evaluation is identified as `wp2-numerical-evaluate-v1`. Unknown implementation identities are rejected. Alternate duty uses the accepted WP3 typed provider baseline; generic orchestration does not silently construct default duty during continuation.
 
-Estimated geometry assumes perfect deposition and perfect interfaces only. No mixing delay, shrinkage, porosity, sintering, CFD, geometry defects or total manufacturing residual stress is calculated. The WP2 `tensile_thermal_mismatch` is not manufacturing residual stress.
+## Persistence and recovery
+An immutable manifest freezes configuration, baseline, process and identities before execution. A chained candidate checkpoint journal and fsynced attempt-event sidecar distinguish transform and numerical evaluation starts/completions/failures. Resume validates source identity and configuration before appending, reuses completed numerical work and records cumulative actual numerical work. A separate `recompute` operation deliberately consumes additional verification solves. Legacy journals without sufficient manifest/event history cannot claim exact continuation and are rejected.
 
-## Material accounting
-`wp4_balances.balances` independently integrates intended layer fractions and sums commanded/estimated fractions on the unit-area basis (m3/m2). It reports signed per-constituent differences, integrated absolute layer-average fraction error and maximum layer-average fraction error. Feed rounding can change constituent budgets. No post-quantisation renormalisation to restore a target is allowed.
+Reopening validates campaign schema, baseline/evaluation hashes, first-candidate lineage, configuration, feasibility and stopping causality. Checksums detect accidental corruption, **not authenticated adversarial forgery**. No multi-writer concurrency or solver-kernel restart is provided.
 
-## Closed-loop demonstration
-`wp4_feedback.run` holds the duty, property pack, resolution and numerical settings fixed. A binding achieved areal-mass cap produces feedback with metric, limit, actual value, units and admissible revision variable. The bounded two-phase density-guided policy increases the lighter phase's intended fraction by 0.25, preserving parent hashes. The new design is transformed and re-evaluated. The first numerically qualified, conditionally feasible result terminates; otherwise budget or an explicit stopping reason applies. This is a demonstration policy, not a generic optimiser.
+## Evidence boundary
+Intended design is a proposal; estimated achieved state is a synthetic process projection; measured evidence is absent. A conditionally scenario-feasible result is not experimentally manufacturable. No new physics, no WP5, no PR merge.
 
-`wp4_comparisons` freezes an on/off maximum budget and a five-point layer/feed sensitivity grid. Early stops may consume fewer evaluations; no equal-expenditure improvement is claimed.
-
-## Persistence and qualification
-`wp4_feedback.save` writes a single immutable JSON dossier and refuses overwrite. `reopen` checks content hash, input/evaluation identity, process, design lineage, summary metrics, feasibility, feedback, balances and revision causality. `recompute` regenerates transformed inputs and WP2 results. Hash checks prevent accidental corruption; reconstructing key derived fields detects selected resealed forgeries. This is not an adversarially authenticated evidence store, multi-writer journal or crash-safe resumable campaign.
-
-WP3's search engine and WP2's numerical solver are unchanged. No new scientific physics is introduced. Independent Gate 3 review remains separate.
-
-## Outstanding work and deferred requirements
-- An explicit two-route synthetic transform registry is implemented; there is no independent evaluator registry or empirically calibrated process delegate.
-- An alternate-duty WP3 adapter is exercised through WP4, and a second uniform-batch synthetic transform is registered. Deterministic recompute-and-append resume and durable attempt events are implemented; solver-kernel restart, tamper-authenticated attempt logs and avoiding replay computation are not implemented.
-- No measured validation, evidence-based ceramic calibration or process prediction.
-- No independently signed evidence manifest or formal Gate 1/2/3 acceptance ledger.
-- No WP5 interface or full D1 product completion.
-
-Do not treat a passing regression suite as acceptance of these missing capabilities.
-
-
-## Independent review corrections R1–R5 (25 October 2026)
-
-The independent review identified five substantive defects. The corrective branch adds campaign causal validation (R1), durable attempt event records and cumulative resume accounting (R2), canonical exported content hash (R3), complete shared campaign lifecycle for alternate duty (R4), and reconciled acceptance statements (R5). Regression challenges are in `foundation/tests/test_wp4_r1_r4_review_closure.py`. The previously cited 46/252 passing tests belong to **earlier** source revision `80048d0572653508ad62e54144f6d6891fd6aeac`; they **do not qualify** these corrections. Final acceptance requires a new passing run tied to the exact corrective commit and independent re-review. Gate 3 remains OPEN.
+## Review state
+Independent Gate 3 has **been performed and returned changes required**. This correction submission awaits independent closure; no implementation self-approval.

@@ -129,8 +129,8 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
     from .wp4_feedback import VERSION,REVISION_ID,EVALUATOR_ID
     from .wp4_registry import resolve
     from .contracts import ProcessScenario
-    base=RunInputs.model_validate(manifest["baseline_intended_inputs"])
-    process=ProcessScenario.model_validate(manifest["process"])
+    base=RunInputs.model_validate_json(json.dumps(manifest["baseline_intended_inputs"]))
+    process=ProcessScenario.model_validate_json(json.dumps(manifest["process"]))
     if (manifest["algorithm"]!=VERSION or manifest["revision_identity"]!=REVISION_ID or
         manifest["evaluator_identity"]!=EVALUATOR_ID or
         manifest["transformer_identity"]!=resolve(process)[0]):
@@ -158,7 +158,7 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
         baseline_event=next((e for e in events if e["kind"]=="baseline_evaluation_completed"),None)
         if baseline_event is None or not isinstance(baseline_event["detail"],dict):
             raise ValueError("Missing persisted baseline evaluation; legacy journal cannot resume")
-        baseline=Evaluation.model_validate(baseline_event["detail"])
+        baseline=Evaluation.model_validate_json(json.dumps(baseline_event["detail"]))
         provisional=_assemble(base,baseline,process,manifest["transformer_identity"],
              elements,mass_limit,layer,feed,budget,feedback,route,prior,"cancelled")
         temp=Path(str(path)+".validation.tmp.json")

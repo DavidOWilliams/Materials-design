@@ -1,13 +1,15 @@
 """Conservative WP4 evidence export, with explicit absence of measurements."""
 from __future__ import annotations
 from .wp4_feedback import reopen
+from .contracts import RunInputs
+import json
 
 def export(path):
     record=reopen(path)
     return dict(schema_version=1,source_algorithm=record["algorithm"],
         process_identity=record["transformer_identity"],
         process_scenario=record["process"],
-        intended_baseline_hash=record["baseline_intended_inputs"]["design"]["id"],
+        intended_baseline_hash=RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])).design.content_hash,
         evaluation_target="estimated",
         measured_evidence=None,
         measured_evidence_status="not_available",

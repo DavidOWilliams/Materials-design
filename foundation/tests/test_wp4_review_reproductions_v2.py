@@ -76,8 +76,8 @@ def test_r3_hash_changes_when_design_content_changes_but_id_same(tmp_path):
     second["baseline_intended_inputs"]["design"]["architecture"]["knots"][0]["composition"]["fractions"][0]["fraction"]=.35
     # Hash sensitivity is a contract property; mutated baseline is not an authentic dossier.
     from material_core.contracts import IntendedDesign
-    original=IntendedDesign.model_validate(first["baseline_intended_inputs"]["design"])
-    changed=IntendedDesign.model_validate(second["baseline_intended_inputs"]["design"])
+    original=IntendedDesign.model_validate_json(json.dumps(first["baseline_intended_inputs"]["design"]))
+    changed=IntendedDesign.model_validate_json(json.dumps(second["baseline_intended_inputs"]["design"]))
     assert original.id==changed.id
     assert original.content_hash!=changed.content_hash
     assert h1==original.content_hash

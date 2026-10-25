@@ -1,30 +1,14 @@
-# WP4 challenge test report — implementation self-review (open)
+# WP4 corrective challenge test report
 
-**Authority:** WP4 Manufacturing Feedback Implementation Brief v1.0. This is not independent Gate 3 review.
+## Executable challenges
+`test_wp4_review_reproductions_v2.py` reproduces unsupported schema 999, forged no-improvement stop, incorrect baseline evaluation input hash, numerical mesh mismatch, false content hash, missing event history, altered cumulative counters, alternate-duty interruption/continuation and content-hash sensitivity. `test_wp4_r1_r4_review_closure.py` rejects a forged feedback-disabled three-candidate campaign and tests the original recovery defect. `test_wp4_resume.py` asserts completed evaluations are reused, not recomputed.
 
-## Tested challenge paths in code
+`foundation/wp4_review_evidence.py` independently wraps the numerical evaluator to count calls before and after injected interruption, produces complete default and alternate-duty resumed dossiers, reopens and numerically recomputes them in a separate verification step, and archives the manifest, checkpoint journal, attempt events and call audit.
 
-- Analytical homogeneous, two-layer, linear gradient, interface discontinuity and feed-rounding tie references: `test_wp4_analytical_reference.py`.
-- Thickness non-divisibility, unsupported process and strict registry route identity: `test_wp4_resolution.py`, `test_wp4_registry.py`.
-- Signed constituent budgets and quantisation difference: `test_wp4_balances.py`.
-- Binding mass constraint, feedback-generated revision and impossible budget: `test_wp4_feedback.py`.
-- Feedback-on/off fixed maximum budget and predeclared five-point sensitivity grid: `test_wp4_comparisons.py`.
-- Cancel before and after evaluation, append-only checkpoint, simulated failure after fsync, truncated tail and tampered journal: `test_wp4_cancellation.py`, `test_wp4_journal.py`.
-- Dossier checksum, resealed forged metrics/feasibility/feedback/counters/lineage, numerical recomputation: `test_wp4_integrity.py`, `test_wp4_feedback.py`.
-- Synthetic/measurement boundary and fabricated measurement export: `test_wp4_export.py`.
-- Alternate-duty adapter through the common WP4 transformer: `test_wp4_alternate.py`.
+Other scientific and numerical challenges: `test_wp4_analytical_reference.py`, `test_wp4_thermal_reference.py`, `test_wp4_balances.py`, `test_wp4_qualified_feedback.py`, `test_wp4_comparisons.py`, `test_wp4_integrity.py`, `test_wp4_export.py`, `test_wp4_registry.py`, `test_wp4_mesh_separation.py`.
 
-## Limitations preventing Gate 2 closure
+## Evidence
+Dedicated WP4 qualification workflow `.github/workflows/wp4-qualification.yml` archives `wp4-qualification-dossiers`, `wp4-tested-sha.txt` and `wp4-review/*`. WP3 PR integration CI is separate. The acceptance matrix gives each F/C case's expectation, test and artifact. **A passing test is not independent Gate 3 approval.**
 
-This list is not a substitute for F/C expected/actual tables tied to a pinned direct-branch run. Outstanding cases include coordinated mutation of nested process/transform inputs, interrupted journal **resume** (rather than inspection), missing-property challenges through all persistence paths, second distinct transform delegate, numerical near-zero/moment references on transformed profiles, explicit process-resolution mesh-independence, full cost accounting and robust Pareto checks.
-
-No ceramic processing measurements are used. No claim of material manufacturing feasibility or scientific-model validation follows from these tests.
-
-## Execution
-
-Dedicated WP4 workflow: `.github/workflows/wp4-qualification.yml`. Review its actual run ID, checked-out SHA, job logs and uploaded dossiers. Earlier WP3 CI is inherited regression evidence only. **Gate 1 and Gate 2 remain open until individually audited against the final revision.**
-
-
-## Independent review corrections R1–R5 (25 October 2026)
-
-The independent review identified five substantive defects. The corrective branch adds campaign causal validation (R1), durable attempt event records and cumulative resume accounting (R2), canonical exported content hash (R3), complete shared campaign lifecycle for alternate duty (R4), and reconciled acceptance statements (R5). Regression challenges are in `foundation/tests/test_wp4_r1_r4_review_closure.py`. The previously cited 46/252 passing tests belong to **earlier** source revision `80048d0572653508ad62e54144f6d6891fd6aeac`; they **do not qualify** these corrections. Final acceptance requires a new passing run tied to the exact corrective commit and independent re-review. Gate 3 remains OPEN.
+## Remaining limitations
+The demonstration uses synthetic process assumptions and WP2 numerical physics. No measured ceramic achieved state, authenticated adversarial event ledger, calibrated uncertainty or solver-kernel restart. Independent Gate 3 performed, changes required, awaiting closure.

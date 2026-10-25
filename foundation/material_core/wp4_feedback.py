@@ -216,6 +216,124 @@ def _assemble(base,intended,process,transformer_identity,elements,mass_limit,lay
         transforms=len(records),evaluations=len(records)+1,
         refinement_solves=2*(len(records)+1),measured_evidence=None)
 
+def _terminal_for_prefix(base,records,budget,feedback):
+    """Return a proven terminal decision, or None for a continuable prefix."""
+    if not records: return None
+    last=records[-1]
+    if last["feasible"]: return "qualified_scenario_feasible"
+    if not feedback: return "feedback_disabled"
+    if last["feedback"] is None: return "no_supported_revision_trigger"
+    previous=IntendedDesign.model_validate_json(json.dumps(last["intended_design"]))
+    if _revise(base,previous,last["feedback"]).architecture==previous.architecture:
+        return "no_improvement_possible"
+    if len(records)==budget: return "evaluation_budget_exhausted"
+    return None
+
+def _validate_recovery_evidence(record):
+    """Verify embedded event hash chain, candidate causality and reuse provenance."""
+    events=record.get("attempt_events")
+    if not isinstance(events,list) or not events:
+        raise ValueError("Recovery accounting missing durable event evidence")
+    from .wp4_journal import digest
+    kinds={"baseline_evaluation_started","baseline_evaluation_completed","baseline_evaluation_failed",
+        "candidate_proposed","transform_started","transform_completed","transform_failed",
+        "candidate_evaluation_started","candidate_evaluation_completed","candidate_evaluation_failed",
+        "checkpoint_failed","continuation_started"}
+    prev="0"*64
+    state={}
+    baseline="idle"
+    completions=set()
+    checkpoint_count=0
+    reused=None
+    continuation_seen=False
+    for sequence,e in enumerate(events):
+        if type(e)!=dict or e.get("kind") not in kinds or type(e.get("_event_sequence")) is not int:
+            raise ValueError("Unsupported recovery event type or identity")
+        if e["_event_sequence"]!=sequence or e.get("_event_previous")!=prev:
+            raise ValueError("Recovery event ordering or chain mismatch")
+        payload=dict(sequence=sequence,previous=prev,kind=e["kind"],detail=e.get("detail"))
+        if digest(payload)!=e.get("_event_sha256"):
+            raise ValueError("Recovery event content hash mismatch")
+        prev=e["_event_sha256"]
+        kind=e["kind"]
+        detail=e.get("detail")
+        if kind.startswith("baseline_"):
+            if kind=="baseline_evaluation_started":
+                if baseline!="idle": raise ValueError("Duplicate baseline evaluation start")
+                baseline="started"
+            elif kind in ("baseline_evaluation_completed","baseline_evaluation_failed"):
+                if baseline!="started": raise ValueError("Baseline evaluation event ordering mismatch")
+                baseline="completed" if kind.endswith("completed") else "failed"
+        elif kind=="continuation_started":
+            if continuation_seen: raise ValueError("Duplicate continuation marker")
+            continuation_seen=True
+            if not isinstance(detail,dict) or type(detail.get("reused_candidates")) is not int:
+                raise ValueError("Invalid continuation evidence")
+            reused=detail["reused_candidates"]
+            if reused<0 or reused!=len(completions) or reused>len(record["records"]):
+                raise ValueError("Reused candidate count unsupported by completed work")
+            if type(detail.get("checkpoint_sha256")) is not str or len(detail["checkpoint_sha256"])!=64:
+                raise ValueError("Missing checkpoint identity in continuation evidence")
+        else:
+            idx=detail.get("index") if isinstance(detail,dict) else detail
+            if type(idx) is not int or idx<0 or idx>=record["config"]["budget"]:
+                raise ValueError("Nonexistent candidate or attempt identifier")
+            status=state.get(idx,"idle")
+            if kind=="candidate_proposed":
+                if status not in ("idle","transform_failed","evaluation_failed","checkpoint_failed"):
+                    raise ValueError("Candidate proposal event ordering mismatch")
+                state[idx]="proposed"
+            elif kind=="transform_started":
+                if status!="proposed": raise ValueError("Transform start ordering mismatch")
+                state[idx]="transform_started"
+            elif kind=="transform_completed":
+                if status!="transform_started": raise ValueError("Transform completion ordering mismatch")
+                state[idx]="transformed"
+            elif kind=="transform_failed":
+                if status!="transform_started": raise ValueError("Transform failure ordering mismatch")
+                state[idx]="transform_failed"
+            elif kind=="candidate_evaluation_started":
+                if status!="transformed": raise ValueError("Evaluation start ordering mismatch")
+                state[idx]="evaluation_started"
+            elif kind=="candidate_evaluation_completed":
+                if status!="evaluation_started" or idx in completions:
+                    raise ValueError("Evaluation completion ordering mismatch")
+                state[idx]="evaluated"
+                completions.add(idx)
+            elif kind=="candidate_evaluation_failed":
+                if status!="evaluation_started": raise ValueError("Evaluation failure ordering mismatch")
+                state[idx]="evaluation_failed"
+            elif kind=="checkpoint_failed":
+                if status!="evaluated": raise ValueError("Checkpoint failure ordering mismatch")
+                state[idx]="checkpoint_failed"
+    if baseline!="completed" or completions!=set(range(len(record["records"]))):
+        raise ValueError("Recovery event completions do not match persisted candidates")
+    if not continuation_seen or reused is None:
+        raise ValueError("Missing durable continuation marker")
+    accounting=record["accounting"]
+    expected=dict(completed_evaluations=1+len(completions),
+        failed_evaluations=sum(e["kind"] in ("baseline_evaluation_failed","candidate_evaluation_failed") for e in events),
+        started_evaluations=sum(e["kind"] in ("baseline_evaluation_started","candidate_evaluation_started") for e in events),
+        unresolved_evaluation_starts=0,
+        transform_attempts=sum(e["kind"]=="transform_started" for e in events),
+        transform_failures=sum(e["kind"]=="transform_failed" for e in events),
+        reused_candidates=reused,reused_baseline=True,
+        verification_evaluations=(len(record["records"])+1 if record.get("verification",{}).get("status")=="passed" else 0),
+        unknown_historical_effort=False)
+    expected["unresolved_evaluation_starts"]=max(0,expected["started_evaluations"]-
+        expected["completed_evaluations"]-expected["failed_evaluations"])
+    if (set(accounting)!=set(expected) or
+        any(type(v) is not type(expected[k]) or v!=expected[k] for k,v in accounting.items()) or
+        record.get("cumulative_evaluations")!=expected["completed_evaluations"]+expected["failed_evaluations"] or
+        record.get("cumulative_attempts")!=expected["started_evaluations"]):
+        raise ValueError("Recovery accounting mismatch")
+    if record.get("verification") is not None:
+        v=record["verification"]
+        if (set(v)!={"status","evaluations","method"} or v["status"]!="passed" or
+            type(v["evaluations"]) is not int or v["evaluations"]!=len(record["records"])+1):
+            raise ValueError("Invalid verification accounting")
+    return True
+
 def save(path,record):
     path=Path(path)
     if path.exists(): raise FileExistsError("Immutable WP4 dossier exists")
@@ -266,23 +384,8 @@ def reopen(path):
     if record["config"]["layer"]!=process.layer_resolution.value or record["config"]["feed"]!=process.feed_fraction_resolution:
         raise ValueError("Campaign resolution mismatch")
     if "accounting" in record:
-        events=record.get("attempt_events")
-        if not isinstance(events,list):
-            raise ValueError("Recovery accounting missing durable event evidence")
-        completed=sum(e["kind"] in ("baseline_evaluation_completed","candidate_evaluation_completed") for e in events)
-        failed=sum(e["kind"] in ("baseline_evaluation_failed","candidate_evaluation_failed") for e in events)
-        started=sum(e["kind"] in ("baseline_evaluation_started","candidate_evaluation_started") for e in events)
-        expected=dict(completed_evaluations=completed,failed_evaluations=failed,
-            started_evaluations=started,unresolved_evaluation_starts=max(0,started-completed-failed),
-            transform_attempts=sum(e["kind"]=="transform_started" for e in events),
-            transform_failures=sum(e["kind"]=="transform_failed" for e in events),
-            reused_candidates=record["accounting"]["reused_candidates"],reused_baseline=True,
-            verification_evaluations=0,unknown_historical_effort=False)
-        if record["accounting"]!=expected or record.get("cumulative_evaluations")!=completed+failed or record.get("cumulative_attempts")!=started:
-            raise ValueError("Recovery accounting mismatch")
-        if expected["reused_candidates"]>len(record["records"]):
-            raise ValueError("Impossible reused-candidate count")
-    elif "cumulative_evaluations" in record or "attempt_events" in record:
+        _validate_recovery_evidence(record)
+    elif "cumulative_evaluations" in record or "attempt_events" in record or "verification" in record:
         raise ValueError("Unverifiable recovery counters")
     if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):
         raise ValueError("Campaign accounting mismatch")

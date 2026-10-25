@@ -48,3 +48,42 @@ for name,base in (
     assert len(after[len(before):])==len(record["records"])-1
     (out/(name+"-call-audit.json")).write_text(json.dumps(report,indent=2))
     print(json.dumps(report))
+
+# Independent review 2026-10-25: verify terminal feasible checkpoint and returned/persisted verification accounting.
+for name,base,terminal in (
+    ("default-terminal",None,3),
+    ("alternate-terminal",resolve_provider(ALTERNATE,17,"explore",4096,31.).baseline(),2),
+):
+    path=out/(name+".jsonl")
+    journal,inputs=initialize(path,elements=4096,budget=4,base_inputs=base)
+    original=feedback.evaluate
+    calls=[]
+    def counted(inp):
+        calls.append(inp.evaluation_target)
+        return original(inp)
+    feedback.evaluate=counted
+    def stop_after_terminal(rows):
+        journal.checkpoint(rows)
+        if len(rows)==terminal:
+            raise RuntimeError("terminal checkpoint persisted")
+    try:
+        try:
+            feedback.run(elements=4096,budget=4,base_inputs=inputs,
+                checkpoint=stop_after_terminal,attempt_event=journal.event)
+        except RuntimeError as exc:
+            if "terminal checkpoint persisted" not in str(exc): raise
+        prior_calls=len(calls)
+        result=resume(path,elements=4096,budget=4,verify=True,output=out/(name+"-verified.json"))
+        total_calls=len(calls)
+    finally:
+        feedback.evaluate=original
+    stored=reopen(out/(name+"-verified.json"))
+    assert result["stop_reason"]=="qualified_scenario_feasible"
+    assert result["accounting"]==stored["accounting"]
+    assert result["accounting"]["completed_evaluations"]==prior_calls
+    assert total_calls-prior_calls==result["accounting"]["verification_evaluations"]
+    report=dict(name=name,continuation_calls=0,original_evaluator_calls=prior_calls,
+        verification_calls=total_calls-prior_calls,recorded_verification=result["accounting"]["verification_evaluations"],
+        returned_equals_persisted=result["accounting"]==stored["accounting"])
+    (out/(name+"-verification-audit.json")).write_text(json.dumps(report,indent=2))
+    print(json.dumps(report))

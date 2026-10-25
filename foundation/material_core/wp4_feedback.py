@@ -17,6 +17,9 @@ from .wp4_balances import balances
 from .wp4_registry import resolve
 
 VERSION="wp4-feedback-v1"
+SCHEMA_VERSION=1
+REVISION_ID="wp4-density-guided-revision-v1"
+EVALUATOR_ID="wp2-numerical-evaluate-v1"
 
 def _digest(obj):
     return hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
@@ -179,6 +182,7 @@ def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=T
         transformer_identity=transformer_identity,
         config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
             budget=budget,feedback=feedback,route=route),
+        revision_identity=REVISION_ID,evaluator_identity=EVALUATOR_ID,
         records=records,stop_reason=stop,proposals=len(records),
         transforms=len(records),evaluations=len(records)+1,
         refinement_solves=2*(len(records)+1),measured_evidence=None)
@@ -196,11 +200,32 @@ def reopen(path):
     record=payload["record"]
     if _digest(record)!=payload["record_sha256"]:
         raise ValueError("Dossier checksum mismatch")
+    if type(record.get("schema_version")) is not int or record["schema_version"]!=SCHEMA_VERSION:
+        raise ValueError("Unsupported WP4 campaign schema_version")
+    if record.get("revision_identity")!=REVISION_ID or record.get("evaluator_identity")!=EVALUATOR_ID:
+        raise ValueError("Unknown revision or evaluator implementation identity")
     if record.get("algorithm")!=VERSION or record.get("measured_evidence") is not None:
         raise ValueError("Unsupported dossier or invented measured evidence")
+    base=RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"]))
+    baseline=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(record["baseline_intended_evaluation"]))
+    if baseline.input_hash!=base.content_hash or baseline.brief_hash!=base.brief.content_hash:
+        raise ValueError("Baseline evaluation input identity mismatch")
+    if base.evaluation_target!="intended" or base.process is not None or base.estimated_state is not None:
+        raise ValueError("Invalid intended baseline target")
     process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
     if record.get("transformer_identity")!=resolve(process)[0]:
         raise ValueError("Recorded transform registry identity mismatch")
+    cfg=record["config"]
+    if set(cfg)!={"elements","mass_limit","layer","feed","budget","feedback","route"}:
+        raise ValueError("Unsupported campaign configuration")
+    if type(cfg["budget"]) is not int or cfg["budget"]<1 or type(cfg["feedback"]) is not bool:
+        raise ValueError("Invalid campaign budget or feedback type")
+    if cfg["elements"]!=base.settings.mechanics.mesh.elements:
+        raise ValueError("Campaign numerical mesh mismatch")
+    if cfg["mass_limit"]!=next(c.limit.value for c in base.brief.constraints if c.id=="areal_mass"):
+        raise ValueError("Campaign mass constraint mismatch")
+    if cfg["route"]!=process.route:
+        raise ValueError("Campaign route mismatch")
     previous=None
     previous_feedback=None
     if record["config"]["feedback"] is False and len(record["records"])>1:
@@ -225,6 +250,10 @@ def reopen(path):
             raise ValueError("Intended design artifact mismatch")
         if inputs.design.content_hash!=row["intended_hash"]:
             raise ValueError("Design lineage mismatch")
+        if i==0 and inputs.design.content_hash!=base.design.content_hash:
+            raise ValueError("First candidate does not match baseline design")
+        if inputs.brief!=base.brief or inputs.materials!=base.materials or inputs.solver!=base.solver:
+            raise ValueError("Candidate changes frozen scientific context")
         if i and inputs.design.parent_hashes!=(previous,):
             raise ValueError("Revision parent mismatch")
         if inputs.commands.content_hash!=row["commands_hash"] or inputs.estimated_state.geometry.content_hash!=row["estimated_geometry_hash"]:
@@ -268,7 +297,9 @@ def reopen(path):
         raise ValueError("Invalid no-trigger terminal state")
     if reason=="evaluation_budget_exhausted" and (len(record["records"])!=record["config"]["budget"] or last["feasible"]):
         raise ValueError("Invalid budget exhaustion state")
-    if reason=="no_improvement_possible" and (last is None or last["feedback"] is None or last["feasible"]):
+    if reason=="no_improvement_possible" and (last is None or last["feedback"] is None or last["feasible"] or
+        _revise(base,IntendedDesign.model_validate_json(json.dumps(last["intended_design"])),last["feedback"]).architecture!=
+        IntendedDesign.model_validate_json(json.dumps(last["intended_design"])).architecture):
         raise ValueError("Invalid no-improvement state")
     if last is not None and last["feasible"] and reason!="qualified_scenario_feasible":
         raise ValueError("Feasible candidate with contradictory stop state")

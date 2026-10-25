@@ -42,6 +42,7 @@ def starting_inputs(elements=4096,mass_limit=31.):
         assumptions=base.design.assumptions)
     raw=base.model_dump(mode="json")
     raw["design"]=d.model_dump(mode="json")
+    raw["settings"]["evaluation_context_hash"]=context_for_run(RunInputs.model_validate_json(json.dumps(raw)))
     return RunInputs.model_validate_json(json.dumps(raw))
 
 def _density(inputs):

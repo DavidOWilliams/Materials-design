@@ -190,7 +190,7 @@ def reopen(path):
 def recompute(path):
     record=reopen(path)
     base=RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"]))
-    process=ProcessScenario.model_validate(record["process"])
+    process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
     if evaluate(base).content_hash!=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(record["baseline_intended_evaluation"])).content_hash:
         raise ValueError("Baseline numerical recomputation mismatch")
     for row in record["records"]:

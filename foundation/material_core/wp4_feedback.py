@@ -160,8 +160,7 @@ def save(path,record):
     if path.exists(): raise FileExistsError("Immutable WP4 dossier exists")
     path.parent.mkdir(parents=True,exist_ok=True)
     payload=dict(record=record,record_sha256=_digest(record))
-    path.write_text(json.dumps(payload,sort_keys=True,indent=2,allow_nan=False)+"
-")
+    path.write_text(json.dumps(payload,sort_keys=True,indent=2,allow_nan=False)+"\n")
     return payload["record_sha256"]
 
 def reopen(path):

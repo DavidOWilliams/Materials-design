@@ -101,3 +101,22 @@ PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests rec
 
 For **R1–R4 before correction**, use `foundation/reproduce_reviewed_wp3_r1_r4.py` with `PYTHONPATH` bound to an isolated checkout of exact reviewed commit `d62023d7205d48beba11269d4c358a7380ab9ca4`. The GitHub workflow's `wp3-original-review-reproduction` job does this without modifying the historical revision.
 
+
+## Evaluator identity requirement (R4 follow-up)
+
+Every campaign binds a versioned evaluator identity **before** a run store or ledger is created. No `evaluation_adapter` argument means the registered `wp2-bounded-2` implementation unless a registered alternate identity is explicitly requested. Supplying a custom callable **without `evaluator_identity` raises ValueError before any numerical work**. The reserved standard identity can only name the exact registered `evaluate` implementation; a wrapper cannot claim it.
+
+`wp2-delegate-test-v1` is a separately registered **software test delegate** to the same corrected WP2 evaluator, not a new scientific model. It is a supported versioned execution and numerical-replay identity. For example:
+
+```python
+from material_core.wp3_search import run_search, open_search, recompute_search
+from material_core.wp3_evaluators import DELEGATE
+run_search("/tmp/wp3-evaluator/campaign.json", seed=7, budget=2,
+           elements=256, evaluator_identity=DELEGATE)
+open_search("/tmp/wp3-evaluator/campaign.json")
+recompute_search("/tmp/wp3-evaluator/campaign.json")
+```
+
+Fault-injection callables remain available using explicit, clearly labelled test identities (such as `fault-wrapper-v1`). Their records can be checked against stored immutable artifacts, but numerical recomputation fails explicitly because no registered evaluator exists for that identity. Using an explicitly labelled temporary test identity does not certify its numerical behaviour. This prevents accidental replay with a different implementation and preserves the existing interruption tests.
+
+Regression suite: `foundation/tests/test_wp3_evaluator_identity.py`. The workflow also runs the registered delegate campaign and numerical recomputation in separate processes and uploads the complete run store. This does not broaden WP3 scientific scope or change WP2 thresholds.

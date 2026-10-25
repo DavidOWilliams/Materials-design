@@ -48,6 +48,8 @@ jobs:
       - name: Independent review R1-R5 evidence archive
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_alternate import alternate_duty; from material_core.wp4_feedback import save,recompute; c=alternate_duty(elements=4096,budget=4)["campaign"]; save("/tmp/wp4-alternate-campaign.json",c); print(recompute("/tmp/wp4-alternate-campaign.json"))'
+      - name: Independent reviewer interruption, continuation and evaluator-call audit
+        run: PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp4_review_evidence.py
       - name: Freeze actual branch checkout identity
         run: |
           git rev-parse HEAD | tee /tmp/wp4-tested-sha.txt
@@ -61,6 +63,9 @@ jobs:
             /tmp/wp4-no-feedback.json
             /tmp/wp4-impossible.json
             /tmp/wp4-checkpoints.jsonl
+            /tmp/wp4-checkpoints.jsonl.manifest.json
+            /tmp/wp4-checkpoints.jsonl.attempts.jsonl
+            /tmp/wp4-review/
             /tmp/wp4-alternate-campaign.json
             /tmp/wp4-r2-journal.jsonl
             /tmp/wp4-r2-journal.jsonl.attempts.jsonl

@@ -160,7 +160,8 @@ def save(path,record):
     if path.exists(): raise FileExistsError("Immutable WP4 dossier exists")
     path.parent.mkdir(parents=True,exist_ok=True)
     payload=dict(record=record,record_sha256=_digest(record))
-    path.write_text(json.dumps(payload,sort_keys=True,indent=2,allow_nan=False)+"\n")
+    path.write_text(json.dumps(payload,sort_keys=True,indent=2,allow_nan=False)+"
+")
     return payload["record_sha256"]
 
 def reopen(path):
@@ -171,11 +172,21 @@ def reopen(path):
     if record.get("algorithm")!=VERSION or record.get("measured_evidence") is not None:
         raise ValueError("Unsupported dossier or invented measured evidence")
     process=ProcessScenario.model_validate_json(json.dumps(record["process"]))
-    previous=None\n    previous_feedback=None\n    if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):\n        raise ValueError("Campaign accounting mismatch")\n    if not 1<=len(record["records"])<=record["config"]["budget"]:\n        raise ValueError("Campaign budget mismatch")\n    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):\n        raise ValueError("Invalid campaign stop state")\n    for i,row in enumerate(record["records"]):
+    previous=None
+    previous_feedback=None
+    if record["proposals"]!=len(record["records"]) or record["transforms"]!=len(record["records"]) or record["evaluations"]!=len(record["records"])+1 or record["refinement_solves"]!=2*(len(record["records"])+1):
+        raise ValueError("Campaign accounting mismatch")
+    if not 1<=len(record["records"])<=record["config"]["budget"]:
+        raise ValueError("Campaign budget mismatch")
+    if record["stop_reason"] not in ("evaluation_budget_exhausted","qualified_scenario_feasible","feedback_disabled","no_supported_revision_trigger","no_improvement_possible"):
+        raise ValueError("Invalid campaign stop state")
+    for i,row in enumerate(record["records"]):
         inputs=RunInputs.model_validate_json(json.dumps(row["estimated_inputs"]))
         if row["index"]!=i or inputs.process!=process or inputs.evaluation_target!="estimated":
             raise ValueError("Scenario or ordering mismatch")
-        if inputs.design.content_hash!=row["intended_hash"] or inputs.design.model_dump(mode="json")!=row["intended_design"]:\n            raise ValueError("Intended design artifact mismatch")\n        if inputs.design.content_hash!=row["intended_hash"]:
+        if inputs.design.content_hash!=row["intended_hash"] or inputs.design.model_dump(mode="json")!=row["intended_design"]:
+            raise ValueError("Intended design artifact mismatch")
+        if inputs.design.content_hash!=row["intended_hash"]:
             raise ValueError("Design lineage mismatch")
         if i and inputs.design.parent_hashes!=(previous,):
             raise ValueError("Revision parent mismatch")
@@ -183,7 +194,29 @@ def reopen(path):
             raise ValueError("Transform artifact mismatch")
         if inputs.content_hash!=row["estimated_hash"]:
             raise ValueError("Input identity mismatch")
-        result=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(row["evaluation"]))\n        if result.content_hash!=row["evaluation_hash"] or result.input_hash!=inputs.content_hash:\n            raise ValueError("Evaluation identity mismatch")\n        if row["objectives"]!=_metrics(result) or row["numerical_quality"]!=result.numerical_quality:\n            raise ValueError("Persisted objective summary mismatch")\n        actual=row["objectives"].get("areal_mass")\n        expected_feedback=(None if actual is None or actual<=record["config"]["mass_limit"] else dict(\n            metric="areal_mass",relation="le",limit=record["config"]["mass_limit"],\n            actual=actual,excess=actual-record["config"]["mass_limit"],units="kg/m2",\n            location="whole coupon",evidence="synthetic WP2 estimated achieved-state",\n            revision_variables=["constituent volume fraction"]))\n        if row["feedback"]!=expected_feedback:\n            raise ValueError("Feedback decision mismatch")\n        eligible=numerical_comparison_eligible(result,inputs.brief)\n        feasible=(eligible and expected_feedback is None and result.feasibility=="conditional" and result.manufacturing_feasibility=="conditional")\n        if row["feasible"]!=feasible:\n            raise ValueError("Persisted feasibility mismatch")\n        if i and record["config"]["feedback"] and previous_feedback is not None:\n            previous_design=IntendedDesign.model_validate_json(json.dumps(record["records"][i-1]["intended_design"]))\n            if _revise(RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])),previous_design,previous_feedback).content_hash!=inputs.design.content_hash:\n                raise ValueError("Revision was not generated from previous feedback")\n        previous_feedback=row["feedback"]\n        previous=row["intended_hash"]
+        result=__import__("material_core.contracts",fromlist=["Evaluation"]).Evaluation.model_validate_json(json.dumps(row["evaluation"]))
+        if result.content_hash!=row["evaluation_hash"] or result.input_hash!=inputs.content_hash:
+            raise ValueError("Evaluation identity mismatch")
+        if row["objectives"]!=_metrics(result) or row["numerical_quality"]!=result.numerical_quality:
+            raise ValueError("Persisted objective summary mismatch")
+        actual=row["objectives"].get("areal_mass")
+        expected_feedback=(None if actual is None or actual<=record["config"]["mass_limit"] else dict(
+            metric="areal_mass",relation="le",limit=record["config"]["mass_limit"],
+            actual=actual,excess=actual-record["config"]["mass_limit"],units="kg/m2",
+            location="whole coupon",evidence="synthetic WP2 estimated achieved-state",
+            revision_variables=["constituent volume fraction"]))
+        if row["feedback"]!=expected_feedback:
+            raise ValueError("Feedback decision mismatch")
+        eligible=numerical_comparison_eligible(result,inputs.brief)
+        feasible=(eligible and expected_feedback is None and result.feasibility=="conditional" and result.manufacturing_feasibility=="conditional")
+        if row["feasible"]!=feasible:
+            raise ValueError("Persisted feasibility mismatch")
+        if i and record["config"]["feedback"] and previous_feedback is not None:
+            previous_design=IntendedDesign.model_validate_json(json.dumps(record["records"][i-1]["intended_design"]))
+            if _revise(RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])),previous_design,previous_feedback).content_hash!=inputs.design.content_hash:
+                raise ValueError("Revision was not generated from previous feedback")
+        previous_feedback=row["feedback"]
+        previous=row["intended_hash"]
     return record
 
 def recompute(path):

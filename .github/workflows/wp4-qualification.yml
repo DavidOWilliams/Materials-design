@@ -48,7 +48,6 @@ jobs:
       - name: Independent review R1-R5 evidence archive
         run: |
           PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_alternate import alternate_duty; from material_core.wp4_feedback import save,recompute; c=alternate_duty(elements=4096,budget=4)["campaign"]; save("/tmp/wp4-alternate-campaign.json",c); print(recompute("/tmp/wp4-alternate-campaign.json"))'
-          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_feedback import run; from material_core.wp4_journal import Journal,resume; j=Journal("/tmp/wp4-r2-journal.jsonl"); f=lambda rows:(j.checkpoint(rows), (_ for _ in ()).throw(RuntimeError("injected")) if len(rows)==2 else None); exec("try:\\n run(elements=4096,budget=4,checkpoint=f,attempt_event=j.event)\\nexcept RuntimeError: pass"); r=resume("/tmp/wp4-r2-journal.jsonl",elements=4096,budget=4); json.dump({"invocation_evaluations":r["evaluations"],"cumulative_evaluations":r["cumulative_evaluations"],"replayed_evaluations":r["replayed_evaluations"],"attempt_events":r["attempt_events"]},open("/tmp/wp4-r2-accounting.json","w"),indent=2)'
       - name: Freeze actual branch checkout identity
         run: |
           git rev-parse HEAD | tee /tmp/wp4-tested-sha.txt

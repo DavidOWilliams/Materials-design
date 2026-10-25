@@ -37,3 +37,14 @@ The explicit transform registry (`wp4_registry.py`) rejects unknown process rout
 PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback resume /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
 PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-uniform-dossier.json --route synthetic_ideal_uniform_batch_deposition --layer 0.01 --elements 256 --budget 4
 ```
+
+## Explicit cancellation and evidence export
+
+The CLI is synchronous. Cooperative cancellation is exposed at the service boundary between candidate evaluations, not as an operating-system signal handler:
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_feedback import run,save; save("/tmp/wp4-cancelled.json",run(elements=256,cancel_requested=lambda: True))'
+PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_export import export; json.dump(export("/tmp/wp4-dossier.json"),open("/tmp/wp4-evidence-export.json","w"),indent=2)'
+```
+
+The export is derived from the validated complete dossier and explicitly labels measured evidence unavailable. Do not substitute it for the full source record or claim experimentally established manufacture feasibility.

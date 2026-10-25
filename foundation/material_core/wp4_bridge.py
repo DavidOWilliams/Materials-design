@@ -6,11 +6,11 @@ from __future__ import annotations
 import json
 from .contracts import RunInputs
 from .wp2_numerical import context_for_run, evaluate
-from .wp4_resolution import transform
+from .wp4_registry import apply
 
 def estimated_inputs(base: RunInputs, process):
     """Retain original intended design and replace only estimated-target inputs."""
-    commands, state=transform(base.design,process)
+    _, commands, state=apply(base.design,process)
     raw=base.model_dump(mode="json")
     raw["process"]=process.model_dump(mode="json")
     raw["commands"]=commands.model_dump(mode="json")

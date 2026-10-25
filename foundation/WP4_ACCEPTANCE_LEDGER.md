@@ -1,3 +1,58 @@
+# WP4 acceptance ledger — ACCEPTED within bounded synthetic scope
+
+## Authoritative acceptance decision — 25 October 2026
+
+**Accepted implementation:** `beaf8a586c358ae04549d25c1bb7fbf8cd3f2c4b`.
+
+The separately tasked ChatGPT review session completed independent closure review and found no remaining blocker in the agreed bounded WP4 scope. The user authorised recording this decision in GitHub. **R1–R5, including the final R2 checkpoint-write recovery finding, are closed for this exact implementation.**
+
+| Completion gate | Decision |
+|---|---|
+| Gate 1 — Functional execution, persistence and replay | Closed / accepted for the bounded scope |
+| Gate 2 — Valid variations, invalid-input challenges and unknown-state preservation | Closed / accepted for the bounded scope |
+| Gate 3 — Separately tasked scientific, architecture and corrective review | Closed / accepted for the bounded scope |
+
+This decision supersedes all earlier “awaiting independent closure”, “changes required” and pending gate statements preserved in the historical section below. Earlier test results remain historical; they are not relabelled as tests of the accepted revision.
+
+## Final revision and verification evidence
+
+- Accepted source: [beaf8a586c358ae04549d25c1bb7fbf8cd3f2c4b](https://github.com/DavidOWilliams/Materials-design/commit/beaf8a586c358ae04549d25c1bb7fbf8cd3f2c4b).
+- Actual WP4 CI checkout: `57c7d6134a6e9f4a1d30077d5d8575dd1a4c899c`, a temporary PR merge commit. Reviewer independently confirmed identical tree hash for source and checkout: `a067510fe9ace3ef791cf6f7871302c654cc0349`.
+- [WP4 qualification 40231063605](https://github.com/DavidOWilliams/Materials-design/actions/runs/40231063605): 85 focused WP4 tests and 291 foundation/recovery tests passed.
+- [WP3 integration 40231063596](https://github.com/DavidOWilliams/Materials-design/actions/runs/40231063596): all four jobs passed; CI logs confirm 1,148 legacy tests passed with 10 warnings. Legacy tests were checked from CI, not independently rerun locally.
+- Independent reviewer local execution on the accepted source: **291 passed in 60.38 seconds**, using the existing review environment.
+- Supporting submission archive: `wp4-qualification-dossiers`, artifact ID `12612821575`, reported SHA-256 `36eb05e5e69bc0af8a86c08fbada5b97fa6c9a5f6b8b64b3478020df588b831d`. Archive references identify the implementation evidence; the reviewer additionally executed source-level probes and inspected CI logs, without claiming inspection of every archive byte.
+
+## Independent closure findings
+
+The reviewer reran the original invalid-record probes: false feedback-disabled histories, mismatched process resolution, incorrect baseline evaluation identity, unsupported schema and false no-improvement termination were rejected by reopening and numerical replay.
+
+Independent instrumented failed-write recovery checks produced:
+
+| Scenario | Calls before interruption | Additional continuation calls | Actual / recorded total | Durable candidates reused |
+|---|---:|---:|---:|---:|
+| Default: first checkpoint write fails | 2 | 3 | 5 / 5 | 0 |
+| Default: final feasible checkpoint write fails | 4 | 1 | 5 / 5 | 2 |
+| Alternate: later checkpoint write fails | 3 | 1 | 4 / 4 | 1 |
+
+Each recovered dossier reopened and numerically replayed successfully. Repeating resume caused zero additional numerical evaluations. Necessary reevaluation after a failed write is counted as work, not mislabelled as reuse.
+
+The earlier successful-checkpoint cases remained correct: default 4 actual/recorded evaluations and alternate 3; final feasible checkpoint recovery required zero new evaluations. Negative reuse and changed event candidate identity remained rejected. Optional verification returned and persisted identical records, and the returned record could be saved and reopened.
+
+The prior independent analytical checks of commands, signed constituent balances, conduction and free-plate stress remain applicable: the numerical kernel and relevant transformation calculations were unchanged by the closure corrections. Estimated areal mass is 37.5, 32.5 and 27.5 kg/m² across the primary feedback sequence, satisfying the 31 kg/m² cap at the last candidate. Heat transmission improves while tensile thermal mismatch stress rises slightly; no across-objective improvement is claimed.
+
+## Acceptance boundaries and handover
+
+Acceptance is for the agreed **bounded synthetic software/numerical demonstration**. Intended design, estimated achieved state and measured evidence remain distinct. There is no experimental ceramic manufacturing validation, new physical model, V1 completion or full D1 release claim.
+
+Retained limits include synthetic properties and ideal-deposition assumptions; bounded routes and revision policy; conditional scenario feasibility; single-writer recovery; no mid-solver restart; and no externally authenticated audit evidence. Independent review was AI-assisted and separately tasked, not human expert certification or an exhaustive correctness proof.
+
+The accepted commit may be used as the WP5 briefing baseline with these limits carried forward. This acceptance-record change is **documentation only**: it does not change the accepted implementation SHA, and earlier test results are not presented as execution of the later documentation commit. PR #4 remains draft and unmerged; this action neither merges it nor starts WP5.
+
+## Historical implementation ledger and correction history — superseded status
+
+The text below is retained unchanged as historical evidence. Its provisional gate statuses and pending-review statements are superseded by the authoritative decision above.
+
 # WP4 independent corrective acceptance matrix — awaiting reviewer closure
 
 **Authority:** WP4 Implementation Brief v1.0; independent Gate 3 review **performed, changes required**, not approved. No WP5, no merge. Source revision for this table is the branch revision at the final WP4 Actions run; the workflow artifact `wp4-tested-sha.txt` is the authoritative actual checkout, not an assumed PR merge SHA. Earlier 46/252 and 257-test reports refer to earlier revisions and do not qualify this revision.

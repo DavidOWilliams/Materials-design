@@ -47,3 +47,9 @@ The current execution container still cannot resolve github.com for git clone; G
 - WP3 run 40303874297 and WP4 run 40303874302 were observed in progress after these corrections; do not assert their outcomes until inspected.
 - Saved brief selection added to UI at 39009048eb807b16139e971126caee710237df66; this source SHA is newer than the preceding in-progress runs, so their outcomes cannot qualify it.
 - Full interactive UI, cancellation/recovery, assumption editing and portable import remain incomplete. Gates 1/2 remain open; Gate 3 independent.
+
+## Recovery cycle — verified regression evidence and next action
+- Actual WP3 run [40303874297](https://github.com/DavidOWilliams/Materials-design/actions/runs/40303874297): four jobs concluded success.
+- Actual WP4 run [40303874302](https://github.com/DavidOWilliams/Materials-design/actions/runs/40303874302): job concluded success, focused 85 passed, foundation 304 passed with one warning, additional WP4 reproduction and replay scripts succeeded. GitHub log shows checkout of PR #6 merge commit `7fde442`, combining WP5 head `c3b57eac7a78eb4aedb704ae3850d4b7d9149be9` with base `f3e6cfc7f7e9ed885ce681814c0927fc421163c8`. This is merge-ref CI evidence, **not direct verification of later WP5 HEAD**.
+- Later code adds saved-brief UI binding, unsupported assumption guard, budget consistency guard and negative tests, last commit before checkpoint `3daf274ec9fbad4835b7cf769bc8f89265cf2cdf`. The new changes have **no confirmed test result**.
+- Exact next operation: inspect fresh PR #6 checks for commit `3daf274ec9fbad4835b7cf769bc8f89265cf2cdf`, resolve any failures. Finish process assumption versioning, durable journal cancellation/resume and portable import/export, and obtain interactive UI evidence. Gate 1 and Gate 2 remain open. Do not freeze or hand to Gate 3.

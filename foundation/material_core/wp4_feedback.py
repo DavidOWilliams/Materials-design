@@ -24,9 +24,10 @@ EVALUATOR_ID="wp2-numerical-evaluate-v1"
 def _digest(obj):
     return hashlib.sha256(json.dumps(obj,sort_keys=True,separators=(",",":"),allow_nan=False).encode()).hexdigest()
 
-def scenario(layer=0.005,feed=0.25,route="synthetic_ideal_planar_deposition"):
+def scenario(layer=0.005,feed=0.25,route="synthetic_ideal_planar_deposition",version=1):
+    if type(version) is not int or version < 1: raise ValueError("Positive process scenario version required")
     p=make_wp2_fixture().provenance[0]
-    return ProcessScenario(id="wp4-"+route,version=1,
+    return ProcessScenario(id="wp4-"+route,version=version,
         route=route,layer_resolution=quantity("length",layer),
         feed_fraction_resolution=feed,status="assumed",provenance=p,assumptions=(),
         excluded_mechanisms=("mixing lag","shrinkage","porosity","sintering","CFD","manufacturing residual stress"))
@@ -101,13 +102,13 @@ def _metrics(e):
     return {m.objective_id:(None if m.value is None else m.value.value) for m in e.metrics}
 
 def run(*,elements=4096,mass_limit=31.,layer=0.005,feed=0.25,budget=4,feedback=True,cancel_requested=None,checkpoint=None,
-        route="synthetic_ideal_planar_deposition",base_inputs=None,attempt_event=None,
+        route="synthetic_ideal_planar_deposition",base_inputs=None,attempt_event=None,process_version=1,
         resume_record=None):
     if type(budget)!=int or budget<1: raise ValueError("Positive evaluation budget required")
     base=base_inputs if base_inputs is not None else starting_inputs(elements,mass_limit)
     if base_inputs is not None and (base.settings is None or base.brief is None):
         raise ValueError("Invalid supplied duty baseline")
-    process=scenario(layer,feed,route)
+    process=scenario(layer,feed,route,version=process_version)
     transformer_identity,_=resolve(process)
     # Freeze common intended/estimated contexts before selecting any result.
     records=list(resume_record["records"]) if resume_record is not None else []

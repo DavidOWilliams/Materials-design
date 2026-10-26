@@ -76,3 +76,23 @@ def test_reject_corrupt_journal_manifest(tmp_path):
     manifest.write_text(manifest.read_text().replace('"budget": 1', '"budget": 99'))
     with pytest.raises(ValueError, match="Corrupt"):
         recover_journal(journal, tmp_path / "output.json")
+
+
+def test_portable_import_and_replay(tmp_path):
+    from material_core.wp5_service import portable_import
+    source, target = tmp_path / "source.json", tmp_path / "copy.json"
+    execute(source, elements=128, budget=1)
+    imported = portable_import(source, target)
+    assert imported == __import__("material_core.wp4_feedback", fromlist=["reopen"]).reopen(source)
+    assert replay(target)["status"] == "passed"
+    with pytest.raises(FileExistsError):
+        portable_import(source, target)
+
+
+def test_corrupt_portable_import_rejected(tmp_path):
+    from material_core.wp5_service import portable_import
+    source = tmp_path / "forged.json"
+    source.write_text('{"record": {}, "record_sha256": "forged"}')
+    with pytest.raises((ValueError, KeyError)):
+        portable_import(source, tmp_path / "target.json")
+    assert not (tmp_path / "target.json").exists()

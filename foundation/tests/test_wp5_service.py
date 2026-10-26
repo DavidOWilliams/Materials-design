@@ -142,3 +142,28 @@ def test_saved_brief_full_vertical_workflow(tmp_path):
     portable_import(dossier, imported)
     assert inspect(imported)["brief_hash"] == loaded.content_hash
     assert replay(imported)["status"] == "passed"
+
+
+def test_versioned_process_identity_persists_and_replays(tmp_path):
+    from material_core.wp5_service import compare_scenarios, execute_journal, recover_journal
+    original, revised = tmp_path / "v1.json", tmp_path / "v2.json"
+    execute(original, elements=128, budget=1, process_version=1)
+    execute(revised, elements=128, budget=1, process_version=2)
+    from material_core.wp4_feedback import reopen
+    assert reopen(original)["process"]["version"] == 1
+    assert reopen(revised)["process"]["version"] == 2
+    assert reopen(original)["process"]["content_hash"] != reopen(revised)["process"]["content_hash"]
+    assert replay(revised)["status"] == "passed"
+    comparison = compare_scenarios(original, revised)
+    assert comparison["causal_effect_established"] is False
+    journal = tmp_path / "versioned.jsonl"
+    execute_journal(journal, elements=128, budget=1, process_version=2, cancel_requested=lambda: True)
+    resumed = recover_journal(journal, tmp_path / "versioned-recovered.json")
+    assert resumed["process"]["version"] == 2
+    assert replay(tmp_path / "versioned-recovered.json")["status"] == "passed"
+
+
+def test_invalid_process_version_fails_closed(tmp_path):
+    with pytest.raises(ValueError, match="version"):
+        execute(tmp_path / "bad.json", elements=128, budget=1, process_version=0)
+    assert not (tmp_path / "bad.json").exists()

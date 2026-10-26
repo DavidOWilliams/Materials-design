@@ -32,3 +32,10 @@ No fresh tests executed: local Git clone attempt failed at DNS resolution: `fata
 
 ## Scientific limits
 No physical predictor, manufacturing measurement, CFD, sintering, or measured ceramic qualification is provided. Numerical completion, qualification, hard constraints, conditional scenario feasibility and evidence maturity must remain separate. D1 is not V1.
+
+## Continuation update — same day
+Further commits added `wp5_service.py` (bounded WP4 campaign, inspect, compare and recompute), `wp5_app.py` (Streamlit demonstration UI) and `test_wp5_service.py` (source-level integration/challenge tests). Last observed implementation HEAD before this checkpoint: `22e4a2fca788d2dc26dc911683d8b13531b801bf`.
+
+**Do not interpret these as completed milestones.** The Streamlit app has not been launched, dependencies and tests have not executed successfully, and no CI run has been confirmed. Cancellation is exposed only at service boundary, not as an interactive UI control; durable journal recovery is not wired into UI. Brief JSON edits are validated but the campaign UI does not yet consume the saved brief. Process assumption version editing, true UI end-to-end evidence, and replay import are outstanding. Comparison currently rejects incompatible process scenarios rather than providing side-by-side scenario analysis. There is no frozen Gate 1/2 implementation SHA.
+
+The current execution container still cannot resolve github.com for git clone; GitHub connector writes succeed. Next: inspect actual Actions runs (connector's commit workflow listing only reports PR-triggered runs), run tests, fix failures, complete missing UI functionality and obtain separate browser evidence. No gate approval.

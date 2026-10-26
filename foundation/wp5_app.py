@@ -48,7 +48,8 @@ with tab2:
                                  brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None)
             st.success(f"Saved: {result['stop_reason']}")
             st.json({"stop_reason": result["stop_reason"], "evaluations": result["evaluations"],
-                     "proposals": result["proposals"], "measured_evidence": None})
+                     "proposals": result["proposals"], "records": result["records"],
+                     "measured_evidence": None})
         except Exception as exc:
             st.error(f"Execution failed closed: {exc}")
 with tab3:

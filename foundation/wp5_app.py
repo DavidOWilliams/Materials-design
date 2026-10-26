@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from material_core.wp4_feedback import starting_inputs
 from material_core.wp5_brief_editor import validate_brief, revise_brief, save_brief, open_brief
-from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status
+from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status, portable_import
 
 st.set_page_config(page_title="WP5 Materials Design", layout="wide")
 st.title("Materials design — bounded WP5 demonstration")
@@ -105,3 +105,18 @@ with st.expander("Durable cancellation and recovery (between numerical evaluatio
                      "output": journal_output})
         except Exception as exc:
             st.error(f"Recovery rejected: {exc}")
+
+with st.expander("Portable dossier import and replay"):
+    import_source = st.text_input("Source dossier to import", "")
+    import_target = st.text_input("New immutable destination", str(workspace / "imported.json"))
+    if st.button("Import verified dossier"):
+        try:
+            imported = portable_import(import_source, import_target)
+            st.success(f"Imported {len(imported['records'])} candidate records")
+        except Exception as exc:
+            st.error(f"Import rejected: {exc}")
+    if st.button("Replay imported dossier"):
+        try:
+            st.json(replay(import_target))
+        except Exception as exc:
+            st.error(f"Replay rejected: {exc}")

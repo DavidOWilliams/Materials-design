@@ -46,6 +46,20 @@ jobs:
             /tmp/wp5-r1-evidence/**
             /tmp/wp5-browser-pip-freeze.txt
           if-no-files-found: warn
+      - name: WP5-IR2 strict budget and recovery evidence
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wp5-ir2-evidence
+          git rev-parse HEAD | tee /tmp/wp5-ir2-evidence/checkout-sha.txt
+          .venv-foundation/bin/python --version | tee /tmp/wp5-ir2-evidence/python-version.txt
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_service.py -k wp5_ir2 -vv --tb=long 2>&1 | tee /tmp/wp5-ir2-evidence/ir2-tests.log
+      - name: Archive WP5-IR2 regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-ir2-${{ github.sha }}
+          path: /tmp/wp5-ir2-evidence/**
+          if-no-files-found: warn
       - name: Browser test dependencies
         run: |
           .venv-foundation/bin/python -m pip install playwright==1.56.0

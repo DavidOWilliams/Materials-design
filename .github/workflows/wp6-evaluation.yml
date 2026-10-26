@@ -41,6 +41,10 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/evaluate.py --output /tmp/wp6-evidence/campaigns --elements 4096 --budget 4 2>&1 | tee /tmp/wp6-evidence/campaigns.log
+      - name: Separate-process dossier reopen and replay
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/verify_archive.py /tmp/wp6-evidence/campaigns 2>&1 | tee /tmp/wp6-evidence/separate-process-replay.log
       - name: Hash evidence
         if: always()
         run: |

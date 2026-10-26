@@ -96,3 +96,20 @@ The current execution container still cannot resolve github.com for git clone; G
 - `b45c53d7555eb2d12cfb5f911e9f943db2d94ba7` adds explicit WP5 application compilation and both WP5 focused test modules to existing WP4 PR workflow, avoiding dependence on a WP5 workflow that had no observed runs.
 - WP4 run 40308858301 and WP3 run 40308858206 were in progress at last inspection. They are not evidence of passing. WP4 run 40308515344 also in progress.
 - Next executable action: inspect WP4 run 40308858301 job log and focused WP5 step, correct exact failures, repeat until successful. Gate 1/2 open; no interactive browser verification.
+
+## WP5 D1 functional and challenge verification closure — 26 October 2026
+
+**Frozen tested implementation SHA:** `0c93ea2c91f2f6f0d29f0024d12722db9cf6931f`.
+**Source checked out by successful CI:** PR merge SHA `24a5d8d9f8e2b6aedecbb8cbd13c2c65e3cea94d` (implementation + base `f3e6cfc7f7e9ed885ce681814c0927fc421163c8`).
+**Workflow:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40311326597 (success).
+**Actual commands:** `PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py foundation/tests/test_wp5_streamlit_interaction.py -q` (32 passed); `PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q` (323 passed); WP4 focused tests (85 passed); `.venv-foundation/bin/python foundation/tests/wp5_browser_acceptance.py` against a running Streamlit server in headless Chromium (passed); WP4 dossier reopen/recompute and review reproductions passed.
+**Browser artifact:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40311326597/artifacts/12644319171
+**WP4 evidence artifact:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40311326597/artifacts/12644563653
+
+**Gate 1 D1 functional:** internally assessed PASS on bounded UI-to-core lifecycle; actual browser + widget and source tests. **Gate 2 D1 challenge:** internally assessed PASS for tested boundaries: invalid/unsupported edits, no-feasible candidate, unknown measured evidence, corrupt/stale dossiers, version incompatibility, cancellation, journal recovery and replay; WP4 interruption and numerical-failure tests. This is not independent Gate 3 acceptance. No measured ceramic manufacturing evidence.
+
+**WP3 CI compatibility:** run 40311326479 had one test collection failure because WP3 core-only environment lacked optional Streamlit. Workflow-only correction `b8a8744d2f80e1eed737e241f1825621a0860638` excludes WP5 UI tests from WP3-only core suite. WP3 rerun https://github.com/DavidOWilliams/Materials-design/actions/runs/40311898870: all four jobs success. The Streamlit tests remain mandatory in WP4/WP5 CI.
+
+**Implementation remaining:** none within tested D1 bounded scope, subject to independent review. **Deferred:** mid-solver restart, asynchronous live stop during an active solver (UI offers preselected candidate-boundary cancellation), empirical ceramic validation, real printer CFD/FE calibration, new scientific models, V1. **Gate 3:** independent review NOT performed; package `foundation/WP5_GATE3_INDEPENDENT_REVIEW_PACKAGE.md`.
+
+**Exact next action:** independent reviewer checks frozen implementation SHA, source-pinned artifacts, numerical replay and scientific boundaries, then separately records Gate 3 decision. Do not self-approve, merge, force-push or move WP4 baselines. Documentation-only HEAD is distinct from tested implementation.

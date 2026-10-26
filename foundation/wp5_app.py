@@ -44,7 +44,8 @@ with tab2:
         try:
             with st.spinner("Running WP4 numerical core..."):
                 result = execute(workspace / dossier, elements=elements, mass_limit=mass_limit,
-                                 layer=layer, feed=feed, budget=int(budget), feedback=feedback,\n                                 brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None)
+                                 layer=layer, feed=feed, budget=int(budget), feedback=feedback,
+                                 brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None)
             st.success(f"Saved: {result['stop_reason']}")
             st.json({"stop_reason": result["stop_reason"], "evaluations": result["evaluations"],
                      "proposals": result["proposals"], "measured_evidence": None})
@@ -73,8 +74,9 @@ with tab4:
             st.error(str(exc))
     if st.button("Prepare conservative export"):
         try:
-            payload = inspect(source)["export"]
-            st.download_button("Download JSON dossier", json.dumps(payload, indent=2),
+            payload = Path(source).read_bytes()
+            inspect(source)  # verify immutable dossier before offering download
+            st.download_button("Download JSON dossier", payload,
                                file_name="wp5-export.json", mime="application/json")
         except Exception as exc:
             st.error(str(exc))

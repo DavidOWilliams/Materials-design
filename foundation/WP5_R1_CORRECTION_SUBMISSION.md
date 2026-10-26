@@ -1,3 +1,7 @@
+> **Current disposition — 26 October 2026:** Original WP5-R1 and WP5-IR2 are independently CLOSED. Gate 3 is closed for the documented bounded D1 scope at tested source `4078a83dc11e14703ff6cc03f5b62f4e48879d14`. See [authoritative independent acceptance](WP5_INDEPENDENT_ACCEPTANCE.md) and its retained evidence. This documentation/evidence commit is distinct from tested implementation. PR remains draft/unmerged.
+
+> **Historical record below:** earlier “OPEN”, “pending”, “awaiting independent closure” and incomplete milestone statements are superseded by the disposition above; they are retained solely for provenance. Scientific and cancellation limitations remain applicable.
+
 # WP5-R1 correction submission for independent closure testing
 
 **Finding:** WP5-R1 — checkpointed Streamlit campaign did not consume the selected immutable saved brief.

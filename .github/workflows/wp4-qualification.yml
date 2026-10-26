@@ -28,6 +28,21 @@ jobs:
         run: |
           .venv-foundation/bin/python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py foundation/tests/test_wp5_streamlit_interaction.py -q
+      - name: WP5-R1 finding-specific interactive evidence
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_streamlit_interaction.py -k wp5_r1 -vv --tb=long 2>&1 | tee /tmp/wp5-r1-focused-tests.log
+          git rev-parse HEAD | tee /tmp/wp5-r1-actual-checkout-sha.txt
+      - name: Archive WP5-R1 finding-specific evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-r1-${{ github.sha }}
+          path: |
+            /tmp/wp5-r1-focused-tests.log
+            /tmp/wp5-r1-actual-checkout-sha.txt
+            /tmp/wp5-browser-pip-freeze.txt
+          if-no-files-found: warn
       - name: Browser test dependencies
         run: |
           .venv-foundation/bin/python -m pip install playwright==1.56.0

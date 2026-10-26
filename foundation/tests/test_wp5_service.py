@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import pytest
 from material_core.wp5_service import execute, inspect, replay, compare_compatible, prepared_inputs
 
@@ -214,3 +215,56 @@ def test_stale_process_identity_tamper_is_rejected(tmp_path):
         inspect(path)
     with pytest.raises(ValueError):
         replay(path)
+
+
+@pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                         ids=["zero", "negative", "true", "false", "integral-float",
+                              "fractional-float", "numeric-string", "none"])
+def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+    """IR2: validate strict positive int before even creating a parent directory."""
+    from material_core.wp5_service import execute_journal
+    parent = tmp_path / "not-created" / "nested"
+    journal = parent / "invalid.jsonl"
+    with pytest.raises(ValueError, match="[Bb]udget"):
+        execute_journal(journal, elements=128, budget=invalid_budget)
+    assert not parent.exists()
+    assert not journal.exists()
+    assert not Path(str(journal) + ".manifest.json").exists()
+    assert not Path(str(journal) + ".attempts.jsonl").exists()
+
+
+def test_wp5_ir2_retry_same_path_after_invalid_and_real_recovery(tmp_path):
+    from material_core.wp5_service import execute_journal, recover_journal, journal_status
+    from material_core.wp4_journal import recover
+    journal = tmp_path / "fresh" / "campaign.jsonl"
+    with pytest.raises(ValueError, match="[Bb]udget"):
+        execute_journal(journal, elements=128, budget=0)
+    assert not journal.parent.exists()
+    result = execute_journal(journal, elements=128, budget=2,
+                             cancel_requested=lambda: len(recover(journal)) >= 1)
+    assert result["stop_reason"] == "cancelled"
+    assert journal_status(journal)["completed_candidates"] == 1
+    output = tmp_path / "recovered.json"
+    resumed = recover_journal(journal, output)
+    assert resumed["accounting"]["reused_candidates"] == 1
+    assert replay(output)["status"] == "passed"
+    original = {p: p.read_bytes() for p in
+                (journal, Path(str(journal) + ".manifest.json"),
+                 Path(str(journal) + ".attempts.jsonl"))}
+    with pytest.raises(FileExistsError):
+        execute_journal(journal, elements=128, budget=2)
+    assert all(p.read_bytes() == contents for p, contents in original.items())
+
+
+def test_wp5_ir2_saved_brief_mismatch_no_journal_or_parent(tmp_path):
+    from material_core.wp5_service import execute_journal
+    base = prepared_inputs(elements=128)
+    brief = base.brief.model_dump(mode="json")
+    brief["evaluation_budget"] = 2
+    journal = tmp_path / "not-created" / "mismatch.jsonl"
+    with pytest.raises(ValueError, match="budget"):
+        execute_journal(journal, elements=128, budget=1, brief=brief)
+    assert not journal.parent.exists()
+    assert not journal.exists()
+    assert not Path(str(journal) + ".manifest.json").exists()
+    assert not Path(str(journal) + ".attempts.jsonl").exists()

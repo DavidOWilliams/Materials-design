@@ -139,7 +139,8 @@ def test_wp5_r1_revised_saved_brief_checkpoint_cancel_recover_import_replay(tmp_
     assert reopen(recovered)["accounting"]["reused_candidates"] == 1
     assert inspect(recovered)["brief_hash"] == revised.content_hash
     exported = inspect(recovered)["export"]
-    assert exported["intended_baseline_hash"] == RunInputs.model_validate_json(\n        json.dumps(reopen(recovered)["baseline_intended_inputs"])).design.content_hash
+    assert exported["intended_baseline_hash"] == RunInputs.model_validate_json(
+        json.dumps(reopen(recovered)["baseline_intended_inputs"])).design.content_hash
     assert replay(recovered)["status"] == "passed"
     imported = tmp_path / "r1-imported.json"
     portable_import(recovered, imported)

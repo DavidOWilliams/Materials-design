@@ -91,3 +91,8 @@ The current execution container still cannot resolve github.com for git clone; G
 - WP4 run 40308080720 **completed success** at merge checkout `eb2e75a` incorporating WP5 branch head `b943aac3400366914e5dcfa9b0b3c2a9fd294aef`: 85 focused WP4 and 312 foundation tests passed, 3 warnings; WP4 numerical replay scripts passed. This evidence does not validate newer commits.
 - `56389a0c2aa4acd924211f3487191abad1aa6bb5`: added complete saved-brief → execute → persist → inspect → import → replay test, and replaced a misleading unsupported-assumption test with a genuine unsupported geometry edit. **New test not yet verified.**
 - Latest tests, interactive browser UI, version binding and complete Gate 1/2 challenge evidence remain outstanding. Next: inspect current-head Actions and WP5 focused test log, fix failures. Do not declare acceptance.
+
+## Active WP5 CI enforcement
+- `b45c53d7555eb2d12cfb5f911e9f943db2d94ba7` adds explicit WP5 application compilation and both WP5 focused test modules to existing WP4 PR workflow, avoiding dependence on a WP5 workflow that had no observed runs.
+- WP4 run 40308858301 and WP3 run 40308858206 were in progress at last inspection. They are not evidence of passing. WP4 run 40308515344 also in progress.
+- Next executable action: inspect WP4 run 40308858301 job log and focused WP5 step, correct exact failures, repeat until successful. Gate 1/2 open; no interactive browser verification.

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from material_core.wp4_feedback import starting_inputs
 from material_core.wp5_brief_editor import validate_brief, revise_brief, save_brief, open_brief
-from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status, portable_import
+from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status, portable_import, compare_scenarios, versioned_scenario
 
 st.set_page_config(page_title="WP5 Materials Design", layout="wide")
 st.title("Materials design — bounded WP5 demonstration")
@@ -120,3 +120,18 @@ with st.expander("Portable dossier import and replay"):
             st.json(replay(import_target))
         except Exception as exc:
             st.error(f"Replay rejected: {exc}")
+
+with st.expander("Versioned process assumptions and scenario comparison"):
+    version = st.number_input("Process scenario version", min_value=1, value=1, step=1)
+    try:
+        process = versioned_scenario(layer=layer, feed=feed, version=int(version))
+        st.json(process.model_dump(mode="json"))
+        st.caption("WP4 process resolution parameters only. Other manufacturing mechanisms remain excluded.")
+    except Exception as exc:
+        st.error(str(exc))
+    alternate = st.text_input("Distinct scenario dossier", "")
+    if st.button("Compare distinct process scenarios (noncausal)"):
+        try:
+            st.json(compare_scenarios(existing, alternate))
+        except Exception as exc:
+            st.error(f"Scenario comparison rejected: {exc}")

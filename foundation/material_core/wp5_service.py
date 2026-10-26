@@ -141,3 +141,34 @@ def portable_import(source, destination):
         destination.unlink(missing_ok=True)
         raise
     return copied
+
+
+def versioned_scenario(*, layer=0.005, feed=0.25, route="synthetic_ideal_planar_deposition",
+                       version=1):
+    """Explicit scenario identity; only supported WP4 process parameters."""
+    from .wp4_feedback import scenario
+    if type(version) is not int or version < 1:
+        raise ValueError("Positive scenario version required")
+    obj = scenario(layer, feed, route)
+    raw = obj.model_dump(mode="json")
+    raw["version"] = version
+    from .contracts import ProcessScenario
+    return ProcessScenario.model_validate_json(json.dumps(raw))
+
+
+def compare_scenarios(first, second):
+    """Side-by-side distinct scenarios; do not assert a paired scientific comparison."""
+    a, b = reopen(first), reopen(second)
+    x = RunInputs.model_validate_json(json.dumps(a["baseline_intended_inputs"]))
+    y = RunInputs.model_validate_json(json.dumps(b["baseline_intended_inputs"]))
+    if x.brief.content_hash != y.brief.content_hash or x.materials != y.materials or x.solver != y.solver:
+        raise ValueError("Incompatible baseline, materials or solver")
+    if x.settings != y.settings:
+        raise ValueError("Incompatible numerical settings")
+    if a["process"] == b["process"]:
+        raise ValueError("Identical scenarios: use compatible comparison")
+    return {"comparison_type": "distinct_process_scenarios_unpaired",
+            "first": export(first), "second": export(second),
+            "qualification": "conditional_only",
+            "measured_evidence": None,
+            "causal_effect_established": False}

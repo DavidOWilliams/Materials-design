@@ -20,7 +20,7 @@ def prepared_inputs(*, elements=128, mass_limit=31.0, brief=None):
     # WP4's bounded scenario supports edits to the existing duty description and
     # budget only; changing physics requires a new qualified core fixture.
     allowed = {"duty", "evaluation_budget", "id", "version"}
-    for field in old.model_fields:
+    for field in type(old).model_fields:
         if field not in allowed and getattr(candidate, field) != getattr(old, field):
             raise ValueError("Unsupported WP4 duty/geometry/constraint edit: " + field)
     raw["brief"] = candidate.model_dump(mode="json")

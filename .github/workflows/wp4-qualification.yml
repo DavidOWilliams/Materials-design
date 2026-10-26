@@ -29,6 +29,8 @@ jobs:
           .venv-foundation/bin/python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py foundation/tests/test_wp5_streamlit_interaction.py -q
       - name: WP5-R1 finding-specific interactive evidence
+        env:
+          WP5_R1_EVIDENCE_DIR: /tmp/wp5-r1-evidence
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_streamlit_interaction.py -k wp5_r1 -vv --tb=long 2>&1 | tee /tmp/wp5-r1-focused-tests.log
@@ -41,6 +43,7 @@ jobs:
           path: |
             /tmp/wp5-r1-focused-tests.log
             /tmp/wp5-r1-actual-checkout-sha.txt
+            /tmp/wp5-r1-evidence/**
             /tmp/wp5-browser-pip-freeze.txt
           if-no-files-found: warn
       - name: Browser test dependencies

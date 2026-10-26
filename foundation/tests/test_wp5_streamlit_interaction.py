@@ -66,3 +66,28 @@ def test_streamlit_process_version_binds_to_persisted_campaign(tmp_path):
     assert dossier.exists()
     assert reopen(dossier)["process"]["version"] == 2
     assert replay(dossier)["status"] == "passed"
+
+
+def test_streamlit_cancel_recover_and_corrupt_import(tmp_path):
+    app = AppTest.from_file("foundation/wp5_app.py", default_timeout=120).run()
+    control(app.text_input, "Workspace directory").set_value(str(tmp_path)).run()
+    journal = tmp_path / "campaign-journal.jsonl"
+    recovered = tmp_path / "recovered.json"
+    control(app.text_input, "Journal path").set_value(str(journal)).run()
+    control(app.text_input, "Recovered dossier path").set_value(str(recovered)).run()
+    control(app.button, "Start checkpointed campaign with cancellation").click().run()
+    assert_no_ui_errors(app)
+    assert journal.exists()
+    control(app.button, "Inspect journal and attempt history").click().run()
+    assert_no_ui_errors(app)
+    control(app.button, "Resume from durable journal").click().run()
+    assert_no_ui_errors(app)
+    assert recovered.exists()
+    assert replay(recovered)["status"] == "passed"
+    corrupt = tmp_path / "forged.json"
+    corrupt.write_text('{"record": {}, "record_sha256": "forged"}')
+    control(app.text_input, "Source dossier to import").set_value(str(corrupt)).run()
+    control(app.text_input, "New immutable destination").set_value(str(tmp_path / "rejected.json")).run()
+    control(app.button, "Import verified dossier").click().run()
+    assert list(app.error)
+    assert not (tmp_path / "rejected.json").exists()

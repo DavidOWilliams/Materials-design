@@ -108,9 +108,14 @@ with st.expander("Durable cancellation and recovery (between numerical evaluatio
                                    max_value=100, value=0, step=1)
     if st.button("Start checkpointed campaign with cancellation"):
         try:
+            # Resolve the immutable selected brief before any journal files are created.
+            selected_brief = open_brief(brief_path) if brief_path else None
+            if selected_brief is not None and selected_brief.evaluation_budget != int(budget):
+                raise ValueError("Saved brief evaluation budget must match campaign budget")
             record = execute_journal(journal_path, elements=elements, mass_limit=mass_limit,
                                      layer=layer, feed=feed, budget=int(budget),
                                      feedback=feedback, process_version=int(version),
+                                     brief=selected_brief.model_dump(mode="json") if selected_brief is not None else None,
                                      cancel_requested=lambda: len(recover_candidate_checkpoints(journal_path)) >= int(cancel_after))
             st.json({"stop_reason": record["stop_reason"],
                      "journal": journal_path, "measured_evidence": None})

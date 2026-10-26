@@ -49,3 +49,30 @@ def test_saved_brief_rejects_unverified_process_assumptions(tmp_path):
     brief["assumptions"] = []
     with pytest.raises((ValueError, TypeError)):
         execute(tmp_path / "unsupported.json", elements=128, budget=1, brief=brief)
+
+
+def test_durable_cancel_and_recover(tmp_path):
+    from material_core.wp5_service import execute_journal, recover_journal, journal_status
+    journal = tmp_path / "cancel.jsonl"
+    result = execute_journal(journal, elements=128, budget=2, cancel_requested=lambda: True)
+    assert result["stop_reason"] == "cancelled"
+    status = journal_status(journal)
+    assert status["completed_candidates"] == 0
+    assert status["mid_solver_restart_supported"] is False
+    output = tmp_path / "resumed.json"
+    recovered = recover_journal(journal, output)
+    assert output.exists()
+    assert recovered["accounting"]["reused_candidates"] == 0
+    assert replay(output)["status"] == "passed"
+    with pytest.raises(FileExistsError):
+        recover_journal(journal, output)
+
+
+def test_reject_corrupt_journal_manifest(tmp_path):
+    from material_core.wp5_service import execute_journal, recover_journal
+    journal = tmp_path / "corrupt.jsonl"
+    execute_journal(journal, elements=128, budget=1, cancel_requested=lambda: True)
+    manifest = tmp_path / "corrupt.jsonl.manifest.json"
+    manifest.write_text(manifest.read_text().replace('"budget": 1', '"budget": 99'))
+    with pytest.raises(ValueError, match="Corrupt"):
+        recover_journal(journal, tmp_path / "output.json")

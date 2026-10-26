@@ -13,7 +13,7 @@ def validate_brief(payload: dict) -> Brief:
     """Validate the complete WP1 brief; never invent omitted scientific fields."""
     if not isinstance(payload, dict):
         raise TypeError("Brief must be a JSON object")
-    return Brief.model_validate(payload)
+    return Brief.model_validate_json(json.dumps(payload))
 
 
 def revise_brief(original: Brief, changes: dict) -> Brief:

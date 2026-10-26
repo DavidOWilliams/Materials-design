@@ -92,6 +92,10 @@ def execute_journal(path, *, elements=128, mass_limit=31.0, layer=0.005,
                     route="synthetic_ideal_planar_deposition", brief=None,
                     cancel_requested=None, process_version=1):
     """Start a durable WP4 journal, recording each completed evaluation."""
+    # Validate before initialize() creates the journal, manifest or parent directory.
+    # In particular bool is not an acceptable integer evaluation budget.
+    if type(budget) is not int or budget < 1:
+        raise ValueError("Positive budget required")
     from .wp4_feedback import run
     path = Path(path)
     if path.exists() or Path(str(path) + ".manifest.json").exists():

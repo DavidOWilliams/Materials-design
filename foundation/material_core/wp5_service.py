@@ -19,7 +19,7 @@ def prepared_inputs(*, elements=128, mass_limit=31.0, brief=None):
     old = base.brief
     # WP4's bounded scenario supports edits to the existing duty description and
     # budget only; changing physics requires a new qualified core fixture.
-    allowed = {"duty", "evaluation_budget", "id", "version", "assumptions"}
+    allowed = {"duty", "evaluation_budget", "id", "version"}
     for field in old.model_fields:
         if field not in allowed and getattr(candidate, field) != getattr(old, field):
             raise ValueError("Unsupported WP4 duty/geometry/constraint edit: " + field)
@@ -40,6 +40,8 @@ def execute(path, *, elements=128, mass_limit=31.0, layer=0.005,
     if type(budget) is not int or budget < 1:
         raise ValueError("Positive budget required")
     base = prepared_inputs(elements=elements, mass_limit=mass_limit, brief=brief)
+    if brief is not None and base.brief.evaluation_budget != budget:
+        raise ValueError("Saved brief evaluation budget must match campaign budget")
     record = run(elements=elements, mass_limit=mass_limit, layer=layer, feed=feed,
                  budget=budget, feedback=feedback, route=route,
                  base_inputs=base, cancel_requested=cancel_requested)

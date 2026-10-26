@@ -13,7 +13,7 @@ def control(group, label):
 
 def assert_no_ui_errors(app):
     assert not list(app.exception), [str(x.message) for x in app.exception]
-    assert not list(app.error), [str(x.message) for x in app.error]
+    assert not list(app.error), [str(x.proto) for x in app.error]
 
 
 def test_streamlit_full_interactive_vertical(tmp_path):

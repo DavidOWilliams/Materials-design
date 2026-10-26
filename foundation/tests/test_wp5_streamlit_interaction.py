@@ -20,6 +20,7 @@ def test_streamlit_full_interactive_vertical(tmp_path):
     app = AppTest.from_file("foundation/wp5_app.py", default_timeout=120).run()
     assert_no_ui_errors(app)
     control(app.text_input, "Workspace directory").set_value(str(tmp_path)).run()
+    control(app.number_input, "Maximum evaluations").set_value(20).run()
     control(app.button, "Save new immutable brief").click().run()
     assert (tmp_path / "brief.json").exists()
     control(app.text_input, "Saved brief to use (optional; must match supported WP4 fixture)").set_value(

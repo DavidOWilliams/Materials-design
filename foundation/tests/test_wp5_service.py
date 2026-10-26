@@ -183,3 +183,22 @@ def test_user_selected_cancel_after_one_durable_candidate(tmp_path):
     resumed = recover_journal(journal, tmp_path / "completed.json")
     assert resumed["accounting"]["reused_candidates"] == 1
     assert replay(tmp_path / "completed.json")["status"] == "passed"
+
+
+def test_no_feasible_candidate_and_unknown_measured_evidence(tmp_path):
+    path = tmp_path / "impossible.json"
+    record = execute(path, elements=128, budget=2, mass_limit=1.0)
+    assert record["records"]
+    assert not any(row["feasible"] for row in record["records"])
+    observed = inspect(path)
+    assert observed["measured_evidence"] is None
+    assert observed["manufacturing_validation"] == "not_established"
+    assert replay(path)["status"] == "passed"
+
+
+def test_process_version_change_rejects_compatible_comparison(tmp_path):
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    execute(first, elements=128, budget=1, process_version=1)
+    execute(second, elements=128, budget=1, process_version=2)
+    with pytest.raises(ValueError, match="Incompatible process"):
+        compare_compatible(first, second)

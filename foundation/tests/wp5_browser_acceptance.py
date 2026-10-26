@@ -18,6 +18,7 @@ def main():
         page.goto("http://127.0.0.1:8501", wait_until="networkidle", timeout=120000)
         expect(page.get_by_text("Materials design — bounded WP5 demonstration")).to_be_visible()
         page.get_by_label("Workspace directory").fill(str(workspace))
+        page.get_by_role("tab", name="Campaign").click()
         page.get_by_label("Maximum evaluations").fill("1")
         page.get_by_label("Process scenario version").fill("2")
         page.get_by_role("button", name="Execute and persist campaign").click()

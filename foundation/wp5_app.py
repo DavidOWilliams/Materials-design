@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from material_core.wp4_feedback import starting_inputs
+from material_core.wp4_journal import recover as recover_candidate_checkpoints
 from material_core.wp5_brief_editor import validate_brief, revise_brief, save_brief, open_brief
 from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status, portable_import, compare_scenarios, versioned_scenario
 
@@ -110,9 +111,7 @@ with st.expander("Durable cancellation and recovery (between numerical evaluatio
             record = execute_journal(journal_path, elements=elements, mass_limit=mass_limit,
                                      layer=layer, feed=feed, budget=int(budget),
                                      feedback=feedback, process_version=int(version),
-                                     cancel_requested=lambda: len(__import__(
-                                         "material_core.wp4_journal", fromlist=["recover"]
-                                     ).recover(journal_path)) >= int(cancel_after))
+                                     cancel_requested=lambda: len(recover_candidate_checkpoints(journal_path)) >= int(cancel_after))
             st.json({"stop_reason": record["stop_reason"],
                      "journal": journal_path, "measured_evidence": None})
         except Exception as exc:

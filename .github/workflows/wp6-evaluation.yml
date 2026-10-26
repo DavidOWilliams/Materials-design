@@ -33,6 +33,10 @@ jobs:
           PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_evaluation.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/wp6-tests.log
       - name: Install WP5 interactive test dependency
         run: .venv-foundation/bin/python -m pip install streamlit==1.40.2
+      - name: Gate 2 focused challenges
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/gate2_challenges.py /tmp/wp6-evidence/gate2 2>&1 | tee /tmp/wp6-evidence/gate2.log
       - name: Foundation regression
         run: |
           set -o pipefail

@@ -152,7 +152,9 @@ def test_versioned_process_identity_persists_and_replays(tmp_path):
     from material_core.wp4_feedback import reopen
     assert reopen(original)["process"]["version"] == 1
     assert reopen(revised)["process"]["version"] == 2
-    assert reopen(original)["process"]["content_hash"] != reopen(revised)["process"]["content_hash"]
+    from material_core.contracts import ProcessScenario
+    assert (ProcessScenario.model_validate_json(json.dumps(reopen(original)["process"])).content_hash !=
+            ProcessScenario.model_validate_json(json.dumps(reopen(revised)["process"])).content_hash)
     assert replay(revised)["status"] == "passed"
     comparison = compare_scenarios(original, revised)
     assert comparison["causal_effect_established"] is False

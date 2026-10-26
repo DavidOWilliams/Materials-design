@@ -39,11 +39,12 @@ with tab2:
     feed = st.selectbox("Synthetic feed fraction step", [0.125, 0.25, 0.5], index=1)
     budget = st.number_input("Maximum evaluations", min_value=1, max_value=100, value=4, step=1)
     feedback = st.checkbox("Enable bounded feedback revision", value=True)
+    brief_path = st.text_input("Saved brief to use (optional; must match supported WP4 fixture)", "")
     if st.button("Execute and persist campaign", type="primary"):
         try:
             with st.spinner("Running WP4 numerical core..."):
                 result = execute(workspace / dossier, elements=elements, mass_limit=mass_limit,
-                                 layer=layer, feed=feed, budget=int(budget), feedback=feedback)
+                                 layer=layer, feed=feed, budget=int(budget), feedback=feedback,\n                                 brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None)
             st.success(f"Saved: {result['stop_reason']}")
             st.json({"stop_reason": result["stop_reason"], "evaluations": result["evaluations"],
                      "proposals": result["proposals"], "measured_evidence": None})

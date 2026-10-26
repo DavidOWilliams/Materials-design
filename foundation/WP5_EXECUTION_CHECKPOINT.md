@@ -39,3 +39,11 @@ Further commits added `wp5_service.py` (bounded WP4 campaign, inspect, compare a
 **Do not interpret these as completed milestones.** The Streamlit app has not been launched, dependencies and tests have not executed successfully, and no CI run has been confirmed. Cancellation is exposed only at service boundary, not as an interactive UI control; durable journal recovery is not wired into UI. Brief JSON edits are validated but the campaign UI does not yet consume the saved brief. Process assumption version editing, true UI end-to-end evidence, and replay import are outstanding. Comparison currently rejects incompatible process scenarios rather than providing side-by-side scenario analysis. There is no frozen Gate 1/2 implementation SHA.
 
 The current execution container still cannot resolve github.com for git clone; GitHub connector writes succeed. Next: inspect actual Actions runs (connector's commit workflow listing only reports PR-triggered runs), run tests, fix failures, complete missing UI functionality and obtain separate browser evidence. No gate approval.
+
+## Verified Actions evidence and corrections — 26 October 2026
+- GitHub Actions WP4 run 40302739626 executed on WP5 branch: 298 passed, six failed in WP5 tests; log shows strict Pydantic tuple validation errors. The same run's WP4 focused suite passed. This is a real failed regression run, **not acceptance**.
+- WP3 run 40302739644 had successful exact-head, legacy and review-reproduction jobs but failed the WP3 contract/vertical job due to foundation regression failures.
+- Corrections committed at 17100502eb434735b4df6373ad0fcd82f2263f0f and c3b57eac7a78eb4aedb704ae3850d4b7d9149be9: parse persisted objects with model_validate_json rather than strict model_validate of Python dictionaries.
+- WP3 run 40303874297 and WP4 run 40303874302 were observed in progress after these corrections; do not assert their outcomes until inspected.
+- Saved brief selection added to UI at 39009048eb807b16139e971126caee710237df66; this source SHA is newer than the preceding in-progress runs, so their outcomes cannot qualify it.
+- Full interactive UI, cancellation/recovery, assumption editing and portable import remain incomplete. Gates 1/2 remain open; Gate 3 independent.

@@ -73,3 +73,10 @@ The current execution container still cannot resolve github.com for git clone; G
 - At `ecde181caf0e2018c123891f839da2d27c4481b3`, corrected literal backslash-n in Streamlit campaign call that made the UI module syntactically invalid; changed download to the actual verified WP4 dossier bytes rather than a summary export unsuitable for reimport.
 - Latest WP3 run 40307470599 remained queued and WP4 run 40307470497 in progress at inspection; these runs predate UI correction and cannot qualify current source.
 - No interactive browser evidence or current-head successful test. Gate 1/2 open. Next: execute syntax check, focused WP5 tests and Streamlit interaction against current commit using a runner, then repair failures.
+
+## Dedicated verification and UI correction
+- WP4 run 40307470497 completed success at PR merge SHA `5018a76` incorporating WP5 commit `75fff3173d3324b198a8683d2c90f12b44330bb6`; 85 WP4 focused and 310 foundation tests passed (3 warnings). Later commits are not covered.
+- `0d6bded886d7cc57172056ac38aa72ce028c2716` updates dedicated WP5 verification workflow to compile Streamlit UI and execute both WP5 test modules. Dedicated workflow execution not yet confirmed.
+- `6e19a6b1226e9b2d5a6359ef04ae4e3f96c69c4b` displays actual evaluated records in campaign UI.
+- Current-head test and actual browser interaction still not demonstrated. Process version still only a descriptor, not applied to execution; do not claim complete M3.
+- Next: retrieve new WP5 workflow execution, inspect logs and correct any failures. Run browser interaction on a live Streamlit server, verify full workflow, then decide gates.

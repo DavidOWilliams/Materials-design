@@ -202,3 +202,15 @@ def test_process_version_change_rejects_compatible_comparison(tmp_path):
     execute(second, elements=128, budget=1, process_version=2)
     with pytest.raises(ValueError, match="Incompatible process"):
         compare_compatible(first, second)
+
+
+def test_stale_process_identity_tamper_is_rejected(tmp_path):
+    path = tmp_path / "stale.json"
+    execute(path, elements=128, budget=1, process_version=2)
+    envelope = json.loads(path.read_text())
+    envelope["record"]["process"]["version"] = 1
+    path.write_text(json.dumps(envelope))
+    with pytest.raises(ValueError):
+        inspect(path)
+    with pytest.raises(ValueError):
+        replay(path)

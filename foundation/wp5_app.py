@@ -103,12 +103,16 @@ with tab4:
 with st.expander("Durable cancellation and recovery (between numerical evaluations)"):
     journal_path = st.text_input("Journal path", str(workspace / "campaign-journal.jsonl"))
     journal_output = st.text_input("Recovered dossier path", str(workspace / "recovered.json"))
+    cancel_after = st.number_input("Cancel after completed candidates (0 = immediately)", min_value=0,
+                                   max_value=100, value=0, step=1)
     if st.button("Start checkpointed campaign with cancellation"):
         try:
             record = execute_journal(journal_path, elements=elements, mass_limit=mass_limit,
                                      layer=layer, feed=feed, budget=int(budget),
                                      feedback=feedback, process_version=int(version),
-                                     cancel_requested=lambda: True)
+                                     cancel_requested=lambda: len(__import__(
+                                         "material_core.wp4_journal", fromlist=["recover"]
+                                     ).recover(journal_path)) >= int(cancel_after))
             st.json({"stop_reason": record["stop_reason"],
                      "journal": journal_path, "measured_evidence": None})
         except Exception as exc:

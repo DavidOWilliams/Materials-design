@@ -82,6 +82,7 @@ def initialize(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=
     identity,_=resolve(process)
     config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
                 budget=budget,feedback=feedback,route=route,process_version=process_version)
+    if process_version != 1: config["process_version"] = process_version
     manifest=dict(schema_version=1,algorithm=VERSION,config=config,
                   baseline_intended_inputs=base.model_dump(mode="json"),
                   process=process.model_dump(mode="json"),
@@ -126,7 +127,7 @@ def read_attempts(path,missing_ok=False):
 
 def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
            feedback=True,route="synthetic_ideal_planar_deposition",verify=False,
-           output=None):
+           output=None,process_version=1):
     """Continue from persisted completed candidates without numerical replay.
 
     Optional numerical verification is separate and explicitly counted.
@@ -137,6 +138,7 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
     manifest=read_manifest(path)
     expected=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
                   budget=budget,feedback=feedback,route=route)
+    if process_version != 1: expected["process_version"] = process_version
     if manifest["config"]!=expected:
         raise ValueError("Resume configuration mismatch; original configuration is immutable")
     from .wp4_feedback import VERSION,REVISION_ID,EVALUATOR_ID
@@ -195,7 +197,7 @@ def resume(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
     journal.event("continuation_started",dict(reused_candidates=len(prior),
         checkpoint_sha256=journal.previous))
     result=run(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
-        budget=budget,feedback=feedback,route=route,base_inputs=base,
+        budget=budget,feedback=feedback,route=route,process_version=process_version,base_inputs=base,
         resume_record=provisional,checkpoint=checkpoint,attempt_event=journal.event)
     events=read_attempts(path)
     completed=sum(e["kind"] in ("baseline_evaluation_completed","candidate_evaluation_completed") for e in events)

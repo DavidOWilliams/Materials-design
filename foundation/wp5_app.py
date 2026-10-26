@@ -22,6 +22,15 @@ with tab1:
     raw = st.text_area("Typed brief JSON (complete contract)", json.dumps(initial, indent=2), height=300)
     try:
         candidate = validate_brief(json.loads(raw))
+        changes = {key: getattr(candidate, key) for key in ("duty", "evaluation_budget")
+                   if getattr(candidate, key) != getattr(fixture.brief, key)}
+        unsupported = [key for key in fixture.brief.model_fields
+                       if key not in ("duty", "evaluation_budget", "version", "content_hash")
+                       and getattr(candidate, key) != getattr(fixture.brief, key)]
+        if unsupported:
+            raise ValueError("Unsupported scientific brief edits: " + ", ".join(unsupported))
+        if changes:
+            candidate = revise_brief(fixture.brief, changes)
         st.success("Brief contract valid")
         st.caption("Editing scientific duty/geometry beyond WP4 supported fixtures will be rejected by the execution adapter.")
         name = st.text_input("Brief filename", "brief.json", key="brief_file")

@@ -122,3 +122,22 @@ def journal_status(path):
     return {"config": manifest["config"], "completed_candidates": len(rows),
             "attempt_events": events, "measured_evidence": None,
             "mid_solver_restart_supported": False}
+
+
+def portable_import(source, destination):
+    """Import an integrity-checked WP4 dossier without rewriting its evidence."""
+    import shutil
+    source, destination = Path(source), Path(destination)
+    if destination.exists():
+        raise FileExistsError("Destination dossier already exists")
+    original = reopen(source)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+    try:
+        copied = reopen(destination)
+        if copied != original:
+            raise ValueError("Imported dossier changed during transfer")
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+    return copied

@@ -33,3 +33,19 @@ def test_unsupported_geometry_edit():
     brief["thickness"]["value"] *= 2
     with pytest.raises(ValueError, match="Unsupported"):
         prepared_inputs(elements=128, brief=brief)
+
+
+def test_saved_brief_campaign_budget_mismatch(tmp_path):
+    base = prepared_inputs(elements=128)
+    brief = base.brief.model_dump(mode="json")
+    brief["evaluation_budget"] = base.brief.evaluation_budget + 1
+    with pytest.raises(ValueError, match="budget"):
+        execute(tmp_path / "mismatch.json", elements=128, budget=1, brief=brief)
+
+
+def test_saved_brief_rejects_unverified_process_assumptions(tmp_path):
+    base = prepared_inputs(elements=128)
+    brief = base.brief.model_dump(mode="json")
+    brief["assumptions"] = []
+    with pytest.raises((ValueError, TypeError)):
+        execute(tmp_path / "unsupported.json", elements=128, budget=1, brief=brief)

@@ -22,10 +22,12 @@ jobs:
         run: .venv-foundation/bin/python -m pip check
       - name: WP4 focused tests
         run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp4_*.py -q
+      - name: Streamlit UI test dependency
+        run: .venv-foundation/bin/python -m pip install streamlit==1.40.2
       - name: WP5 application syntax and vertical acceptance
         run: |
           .venv-foundation/bin/python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
-          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py -q
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py foundation/tests/test_wp5_streamlit_interaction.py -q
       - name: Full foundation and recovery regression
         run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
       - name: WP4 campaign and portable reopen/recompute

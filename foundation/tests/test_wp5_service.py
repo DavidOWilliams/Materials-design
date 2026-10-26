@@ -170,3 +170,16 @@ def test_invalid_process_version_fails_closed(tmp_path):
     with pytest.raises(ValueError, match="version"):
         execute(tmp_path / "bad.json", elements=128, budget=1, process_version=0)
     assert not (tmp_path / "bad.json").exists()
+
+
+def test_user_selected_cancel_after_one_durable_candidate(tmp_path):
+    from material_core.wp5_service import execute_journal, journal_status, recover_journal
+    from material_core.wp4_journal import recover
+    journal = tmp_path / "stop-after-one.jsonl"
+    result = execute_journal(journal, elements=128, budget=4,
+                             cancel_requested=lambda: len(recover(journal)) >= 1)
+    assert result["stop_reason"] == "cancelled"
+    assert journal_status(journal)["completed_candidates"] == 1
+    resumed = recover_journal(journal, tmp_path / "completed.json")
+    assert resumed["accounting"]["reused_candidates"] == 1
+    assert replay(tmp_path / "completed.json")["status"] == "passed"

@@ -39,13 +39,15 @@ with tab2:
     feed = st.selectbox("Synthetic feed fraction step", [0.125, 0.25, 0.5], index=1)
     budget = st.number_input("Maximum evaluations", min_value=1, max_value=100, value=4, step=1)
     feedback = st.checkbox("Enable bounded feedback revision", value=True)
+    version = st.number_input("Process scenario version", min_value=1, value=1, step=1)
     brief_path = st.text_input("Saved brief to use (optional; must match supported WP4 fixture)", "")
     if st.button("Execute and persist campaign", type="primary"):
         try:
             with st.spinner("Running WP4 numerical core..."):
                 result = execute(workspace / dossier, elements=elements, mass_limit=mass_limit,
                                  layer=layer, feed=feed, budget=int(budget), feedback=feedback,
-                                 brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None)
+                                 brief=open_brief(brief_path).model_dump(mode="json") if brief_path else None,
+                                 process_version=int(version))
             st.success(f"Saved: {result['stop_reason']}")
             st.json({"stop_reason": result["stop_reason"], "evaluations": result["evaluations"],
                      "proposals": result["proposals"], "records": result["records"],
@@ -89,7 +91,7 @@ with st.expander("Durable cancellation and recovery (between numerical evaluatio
         try:
             record = execute_journal(journal_path, elements=elements, mass_limit=mass_limit,
                                      layer=layer, feed=feed, budget=int(budget),
-                                     feedback=feedback,
+                                     feedback=feedback, process_version=int(version),
                                      cancel_requested=lambda: True)
             st.json({"stop_reason": record["stop_reason"],
                      "journal": journal_path, "measured_evidence": None})
@@ -125,7 +127,6 @@ with st.expander("Portable dossier import and replay"):
             st.error(f"Replay rejected: {exc}")
 
 with st.expander("Versioned process assumptions and scenario comparison"):
-    version = st.number_input("Process scenario version", min_value=1, value=1, step=1)
     try:
         process = versioned_scenario(layer=layer, feed=feed, version=int(version))
         st.json(process.model_dump(mode="json"))

@@ -68,3 +68,8 @@ The current execution container still cannot resolve github.com for git clone; G
 - WP3 run 40307470599 and WP4 run 40307470497 observed queued, with no job conclusions. They were triggered before latest scenario commits, so cannot validate latest HEAD.
 - **Known gap:** process version selection is displayed but not yet applied to campaign process identity; same parameters with a different version do not produce a new version-tagged evaluation. This is not complete assumption editing. No browser UI evidence; Gate 1/2 remain open.
 - Next: bind version to actual evaluated process identity in WP4-compatible way, add tests, obtain current-HEAD Actions results, inspect failures, run interactive UI.
+
+## UI source defect corrected
+- At `ecde181caf0e2018c123891f839da2d27c4481b3`, corrected literal backslash-n in Streamlit campaign call that made the UI module syntactically invalid; changed download to the actual verified WP4 dossier bytes rather than a summary export unsuitable for reimport.
+- Latest WP3 run 40307470599 remained queued and WP4 run 40307470497 in progress at inspection; these runs predate UI correction and cannot qualify current source.
+- No interactive browser evidence or current-head successful test. Gate 1/2 open. Next: execute syntax check, focused WP5 tests and Streamlit interaction against current commit using a runner, then repair failures.

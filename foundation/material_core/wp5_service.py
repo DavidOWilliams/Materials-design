@@ -32,7 +32,7 @@ def prepared_inputs(*, elements=128, mass_limit=31.0, brief=None):
 
 def execute(path, *, elements=128, mass_limit=31.0, layer=0.005,
             feed=0.25, budget=4, feedback=True, route="synthetic_ideal_planar_deposition",
-            brief=None, cancel_requested=None):
+            brief=None, cancel_requested=None, process_version=1):
     """Create immutable dossier; never overwrite or claim measured evidence."""
     path = Path(path)
     if path.exists():
@@ -44,7 +44,7 @@ def execute(path, *, elements=128, mass_limit=31.0, layer=0.005,
         raise ValueError("Saved brief evaluation budget must match campaign budget")
     record = run(elements=elements, mass_limit=mass_limit, layer=layer, feed=feed,
                  budget=budget, feedback=feedback, route=route,
-                 base_inputs=base, cancel_requested=cancel_requested)
+                 base_inputs=base, cancel_requested=cancel_requested, process_version=process_version)
     save(path, record)
     return reopen(path)
 
@@ -90,7 +90,7 @@ def compare_compatible(first, second):
 def execute_journal(path, *, elements=128, mass_limit=31.0, layer=0.005,
                     feed=0.25, budget=4, feedback=True,
                     route="synthetic_ideal_planar_deposition", brief=None,
-                    cancel_requested=None):
+                    cancel_requested=None, process_version=1):
     """Start a durable WP4 journal, recording each completed evaluation."""
     from .wp4_feedback import run
     path = Path(path)
@@ -101,10 +101,10 @@ def execute_journal(path, *, elements=128, mass_limit=31.0, layer=0.005,
         raise ValueError("Saved brief evaluation budget must match campaign budget")
     journal, base = initialize(path, elements=elements, mass_limit=mass_limit,
                                layer=layer, feed=feed, budget=budget,
-                               feedback=feedback, route=route, base_inputs=base)
+                               feedback=feedback, route=route, base_inputs=base, process_version=process_version)
     return run(elements=elements, mass_limit=mass_limit, layer=layer, feed=feed,
                budget=budget, feedback=feedback, route=route, base_inputs=base,
-               cancel_requested=cancel_requested, checkpoint=journal.checkpoint,
+               cancel_requested=cancel_requested, process_version=process_version, checkpoint=journal.checkpoint,
                attempt_event=journal.event)
 
 

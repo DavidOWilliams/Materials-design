@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "repository": "DavidOWilliams/Materials-design",
+  "tested_implementation_commit": "beaf8a586c358ae04549d25c1bb7fbf8cd3f2c4b",
+  "documentation_only_acceptance_commit": "1805811acdafacd66ba3574e8cb45c59bebdd8e5",
+  "actual_ci_checkout": "57c7d6134a6e9f4a1d30077d5d8575dd1a4c899c",
+  "source_and_ci_tree": "a067510fe9ace3ef791cf6f7871302c654cc0349",
+  "qualification_run": 40231063605,
+  "integration_run": 40231063596,
+  "artifact_id": 12612821575,
+  "original_actions_artifact_expires_at": "2027-01-23T20:30:13Z",
+  "files": {
+    "WP4_tested_evidence_beaf8a5.zip": {
+      "bytes": 6540817,
+      "sha256": "36eb05e5e69bc0af8a86c08fbada5b97fa6c9a5f6b8b64b3478020df588b831d",
+      "parts": [
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part000",
+          "bytes": 240000,
+          "sha256": "e70fbbd004d8406046f0e2df1858f594b959e0babe16426d63b2dbdcad79e6c1"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part001",
+          "bytes": 240000,
+          "sha256": "915afd94fb23b1e304c98c7f302c8b8b75c0f71bc8d8bb2d659eb5538a477431"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part002",
+          "bytes": 240000,
+          "sha256": "e501e3f72c6c56fc8caec3007ca37c3f468d4c58aa8d994e3087efe0054f6a18"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part003",
+          "bytes": 240000,
+          "sha256": "c41baaaa7c04f330e750bba7179d95fc72e2886ec0b95f20f39f049bdbdd8406"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part004",
+          "bytes": 240000,
+          "sha256": "5dd8ccf567f219dfc6436670c4a6a3a88a4b34c1f851aab61b36f6d76cae5ff6"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part005",
+          "bytes": 240000,
+          "sha256": "e691846dac8553357ce6036402c77313da590c3f7b03292f50a62b4530c3c24b"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part006",
+          "bytes": 240000,
+          "sha256": "58c868965b9743cfab68ed4a44b9c549a3efc34b1f9c7e0680b54ca21b38e258"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part007",
+          "bytes": 240000,
+          "sha256": "290ca7f465c2ce85d9fa41a3660cfbab95d86c38911744d0b9c5e40d7e8bb087"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part008",
+          "bytes": 240000,
+          "sha256": "af305864eec1dc9dd60f8060ba2f8e3a25db4edea674ff6b8cc350077a340601"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part009",
+          "bytes": 240000,
+          "sha256": "9f541d1fb711dd5389455dbbdc65ce2b41179ca633564c4dceccb55fbee63283"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part010",
+          "bytes": 240000,
+          "sha256": "ac1111b30ca0b7aa3f8fc10fb53287610e3dd4c4b5097e6f623aa10ed43d7f9e"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part011",
+          "bytes": 240000,
+          "sha256": "8756918e96dc7bc283384e6840322c90f2619877be5e1c73ab663ffd9bb16307"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part012",
+          "bytes": 240000,
+          "sha256": "e28d71d5d890942c595d4842606b6e81739a05f06d3326faacefc65727fa1927"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part013",
+          "bytes": 240000,
+          "sha256": "e18ddf633b3290fba0fe6165d237cbafe077ed46336088252fee545d1a20d456"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part014",
+          "bytes": 240000,
+          "sha256": "979c12709fc45afed42f49aef865b9e0e267956591a1b8e5cf418a0b1c4ce181"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part015",
+          "bytes": 240000,
+          "sha256": "5c1f3e9ee6eff33e54f560ce48ecb2274474fbc4b7df8120f57f5881f7cabaef"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part016",
+          "bytes": 240000,
+          "sha256": "87c4e6bc4be838e75bbf57ef2813bc0c58a596ff673410f13b5d7a0853801aa4"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part017",
+          "bytes": 240000,
+          "sha256": "c9d718bb752d0a8a4e49ff7d87c291b0080d447e69078abb7e3312658c25100a"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part018",
+          "bytes": 240000,
+          "sha256": "82417ea8429c8abfb9f4a308d0d95950158ba5a27d99b114e3a8660ad67132cd"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part019",
+          "bytes": 240000,
+          "sha256": "1d7412a7cd14cd4a201a380914a65a93e0a9b68b8b5f1840d99628168494325f"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part020",
+          "bytes": 240000,
+          "sha256": "d1d5f51767c33254c52e900130cbc606e6dd8c91d98137793dbfa82ba6bf841d"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part021",
+          "bytes": 240000,
+          "sha256": "e069e4c6e8c4eacdab4c677b7397d64a2e07b36d89961f477905e3c90193295c"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part022",
+          "bytes": 240000,
+          "sha256": "9ab3695cf27852637bdc8319112a5138ca5e57d338860bb26d850c4fc2fff783"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part023",
+          "bytes": 240000,
+          "sha256": "ce8e6d515c4e59dd79ac277e502afc93cc8938cd555a040931ebc76572f0f668"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part024",
+          "bytes": 240000,
+          "sha256": "1c866cdd2b6e4bc567104183cbaa6b5bf2ad0b36ad8f8be24604ff76307d5e67"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part025",
+          "bytes": 240000,
+          "sha256": "f585f2252e596362182bcd909a2366520b24d64d86912472d8b9037ba38aee4e"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part026",
+          "bytes": 240000,
+          "sha256": "82167af466a47ae04f6f41ccbca80e3b9e37e5c59cd5b54632a3f3bf77b6909d"
+        },
+        {
+          "path": "WP4_tested_evidence_beaf8a5.zip.part027",
+          "bytes": 60817,
+          "sha256": "8d94829d720d366b41260708ed681226e71b4cbf90c9bee9ced48b5ba63339e5"
+        }
+      ]
+    },
+    "WP4_tested_source_beaf8a5.tar.gz": {
+      "bytes": 937551,
+      "sha256": "388ffbcb5ba7b8c4ecac2d690a52caf36f324c3b46a9f32c480afc072264f3fe",
+      "parts": [
+        {
+          "path": "WP4_tested_source_beaf8a5.tar.gz.part000",
+          "bytes": 240000,
+          "sha256": "328a95d7b19e032153345b7759adb567545df5427412074c8e979d21ed8787ff"
+        },
+        {
+          "path": "WP4_tested_source_beaf8a5.tar.gz.part001",
+          "bytes": 240000,
+          "sha256": "ac0fdb9a093160c6f580ef9145cf9feec96e80eeb3c24090cc3d812190998de9"
+        },
+        {
+          "path": "WP4_tested_source_beaf8a5.tar.gz.part002",
+          "bytes": 240000,
+          "sha256": "34bae662e922fcc908ff7b32a611a54920ac35676e2e151525d80812fca59d17"
+        },
+        {
+          "path": "WP4_tested_source_beaf8a5.tar.gz.part003",
+          "bytes": 217551,
+          "sha256": "4b369003db7939ff6c3b88ca1b4e187aeeab2d35c91fc07dc4fa63f4c7eeb1aa"
+        }
+      ]
+    }
+  },
+  "tested_implementation_branch": "wp4-tested-2026-10-25",
+  "acceptance_record_branch": "wp4-acceptance-record-2026-10-25",
+  "storage": "Ordered binary parts; restore.py reconstructs and verifies original archives",
+  "preserved_on": "2026-10-26"
+}

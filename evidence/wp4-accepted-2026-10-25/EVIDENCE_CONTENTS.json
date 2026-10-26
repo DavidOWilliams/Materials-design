@@ -1,0 +1,247 @@
+[
+  {
+    "path": "wp4-dossier.json",
+    "bytes": 334663,
+    "sha256": "6ee24f18c032d7e6a7f8850339a3fa87f4ac808a5eaba95d74b42109beb5f19a"
+  },
+  {
+    "path": "wp4-no-feedback.json",
+    "bytes": 159138,
+    "sha256": "0da58c7256c369359679e9737dc59e0e535162a10fc65a2b4b2a81e396ea8295"
+  },
+  {
+    "path": "wp4-impossible.json",
+    "bytes": 424143,
+    "sha256": "cfed3e85f0ee28ae9895caa3eabf92072e9be9cf32073dbf8056da40d4541495"
+  },
+  {
+    "path": "wp4-checkpoints.jsonl",
+    "bytes": 165580,
+    "sha256": "fb6fcd2fea47b8728bc939775eb5913110111008ec4700bd8556e30cbd1a64e8"
+  },
+  {
+    "path": "wp4-checkpoints.jsonl.manifest.json",
+    "bytes": 32672,
+    "sha256": "d772e2c40ef62531a70604d3a35bd6a3d90e6072bbfb794cc101a4c628dbfe4c"
+  },
+  {
+    "path": "wp4-checkpoints.jsonl.attempts.jsonl",
+    "bytes": 23363,
+    "sha256": "65c25eae12bdea3ade1f92df8220e897709311842168107761c5c734d9829059"
+  },
+  {
+    "path": "wp4-review/alternate-call-audit.json",
+    "bytes": 416,
+    "sha256": "63929f3898d6a381fa951921af2c652ede68a48b8b33f1e4e6dd7ec13012ea34"
+  },
+  {
+    "path": "wp4-review/alternate-resumed.json",
+    "bytes": 1813224,
+    "sha256": "2b46839fcdb1c229b3c06e22e5f88dd3d06742fe0a01157742f77e01702879bb"
+  },
+  {
+    "path": "wp4-review/alternate-terminal-verification-audit.json",
+    "bytes": 188,
+    "sha256": "e34a07cb4d02cb4d2ff2247b22fad7e4fe3e18208bb1a9cc3289223f5f51f707"
+  },
+  {
+    "path": "wp4-review/alternate-terminal-verified.json",
+    "bytes": 1813375,
+    "sha256": "8bc377c85822cc288dda07557e1fd30df72eb2580d2b93c3363bb7bf9f4e3449"
+  },
+  {
+    "path": "wp4-review/alternate-terminal.jsonl",
+    "bytes": 543931,
+    "sha256": "9d3dbef340d9f8c331a6e7bfc2f0f3cb109d2769cebc008454d151cebccb0aa0"
+  },
+  {
+    "path": "wp4-review/alternate-terminal.jsonl.attempts.jsonl",
+    "bytes": 258660,
+    "sha256": "4aa41d1fe3bcb6e9cfe68db4d9aa34caeeea1a4a9a3e21dcd48ae0ad8cfbf409"
+  },
+  {
+    "path": "wp4-review/alternate-terminal.jsonl.manifest.json",
+    "bytes": 32951,
+    "sha256": "76713202fd5559e7da92a54b8a8347a457ccc6a75b59302ca2c21e85b228d1dc"
+  },
+  {
+    "path": "wp4-review/alternate-write-failure-audit.json",
+    "bytes": 224,
+    "sha256": "40c4e31452d6a52cb30fe7497059a3401aef88410c2bec9db6889baeddf4d539"
+  },
+  {
+    "path": "wp4-review/alternate-write-failure-resumed.json",
+    "bytes": 1814707,
+    "sha256": "13dbb83d7a7c26a07366536c496d0f2eac1383b848466e0fc5bd1aa603c641ac"
+  },
+  {
+    "path": "wp4-review/alternate-write-failure.jsonl",
+    "bytes": 543931,
+    "sha256": "9d3dbef340d9f8c331a6e7bfc2f0f3cb109d2769cebc008454d151cebccb0aa0"
+  },
+  {
+    "path": "wp4-review/alternate-write-failure.jsonl.attempts.jsonl",
+    "bytes": 259843,
+    "sha256": "d510a2eacebdf2566970baa84b0dbd8b8ae907c8e591e48fb83acb56b6d26303"
+  },
+  {
+    "path": "wp4-review/alternate-write-failure.jsonl.manifest.json",
+    "bytes": 32951,
+    "sha256": "76713202fd5559e7da92a54b8a8347a457ccc6a75b59302ca2c21e85b228d1dc"
+  },
+  {
+    "path": "wp4-review/alternate.jsonl",
+    "bytes": 543931,
+    "sha256": "9d3dbef340d9f8c331a6e7bfc2f0f3cb109d2769cebc008454d151cebccb0aa0"
+  },
+  {
+    "path": "wp4-review/alternate.jsonl.attempts.jsonl",
+    "bytes": 258675,
+    "sha256": "45cec15ec51c12d98b1d3182517abbe58d99c800aa46934a4241de201c601014"
+  },
+  {
+    "path": "wp4-review/alternate.jsonl.manifest.json",
+    "bytes": 32951,
+    "sha256": "76713202fd5559e7da92a54b8a8347a457ccc6a75b59302ca2c21e85b228d1dc"
+  },
+  {
+    "path": "wp4-review/default-call-audit.json",
+    "bytes": 461,
+    "sha256": "fb0ec73eef547c8b89871aca45dd05afb85e3d0ec7bea15cec44aae77bb59d60"
+  },
+  {
+    "path": "wp4-review/default-final-write-failure-audit.json",
+    "bytes": 228,
+    "sha256": "c1c10df9eb01f447f052272ce861d0fe847122d63235bcff642498984db90560"
+  },
+  {
+    "path": "wp4-review/default-final-write-failure-resumed.json",
+    "bytes": 2304801,
+    "sha256": "305c57bd7c9ee33f810d39cf84ac6bba0da3c3f555fcab59f6db9bec48f92b4e"
+  },
+  {
+    "path": "wp4-review/default-final-write-failure.jsonl",
+    "bytes": 828023,
+    "sha256": "b907dba19026673b030a1f9ee009dd2b2b98bd41b92360b4e7e637fbbdfb62f3"
+  },
+  {
+    "path": "wp4-review/default-final-write-failure.jsonl.attempts.jsonl",
+    "bytes": 261729,
+    "sha256": "febd9a7f224c5c2cbc839ce3cf48cb361c71869719af58743b91c7916dea0ac3"
+  },
+  {
+    "path": "wp4-review/default-final-write-failure.jsonl.manifest.json",
+    "bytes": 32675,
+    "sha256": "ab938123f334ce89f61d589890e412154573bade50e9957ef6d2140b41736f01"
+  },
+  {
+    "path": "wp4-review/default-terminal-verification-audit.json",
+    "bytes": 186,
+    "sha256": "8603282741156664f82b3d45d6bd3c7ba6aa7d4b034e99b4b426c9a64d46fca3"
+  },
+  {
+    "path": "wp4-review/default-resumed.json",
+    "bytes": 2303318,
+    "sha256": "7458c287c9620518bb692ff7f9052dbcfadceadefbda93276398a6c2ef29183d"
+  },
+  {
+    "path": "wp4-review/default-terminal-verified.json",
+    "bytes": 2303469,
+    "sha256": "c1606ffb9a72902068c4475762ebb3a681239a1f560a052aadcb26c112917555"
+  },
+  {
+    "path": "wp4-review/default-terminal.jsonl",
+    "bytes": 828023,
+    "sha256": "b907dba19026673b030a1f9ee009dd2b2b98bd41b92360b4e7e637fbbdfb62f3"
+  },
+  {
+    "path": "wp4-review/default-terminal.jsonl.attempts.jsonl",
+    "bytes": 260546,
+    "sha256": "e562a61bf97005f1612dea1c90cfef5fb60594cc4902e085c554d214e8cd63bf"
+  },
+  {
+    "path": "wp4-review/default-terminal.jsonl.manifest.json",
+    "bytes": 32675,
+    "sha256": "ab938123f334ce89f61d589890e412154573bade50e9957ef6d2140b41736f01"
+  },
+  {
+    "path": "wp4-review/default-write-failure-audit.json",
+    "bytes": 222,
+    "sha256": "b9ca0dde73168c9db65b45732cdb1f14a63a867ed15a605ffe1fd1f43f851dbb"
+  },
+  {
+    "path": "wp4-review/default-write-failure-resumed.json",
+    "bytes": 2304801,
+    "sha256": "9b7bcaa3aa23ee19e51c06dc727c582c85473f332a37e92eafa472892e1c06c6"
+  },
+  {
+    "path": "wp4-review/default-write-failure.jsonl",
+    "bytes": 828023,
+    "sha256": "b907dba19026673b030a1f9ee009dd2b2b98bd41b92360b4e7e637fbbdfb62f3"
+  },
+  {
+    "path": "wp4-review/default-write-failure.jsonl.attempts.jsonl",
+    "bytes": 261729,
+    "sha256": "792d7810e6f31a40c87209092540df862ee20f51519a28097a0c594233fdf062"
+  },
+  {
+    "path": "wp4-review/default-write-failure.jsonl.manifest.json",
+    "bytes": 32675,
+    "sha256": "ab938123f334ce89f61d589890e412154573bade50e9957ef6d2140b41736f01"
+  },
+  {
+    "path": "wp4-review/default.jsonl",
+    "bytes": 828023,
+    "sha256": "b907dba19026673b030a1f9ee009dd2b2b98bd41b92360b4e7e637fbbdfb62f3"
+  },
+  {
+    "path": "wp4-review/default.jsonl.attempts.jsonl",
+    "bytes": 260561,
+    "sha256": "5dfadb8cff4386fa92caeb77ef6031457ff98487e77d78571a6528d315a93d96"
+  },
+  {
+    "path": "wp4-review/default.jsonl.manifest.json",
+    "bytes": 32675,
+    "sha256": "ab938123f334ce89f61d589890e412154573bade50e9957ef6d2140b41736f01"
+  },
+  {
+    "path": "wp4-alternate-campaign.json",
+    "bytes": 1379330,
+    "sha256": "f3631f988d17897996b68ea3329c993133d5bf7359f0a3720daf911a43e97b13"
+  },
+  {
+    "path": "wp4-higher-resolution.json",
+    "bytes": 1867223,
+    "sha256": "14de24c4573e2cc138858919a8c9f54bf62e3cb017ff84d713f8f5ad6587bead"
+  },
+  {
+    "path": "wp4-uniform.json",
+    "bytes": 242373,
+    "sha256": "c01e9afae9e839179f19b8123955e1252afbcfe10d22a086565a8a896e643193"
+  },
+  {
+    "path": "wp4-sensitivity.json",
+    "bytes": 7308,
+    "sha256": "363be74db2bf64ea347c0f923871a9aa2c470f4eba4cec5fcbc79bd91bbce9e6"
+  },
+  {
+    "path": "wp4-paired.json",
+    "bytes": 493781,
+    "sha256": "2aa34207c506fe7545131422cc374dcf63344a21aa65e0cecaad3dd814202db1"
+  },
+  {
+    "path": "wp4-export.json",
+    "bytes": 6827,
+    "sha256": "a6db3a4f8effe2e8adb915821247a6938a112d342ddba75fbbfa3871ca7e18b3"
+  },
+  {
+    "path": "wp4-tested-sha.txt",
+    "bytes": 41,
+    "sha256": "099c5195ec1aa5946c9f545c99c980b0b57dd68ce0fcc84417d061adb0bb46ce"
+  },
+  {
+    "path": "wp4-python.txt",
+    "bytes": 15,
+    "sha256": "9bdce2f3bc127762fcb79db8faf0385c42e81e916436db64486d7162bc1d04e0"
+  }
+]

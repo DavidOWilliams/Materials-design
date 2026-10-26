@@ -110,6 +110,8 @@ def execute_journal(path, *, elements=128, mass_limit=31.0, layer=0.005,
 
 def recover_journal(path, output, *, verify=False):
     """Resume using immutable recorded configuration, rejecting mismatches and corruption."""
+    if Path(output).exists():
+        raise FileExistsError("Recovered dossier already exists")
     manifest = read_manifest(path)
     return resume(path, output=output, verify=verify, **manifest["config"])
 

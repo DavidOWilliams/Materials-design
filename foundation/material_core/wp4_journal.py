@@ -73,15 +73,15 @@ def manifest_path(path):
     return Path(str(path)+".manifest.json")
 
 def initialize(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=4,
-               feedback=True,route="synthetic_ideal_planar_deposition",base_inputs=None):
+               feedback=True,route="synthetic_ideal_planar_deposition",base_inputs=None,process_version=1):
     """Freeze source inputs and process identity before executing a solver."""
     from .wp4_feedback import starting_inputs,scenario,REVISION_ID,EVALUATOR_ID,VERSION
     from .wp4_registry import resolve
     base=base_inputs if base_inputs is not None else starting_inputs(elements,mass_limit)
-    process=scenario(layer,feed,route)
+    process=scenario(layer,feed,route,version=process_version)
     identity,_=resolve(process)
     config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
-                budget=budget,feedback=feedback,route=route)
+                budget=budget,feedback=feedback,route=route,process_version=process_version)
     manifest=dict(schema_version=1,algorithm=VERSION,config=config,
                   baseline_intended_inputs=base.model_dump(mode="json"),
                   process=process.model_dump(mode="json"),

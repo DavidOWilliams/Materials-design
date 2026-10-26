@@ -51,7 +51,7 @@ def inspect(path):
     record = reopen(path)
     return {
         "algorithm": record["algorithm"],
-        "brief_hash": RunInputs.model_validate(record["baseline_intended_inputs"]).brief.content_hash,
+        "brief_hash": RunInputs.model_validate_json(json.dumps(record["baseline_intended_inputs"])).brief.content_hash,
         "stop_reason": record["stop_reason"],
         "records": record["records"],
         "measured_evidence": None,
@@ -72,8 +72,8 @@ def resume_journal(path, *, output, **config):
 def compare_compatible(first, second):
     """Reject different duties, solver contexts, materials or process conditions."""
     a, b = reopen(first), reopen(second)
-    x = RunInputs.model_validate(a["baseline_intended_inputs"])
-    y = RunInputs.model_validate(b["baseline_intended_inputs"])
+    x = RunInputs.model_validate_json(json.dumps(a["baseline_intended_inputs"]))
+    y = RunInputs.model_validate_json(json.dumps(b["baseline_intended_inputs"]))
     if x.brief.content_hash != y.brief.content_hash:
         raise ValueError("Incompatible brief or duty")
     if x.materials != y.materials or x.solver != y.solver or x.settings != y.settings:

@@ -81,7 +81,7 @@ def initialize(path, *, elements=4096,mass_limit=31.,layer=.005,feed=.25,budget=
     process=scenario(layer,feed,route,version=process_version)
     identity,_=resolve(process)
     config=dict(elements=elements,mass_limit=mass_limit,layer=layer,feed=feed,
-                budget=budget,feedback=feedback,route=route,process_version=process_version)
+                budget=budget,feedback=feedback,route=route)
     if process_version != 1: config["process_version"] = process_version
     manifest=dict(schema_version=1,algorithm=VERSION,config=config,
                   baseline_intended_inputs=base.model_dump(mode="json"),

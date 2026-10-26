@@ -50,6 +50,13 @@ with tab2:
     feedback = st.checkbox("Enable bounded feedback revision", value=True)
     version = st.number_input("Process scenario version", min_value=1, value=1, step=1)
     brief_path = st.text_input("Saved brief to use (optional; must match supported WP4 fixture)", "")
+    if brief_path:
+        try:
+            saved_budget = open_brief(brief_path).evaluation_budget
+            if int(budget) != saved_budget:
+                st.warning(f"Saved brief requires {saved_budget} evaluations; select that budget before executing.")
+        except Exception as exc:
+            st.error(f"Cannot open saved brief: {exc}")
     if st.button("Execute and persist campaign", type="primary"):
         try:
             with st.spinner("Running WP4 numerical core..."):

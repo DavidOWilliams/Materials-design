@@ -4,6 +4,11 @@ on:
     branches:
       - wp6-demonstration-evaluation-2026-10-26
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'foundation/wp6/**'
+      - 'foundation/tests/test_wp6_evaluation.py'
+      - '.github/workflows/wp6-evaluation.yml'
 jobs:
   evaluate:
     runs-on: ubuntu-latest

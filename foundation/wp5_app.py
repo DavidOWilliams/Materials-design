@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from material_core.wp4_feedback import starting_inputs
 from material_core.wp5_brief_editor import validate_brief, revise_brief, save_brief, open_brief
-from material_core.wp5_service import execute, inspect, replay, compare_compatible
+from material_core.wp5_service import execute, inspect, replay, compare_compatible, execute_journal, recover_journal, journal_status
 
 st.set_page_config(page_title="WP5 Materials Design", layout="wide")
 st.title("Materials design — bounded WP5 demonstration")
@@ -78,3 +78,30 @@ with tab4:
                                file_name="wp5-export.json", mime="application/json")
         except Exception as exc:
             st.error(str(exc))
+
+with st.expander("Durable cancellation and recovery (between numerical evaluations)"):
+    journal_path = st.text_input("Journal path", str(workspace / "campaign-journal.jsonl"))
+    journal_output = st.text_input("Recovered dossier path", str(workspace / "recovered.json"))
+    if st.button("Start checkpointed campaign with cancellation"):
+        try:
+            record = execute_journal(journal_path, elements=elements, mass_limit=mass_limit,
+                                     layer=layer, feed=feed, budget=int(budget),
+                                     feedback=feedback,
+                                     cancel_requested=lambda: True)
+            st.json({"stop_reason": record["stop_reason"],
+                     "journal": journal_path, "measured_evidence": None})
+        except Exception as exc:
+            st.error(f"Checkpointed run failed: {exc}")
+    if st.button("Inspect journal and attempt history"):
+        try:
+            st.json(journal_status(journal_path))
+        except Exception as exc:
+            st.error(str(exc))
+    if st.button("Resume from durable journal"):
+        try:
+            result = recover_journal(journal_path, journal_output)
+            st.json({"stop_reason": result["stop_reason"],
+                     "accounting": result.get("accounting"),
+                     "output": journal_output})
+        except Exception as exc:
+            st.error(f"Recovery rejected: {exc}")

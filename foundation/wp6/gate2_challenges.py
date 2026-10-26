@@ -26,7 +26,7 @@ def run(root):
         replay=replay(dossier),measured_evidence=inspect(dossier)["measured_evidence"])
     attempts=[]
     selected=None
-    for elements in (1,2,4,8):
+    for elements in (2,4,8,16,32):
         inputs=starting_inputs(elements=elements,mass_limit=31.0)
         result=evaluate(inputs)
         eligible=numerical_comparison_eligible(result,inputs.brief)

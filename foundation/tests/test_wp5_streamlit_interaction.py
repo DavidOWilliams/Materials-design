@@ -148,6 +148,15 @@ def test_wp5_r1_revised_saved_brief_checkpoint_cancel_recover_import_replay(tmp_
     assert inspect(imported)["export"] == exported
     assert replay(imported)["status"] == "passed"
     assert imported.read_bytes() == recovered.read_bytes()
+    import os, shutil
+    evidence_dir = os.environ.get("WP5_R1_EVIDENCE_DIR")
+    if evidence_dir:
+        destination = Path(evidence_dir)
+        destination.mkdir(parents=True, exist_ok=True)
+        for artifact in (saved, journal, Path(str(journal) + ".manifest.json"),
+                         Path(str(journal) + ".attempts.jsonl"), recovered, imported):
+            shutil.copy2(artifact, destination / artifact.name)
+        (destination / "expected-brief-sha256.txt").write_text(revised.content_hash + "\n")
 
 
 def test_wp5_r1_incompatible_saved_budget_creates_no_journal(tmp_path):

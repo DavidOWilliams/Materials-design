@@ -32,6 +32,7 @@ jobs:
         run: |
           .venv-foundation/bin/python -m pip install playwright==1.56.0
           .venv-foundation/bin/python -m playwright install --with-deps chromium
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp5-browser-pip-freeze.txt
       - name: Live Chromium interactive WP5 acceptance
         env:
           PYTHONPATH: foundation
@@ -52,6 +53,7 @@ jobs:
             /tmp/wp5-browser-workspace/wp5-browser-acceptance.png
             /tmp/wp5-browser-workspace/campaign.json
             /tmp/wp5-streamlit.log
+            /tmp/wp5-browser-pip-freeze.txt
           if-no-files-found: warn
       - name: Full foundation and recovery regression
         run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q

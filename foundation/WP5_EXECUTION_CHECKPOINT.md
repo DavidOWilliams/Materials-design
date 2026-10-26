@@ -113,3 +113,18 @@ The current execution container still cannot resolve github.com for git clone; G
 **Implementation remaining:** none within tested D1 bounded scope, subject to independent review. **Deferred:** mid-solver restart, asynchronous live stop during an active solver (UI offers preselected candidate-boundary cancellation), empirical ceramic validation, real printer CFD/FE calibration, new scientific models, V1. **Gate 3:** independent review NOT performed; package `foundation/WP5_GATE3_INDEPENDENT_REVIEW_PACKAGE.md`.
 
 **Exact next action:** independent reviewer checks frozen implementation SHA, source-pinned artifacts, numerical replay and scientific boundaries, then separately records Gate 3 decision. Do not self-approve, merge, force-push or move WP4 baselines. Documentation-only HEAD is distinct from tested implementation.
+
+
+## WP5-IR2 independent review follow-up — 26 October 2026
+
+**Original WP5-R1 independently VERIFIED** against `ccbca12dc3ff049a27d53fa77caf0db21d10e4d5` by user-supplied `WP5_Targeted_Independent_Review_ccbca12(1).zip` (SHA-256 `3990a70d970c5da5854d58a5f286af6fb77edbcc3da7213ce7904d4e97dcc898`). Original review's 325/34 counts and fresh browser evidence apply only to that reviewed SHA.
+
+**WP5-IR2 corrected and developer-verified, independent closure PENDING.** Narrow service validation commit `dd0bc5551cd630ff3ba1276564ab43f41fa4d81a`; new regression tests `42684f6de4db088126c944482bce94417e22761d`; **last successfully tested branch SHA** `4078a83dc11e14703ff6cc03f5b62f4e48879d14`; **actual PR merge checkout SHA** `326598004be79f26184b43dcf2897b9af9b91bfd`. Subsequent report/checkpoint/PR-description commits are documentation-only, NOT a new tested implementation.
+
+**Successful CI:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40331607545 — hash-locked setup, pip check, 85 WP4 tests, 44 WP5 tests, 10 new IR2-specific tests, 335 full foundation/recovery tests, Chromium UI acceptance, WP4 recompute/review evidence, all successful (exit code 0). WP3 run https://github.com/DavidOWilliams/Materials-design/actions/runs/40331607599 all four jobs successful. Combined UI install changes packaging 26.3 to 24.2; actual freeze and pip health archived.
+
+**Raw IR2 artifact:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40331607545/artifacts/12653744082 ; browser artifact `12654498567`; WP4 evidence `12654343765`. **Finding-specific reviewer report:** `foundation/WP5_IR2_CORRECTION_SUBMISSION.md`.
+
+**Before:** reviewer observed zero-budget validation error after creation of journal + manifest, followed by valid-retry FileExistsError. **After:** strict type/int-positive check before filesystem mutation; parameterized negative/zero/bool/float/string/None reject with no journal/manifest/attempt/parent, same-path valid retry, cancellation, recovery, replay, immutability and saved-brief mismatch verified.
+
+**Current implementation SHA:** `4078a83dc11e14703ff6cc03f5b62f4e48879d14`; **current documentation HEAD:** read PR #6 head (documentation-only after implementation). **Remaining milestone:** independent WP5-IR2 closure only. **Exact next executable action:** independent reviewer checks report, reruns source-pinned IR2 challenge and records disposition; do not self-approve or merge. Bounded D1 != V1; no physical measured evidence, mid-solver cancellation or newly qualified boundary conditions.

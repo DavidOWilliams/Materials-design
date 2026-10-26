@@ -86,3 +86,8 @@ The current execution container still cannot resolve github.com for git clone; G
 - `316a4ff77d77995d6fa26fe1feb3fa57bf5ac604`: corrupted-manifest test now mutates parsed JSON, guaranteeing tampering regardless of whitespace.
 - WP4 run 40308080720 was still in progress at last inspection; WP3 run 40308080913 was queued. Neither is current source.
 - No confirmed current-head WP5 dedicated workflow or live UI evidence. Gates 1/2 open. Exact next action: retrieve current-head CI logs and correct failures, execute interactive Streamlit acceptance, then freeze tested source for Gate 3.
+
+## Recovered regression and new vertical acceptance test
+- WP4 run 40308080720 **completed success** at merge checkout `eb2e75a` incorporating WP5 branch head `b943aac3400366914e5dcfa9b0b3c2a9fd294aef`: 85 focused WP4 and 312 foundation tests passed, 3 warnings; WP4 numerical replay scripts passed. This evidence does not validate newer commits.
+- `56389a0c2aa4acd924211f3487191abad1aa6bb5`: added complete saved-brief → execute → persist → inspect → import → replay test, and replaced a misleading unsupported-assumption test with a genuine unsupported geometry edit. **New test not yet verified.**
+- Latest tests, interactive browser UI, version binding and complete Gate 1/2 challenge evidence remain outstanding. Next: inspect current-head Actions and WP5 focused test log, fix failures. Do not declare acceptance.

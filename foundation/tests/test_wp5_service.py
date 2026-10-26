@@ -96,3 +96,25 @@ def test_corrupt_portable_import_rejected(tmp_path):
     with pytest.raises((ValueError, KeyError)):
         portable_import(source, tmp_path / "target.json")
     assert not (tmp_path / "target.json").exists()
+
+
+def test_process_scenario_versioning():
+    from material_core.wp5_service import versioned_scenario
+    a = versioned_scenario(version=1)
+    b = versioned_scenario(version=2)
+    assert a.version == 1 and b.version == 2
+    assert a.id == b.id
+    with pytest.raises(ValueError):
+        versioned_scenario(version=0)
+
+
+def test_distinct_process_scenario_comparison(tmp_path):
+    from material_core.wp5_service import compare_scenarios
+    a, b = tmp_path / "a.json", tmp_path / "b.json"
+    execute(a, elements=128, budget=1, layer=0.005)
+    execute(b, elements=128, budget=1, layer=0.01)
+    comparison = compare_scenarios(a, b)
+    assert comparison["causal_effect_established"] is False
+    assert comparison["measured_evidence"] is None
+    with pytest.raises(ValueError, match="Identical"):
+        compare_scenarios(a, a)

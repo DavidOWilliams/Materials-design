@@ -85,3 +85,41 @@ def compare_compatible(first, second):
     return {"first": export(first), "second": export(second),
             "comparison": "same brief, properties, solver and process scenario",
             "measured_evidence": None}
+
+
+def execute_journal(path, *, elements=128, mass_limit=31.0, layer=0.005,
+                    feed=0.25, budget=4, feedback=True,
+                    route="synthetic_ideal_planar_deposition", brief=None,
+                    cancel_requested=None):
+    """Start a durable WP4 journal, recording each completed evaluation."""
+    from .wp4_journal import Journal
+    from .wp4_feedback import run
+    path = Path(path)
+    if path.exists() or Path(str(path) + ".manifest.json").exists():
+        raise FileExistsError("Journal already exists")
+    base = prepared_inputs(elements=elements, mass_limit=mass_limit, brief=brief)
+    if brief is not None and base.brief.evaluation_budget != budget:
+        raise ValueError("Saved brief evaluation budget must match campaign budget")
+    journal, base = initialize(path, elements=elements, mass_limit=mass_limit,
+                               layer=layer, feed=feed, budget=budget,
+                               feedback=feedback, route=route, base_inputs=base)
+    return run(elements=elements, mass_limit=mass_limit, layer=layer, feed=feed,
+               budget=budget, feedback=feedback, route=route, base_inputs=base,
+               cancel_requested=cancel_requested, checkpoint=journal.checkpoint,
+               attempt_event=journal.event)
+
+
+def recover_journal(path, output, *, verify=False):
+    """Resume using immutable recorded configuration, rejecting mismatches and corruption."""
+    manifest = read_manifest(path)
+    return resume(path, output=output, verify=verify, **manifest["config"])
+
+
+def journal_status(path):
+    manifest = read_manifest(path)
+    events = read_attempts(path)
+    from .wp4_journal import recover
+    rows = recover(path)
+    return {"config": manifest["config"], "completed_candidates": len(rows),
+            "attempt_events": events, "measured_evidence": None,
+            "mid_solver_restart_supported": False}

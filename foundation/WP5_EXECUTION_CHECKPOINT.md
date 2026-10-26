@@ -60,3 +60,11 @@ The current execution container still cannot resolve github.com for git clone; G
 - **No successful verification yet for these changes.** Commit workflow lookup returned no runs at the time of inspection; this API reports PR-associated runs, not necessarily branch push workflow runs. Do not infer no Actions execution, or success, from an empty lookup.
 - Interactive browser/UI tests, process assumption versioning, meaningful scenario comparisons and Gate 1/2 remain outstanding. Last confirmed passing merge-ref source incorporated WP5 `c3b57eac7a78eb4aedb704ae3850d4b7d9149be9`.
 - Exact next action: inspect GitHub Actions jobs for the latest PR #6 merge SHA, fix failures, verify UI via actual browser interaction; complete remaining assumption workflow. Do not approve Gate 3.
+
+## Latest scenario increment
+- `d54f72c55ca5f67f66fcd0ede5845356a756efcc`: explicit versioned process-scenario descriptor and guarded distinct-scenario comparison (noncausal, no measured evidence).
+- `c084b020ca18dd2d63dbd2b0878682c11bc42323`: process-version and comparison controls in UI.
+- `c252f3a74a119dccbc786895268bcbe496fc7e57`: corresponding tests.
+- WP3 run 40307470599 and WP4 run 40307470497 observed queued, with no job conclusions. They were triggered before latest scenario commits, so cannot validate latest HEAD.
+- **Known gap:** process version selection is displayed but not yet applied to campaign process identity; same parameters with a different version do not produce a new version-tagged evaluation. This is not complete assumption editing. No browser UI evidence; Gate 1/2 remain open.
+- Next: bind version to actual evaluated process identity in WP4-compatible way, add tests, obtain current-HEAD Actions results, inspect failures, run interactive UI.

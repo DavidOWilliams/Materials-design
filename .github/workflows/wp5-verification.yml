@@ -40,7 +40,8 @@ jobs:
           PYTHONPATH: foundation
         run: |
           set -o pipefail
-          python -m pytest -q foundation/tests/test_wp5_brief_editor.py 2>&1 | tee wp5-evidence/wp5-focused.log
+          python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
+          python -m pytest -q foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py 2>&1 | tee wp5-evidence/wp5-focused.log
           echo "${PIPESTATUS[0]}" > wp5-evidence/wp5-focused.exit
       - name: Foundation and WP2–WP4 regression
         continue-on-error: true

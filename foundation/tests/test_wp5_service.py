@@ -46,7 +46,7 @@ def test_saved_brief_campaign_budget_mismatch(tmp_path):
 def test_saved_brief_rejects_unverified_process_assumptions(tmp_path):
     base = prepared_inputs(elements=128)
     brief = base.brief.model_dump(mode="json")
-    brief["assumptions"] = []
+    brief["thickness"]["value"] *= 2
     with pytest.raises((ValueError, TypeError)):
         execute(tmp_path / "unsupported.json", elements=128, budget=1, brief=brief)
 
@@ -121,3 +121,24 @@ def test_distinct_process_scenario_comparison(tmp_path):
     assert comparison["measured_evidence"] is None
     with pytest.raises(ValueError, match="Identical"):
         compare_scenarios(a, a)
+
+
+def test_saved_brief_full_vertical_workflow(tmp_path):
+    from material_core.wp5_brief_editor import revise_brief, save_brief, open_brief
+    from material_core.wp5_service import portable_import
+    fixture = prepared_inputs(elements=128).brief
+    changed = revise_brief(fixture, {"duty": fixture.duty + " — WP5 bounded edited duty"})
+    saved = tmp_path / "edited-brief.json"
+    save_brief(saved, changed)
+    loaded = open_brief(saved)
+    dossier = tmp_path / "campaign.json"
+    execute(dossier, elements=128, budget=loaded.evaluation_budget,
+            brief=loaded.model_dump(mode="json"))
+    observed = inspect(dossier)
+    assert observed["brief_hash"] == loaded.content_hash
+    assert observed["records"]
+    assert observed["measured_evidence"] is None
+    imported = tmp_path / "reopened.json"
+    portable_import(dossier, imported)
+    assert inspect(imported)["brief_hash"] == loaded.content_hash
+    assert replay(imported)["status"] == "passed"

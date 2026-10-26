@@ -24,8 +24,8 @@ with tab1:
         candidate = validate_brief(json.loads(raw))
         st.success("Brief contract valid")
         st.caption("Editing scientific duty/geometry beyond WP4 supported fixtures will be rejected by the execution adapter.")
+        name = st.text_input("Brief filename", "brief.json", key="brief_file")
         if st.button("Save new immutable brief"):
-            name = st.text_input("Brief filename", "brief.json", key="brief_file")
             path = workspace / name
             save_brief(path, candidate)
             st.success(f"Saved {path}: {candidate.content_hash}")

@@ -80,3 +80,9 @@ The current execution container still cannot resolve github.com for git clone; G
 - `6e19a6b1226e9b2d5a6359ef04ae4e3f96c69c4b` displays actual evaluated records in campaign UI.
 - Current-head test and actual browser interaction still not demonstrated. Process version still only a descriptor, not applied to execution; do not claim complete M3.
 - Next: retrieve new WP5 workflow execution, inspect logs and correct any failures. Run browser interaction on a live Streamlit server, verify full workflow, then decide gates.
+
+## Evidence safety and deterministic challenge corrections
+- `070fb369948b69993160212f472a2d40ab5385b2`: recovery refuses to overwrite an existing dossier.
+- `316a4ff77d77995d6fa26fe1feb3fa57bf5ac604`: corrupted-manifest test now mutates parsed JSON, guaranteeing tampering regardless of whitespace.
+- WP4 run 40308080720 was still in progress at last inspection; WP3 run 40308080913 was queued. Neither is current source.
+- No confirmed current-head WP5 dedicated workflow or live UI evidence. Gates 1/2 open. Exact next action: retrieve current-head CI logs and correct failures, execute interactive Streamlit acceptance, then freeze tested source for Gate 3.

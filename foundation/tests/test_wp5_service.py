@@ -1,3 +1,4 @@
+import json
 import pytest
 from material_core.wp5_service import execute, inspect, replay, compare_compatible, prepared_inputs
 

@@ -1,0 +1,47 @@
+name: WP6 demonstration evaluation
+on:
+  push:
+    branches:
+      - wp6-demonstration-evaluation-2026-10-26
+  workflow_dispatch:
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lock environment
+        run: bash foundation/setup.sh
+      - name: Freeze source and dependencies
+        run: |
+          mkdir -p /tmp/wp6-evidence
+          git rev-parse HEAD > /tmp/wp6-evidence/source-sha.txt
+          .venv-foundation/bin/python --version > /tmp/wp6-evidence/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp6-evidence/dependencies.txt
+          .venv-foundation/bin/python -m pip check > /tmp/wp6-evidence/pip-check.txt
+      - name: Focused WP6 tests
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_evaluation.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/wp6-tests.log
+      - name: Foundation regression
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/wp6-evidence/regression.log
+      - name: Full-resolution campaigns
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/evaluate.py --output /tmp/wp6-evidence/campaigns --elements 4096 --budget 4 2>&1 | tee /tmp/wp6-evidence/campaigns.log
+      - name: Hash evidence
+        if: always()
+        run: |
+          cd /tmp/wp6-evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp6-evaluation-${{ github.sha }}
+          path: /tmp/wp6-evidence/**
+          if-no-files-found: warn

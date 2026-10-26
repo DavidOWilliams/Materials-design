@@ -24,7 +24,7 @@ with tab1:
         candidate = validate_brief(json.loads(raw))
         changes = {key: getattr(candidate, key) for key in ("duty", "evaluation_budget")
                    if getattr(candidate, key) != getattr(fixture.brief, key)}
-        unsupported = [key for key in fixture.brief.model_fields
+        unsupported = [key for key in type(fixture.brief).model_fields
                        if key not in ("duty", "evaluation_budget", "version", "content_hash")
                        and getattr(candidate, key) != getattr(fixture.brief, key)]
         if unsupported:

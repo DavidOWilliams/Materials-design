@@ -73,7 +73,10 @@ def test_reject_corrupt_journal_manifest(tmp_path):
     journal = tmp_path / "corrupt.jsonl"
     execute_journal(journal, elements=128, budget=1, cancel_requested=lambda: True)
     manifest = tmp_path / "corrupt.jsonl.manifest.json"
-    manifest.write_text(manifest.read_text().replace('"budget": 1', '"budget": 99'))
+    import json
+    envelope = json.loads(manifest.read_text())
+    envelope["manifest"]["config"]["budget"] = 99
+    manifest.write_text(json.dumps(envelope))
     with pytest.raises(ValueError, match="Corrupt"):
         recover_journal(journal, tmp_path / "output.json")
 

@@ -52,3 +52,17 @@ def test_streamlit_invalid_brief_is_rejected(tmp_path):
     control(app.text_area, "Typed brief JSON (complete contract)").set_value('{"invalid": true}').run()
     assert list(app.error)
     assert not (tmp_path / "brief.json").exists()
+
+
+def test_streamlit_process_version_binds_to_persisted_campaign(tmp_path):
+    app = AppTest.from_file("foundation/wp5_app.py", default_timeout=120).run()
+    control(app.text_input, "Workspace directory").set_value(str(tmp_path)).run()
+    control(app.number_input, "Process scenario version").set_value(2).run()
+    control(app.number_input, "Maximum evaluations").set_value(1).run()
+    control(app.button, "Execute and persist campaign").click().run()
+    assert_no_ui_errors(app)
+    from material_core.wp4_feedback import reopen
+    dossier = tmp_path / "campaign.json"
+    assert dossier.exists()
+    assert reopen(dossier)["process"]["version"] == 2
+    assert replay(dossier)["status"] == "passed"

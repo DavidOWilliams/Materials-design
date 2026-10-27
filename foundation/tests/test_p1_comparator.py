@@ -53,3 +53,14 @@ def test_tampered_config_rejected(tmp_path):
     a.write_text(json.dumps(item))
     with pytest.raises(ValueError,match="digest"):
         compare(a,b)
+
+def test_density_feedback_triggers_with_wp3_three_material_catalogue(tmp_path):
+    a=execute(seed=1,budget=3,feedback=False,output=tmp_path/"blind.json",
+              elements=32,mass_limit=10.0)
+    b=execute(seed=1,budget=3,feedback=True,output=tmp_path/"feedback.json",
+              elements=32,mass_limit=10.0)
+    assert len(a["rows"]) == len(b["rows"]) == 3
+    assert all(r["status"] == "complete" for r in b["rows"])
+    assert any(r["revision_applied"] for r in b["rows"][1:])
+    assert all(not r["revision_applied"] for r in a["rows"])
+    assert compare(tmp_path/"blind.json",tmp_path/"feedback.json")["matched_numerical_work"]

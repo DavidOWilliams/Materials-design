@@ -1,0 +1,95 @@
+name: P1 exact-source scientific challenge probes
+on:
+  pull_request:
+    paths:
+      - .github/workflows/p1-challenges.yml
+  workflow_dispatch:
+jobs:
+  scientific-challenges:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6eb62daec638185f5c5dc170182e9e0454b6e061
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: bash foundation/setup.sh
+      - name: Run bounded scientific failure and negative controls
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -euo pipefail
+          .venv-foundation/bin/python - <<'PY' | tee p1-challenge-evidence.json
+          import json,tempfile
+          from pathlib import Path
+          from unittest.mock import patch
+          from material_core import p1_comparator as cmp
+          from material_core.p1_comparator import execute, compare, score_saved
+          checks={}
+          with tempfile.TemporaryDirectory() as work:
+              base=Path(work)
+              paths=[]
+              for enabled in (False,True):
+                  dest=base/("on" if enabled else "off")
+                  case=execute(seed=3,budget=4,feedback=enabled,output=dest,
+                               elements=32,mass_limit=10.0)
+                  scored=score_saved(dest)
+                  assert not any(row["feasible"] for row in scored["results"])
+                  assert case["accounting"]["proposals"]==4
+                  paths.append(dest)
+              assert compare(*paths)["matched_numerical_work"]
+              checks["no_feasible_mass_cap_10"]="PASS — zero qualified feasible candidates in both arms"
+              first=cmp.evaluate
+              count=[0]
+              def injected(x):
+                  count[0]+=1
+                  if count[0]==1: raise RuntimeError("deliberate injected numerical failure")
+                  return first(x)
+              with patch.object(cmp,"evaluate",side_effect=injected):
+                  failed=execute(seed=3,budget=4,feedback=False,
+                                 output=base/"failed",elements=32)
+              assert failed["accounting"]["failed_evaluations"]==1
+              assert failed["accounting"]["proposals"]==4
+              assert failed["rows"][0]["status"]=="evaluation_failed"
+              checks["numerical_failure_counted"]="PASS — failed evaluation charged without dropping future slots"
+              value=json.loads(paths[0].read_text())
+              value["rows"][0]["objectives"]["areal_mass"]=-1
+              tampered=base/"tampered"
+              tampered.write_text(json.dumps(value))
+              try:score_saved(tampered)
+              except ValueError:checks["objective_tampering"]="PASS — recomputation rejected altered objective"
+              else:raise AssertionError("Tampered objective accepted")
+              value=json.loads(paths[0].read_text())
+              value["config"]["seed"]=999
+              badconfig=base/"badconfig"
+              badconfig.write_text(json.dumps(value))
+              try:score_saved(badconfig)
+              except ValueError:checks["config_tampering"]="PASS — config hash mismatch rejected"
+              else:raise AssertionError("Tampered config accepted")
+              def interrupted(provider,index):
+                  if index==2: raise KeyboardInterrupt("simulated interrupted campaign")
+                  return orig(provider,index)
+              orig=cmp._candidate
+              with patch.object(cmp,"_candidate",side_effect=interrupted):
+                  try:execute(seed=3,budget=4,feedback=False,
+                              output=base/"interrupted",elements=32)
+                  except KeyboardInterrupt:pass
+                  else:raise AssertionError("Expected interruption missing")
+              assert not (base/"interrupted").exists()
+              checks["mid_trial_recovery"]="OPEN — interruption before final save loses partial trial; requires correction"
+              identity_off=execute(seed=5,budget=1,feedback=False,
+                  output=base/"identityoff",elements=32,layer=.01,feed=.5)
+              identity_on=execute(seed=5,budget=1,feedback=True,
+                  output=base/"identityon",elements=32,layer=.01,feed=.5)
+              assert score_saved(base/"identityoff")["results"][0]["achieved_objectives"]==score_saved(base/"identityon")["results"][0]["achieved_objectives"]
+              checks["bounded_identity_negative_control"]="PASS — one identical homogeneous proposal, limited negative control"
+          print(json.dumps({"source":"6eb62daec638185f5c5dc170182e9e0454b6e061",
+                            "Gate3":"NOT APPROVED","checks":checks},indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-exact-source-scientific-challenges
+          path: p1-challenge-evidence.json

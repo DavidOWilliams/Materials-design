@@ -183,7 +183,7 @@ def score_saved(path):
         if row["index"]!=i:
             raise ValueError("Candidate ordering mismatch")
         spec,base=_candidate(provider,i)
-        if spec!=row["proposal"]:
+        if canonical(spec)!=canonical(row["proposal"]):
             raise ValueError("Proposal generator does not reproduce saved candidate")
         if cfg["feedback"] and previous_feedback is not None:
             from types import SimpleNamespace

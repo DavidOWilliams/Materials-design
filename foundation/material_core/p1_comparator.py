@@ -161,6 +161,66 @@ def compare(a, b):
                 feedback=ax if ca["feedback"] else ay,
                 matched_cpu_time=False, independent_scoring=False)
 
+
+def score_saved(path):
+    """Rebuild and recompute every candidate with the same synthetic evaluator.
+
+    This is common *in-model* scoring, NOT an independent physical process model.
+    Search budgets exclude these separate, individually counted solves.
+    """
+    data=json.loads(Path(path).read_text())
+    cfg=data["config"]
+    if cfg["schema"]!=SCHEMA or digest(cfg)!=data["config_sha256"]:
+        raise ValueError("Invalid frozen configuration identity")
+    if len(data["rows"])!=cfg["budget"]:
+        raise ValueError("Invalid or truncated candidate record")
+    provider=resolve_provider(cfg["provider"],cfg["seed"],cfg["method"],
+                              cfg["elements"],cfg["mass_limit"])
+    process=scenario(cfg["layer"],cfg["feed"],cfg["route"])
+    results=[]
+    previous_feedback=None
+    for i,row in enumerate(data["rows"]):
+        if row["index"]!=i:
+            raise ValueError("Candidate ordering mismatch")
+        spec,base=_candidate(provider,i)
+        if spec!=row["proposal"]:
+            raise ValueError("Proposal generator does not reproduce saved candidate")
+        if cfg["feedback"] and previous_feedback is not None:
+            from types import SimpleNamespace
+            arch=base.design.architecture
+            comp=(arch.composition if hasattr(arch,"composition")
+                  else arch.layers[0].composition if hasattr(arch,"layers")
+                  else arch.knots[0].composition)
+            active={f.material_id for f in comp.fractions}
+            scoped=SimpleNamespace(materials=tuple(
+                m for m in base.materials if m.id in active))
+            base=_replace_design(base,_revise(scoped,base.design,previous_feedback))
+        if row["intended_hash"]!=base.design.content_hash:
+            raise ValueError("Replayed intended design mismatch")
+        achieved=estimated_inputs(base,process)
+        if row.get("achieved_inputs_hash")!=achieved.content_hash:
+            raise ValueError("Replayed achieved-state mismatch")
+        result=evaluate(achieved)
+        if row.get("status")!="complete" or row.get("evaluation_hash")!=result.content_hash:
+            raise ValueError("Recomputed numerical evaluation mismatch")
+        scores={m.objective_id:None if m.value is None else m.value.value
+                for m in result.metrics}
+        if scores!=row["objectives"]:
+            raise ValueError("Stored objective values disagree with recomputation")
+        results.append(dict(index=i,achieved_objectives=scores,
+                            feasible=bool(numerical_comparison_eligible(
+                                result, achieved.brief) and
+                                result.feasibility=="conditional" and
+                                result.manufacturing_feasibility=="conditional"),
+                            evaluation_hash=result.content_hash))
+        previous_feedback=(_feedback(result,cfg["mass_limit"])
+                           if cfg["feedback"] else None)
+    return dict(config_sha256=data["config_sha256"],
+                common_scorer="WP4 achieved state + WP2 numerical evaluator",
+                scoring_evaluations=len(results),results=results,
+                measured_evidence=None,
+                external_process_validation=False)
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()

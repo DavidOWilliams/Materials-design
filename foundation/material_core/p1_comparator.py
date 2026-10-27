@@ -225,7 +225,7 @@ def audit_record(record):
     """Fail closed for forged counters, row identities and cache declarations."""
     cfg=record.get("config")
     if not isinstance(cfg,dict) or record.get("config_sha256")!=digest(cfg):
-        raise ValueError("P1 config identity mismatch")
+        raise ValueError("P1 config digest identity mismatch")
     rows=record.get("rows")
     counters=record.get("accounting")
     if not isinstance(rows,list) or not isinstance(counters,dict) or len(rows)>cfg["budget"]:

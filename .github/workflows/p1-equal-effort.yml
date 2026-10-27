@@ -49,6 +49,7 @@ jobs:
         env:
           PYTHONPATH: foundation
         run: |
+          set -o pipefail
           .venv-foundation/bin/python foundation/p1/cpu_benchmark_ir05.py | tee p1-cpu.log
       - name: Upload verification logs
         if: always()

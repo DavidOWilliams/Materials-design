@@ -38,3 +38,32 @@ Frozen n=80 pairs, equal numerical-work 3D normalized HV feedback minus control 
 
 ## Independent reviewer reproduction
 Start with original-source CI run `40483551395`, exact correction-branch run(s) referenced above, both retained SHA256 manifests, new `foundation/tests/test_p1_ir_challenges.py`, `test_p1_ir_numerical.py`, changed `material_core/p1_comparator.py`, CPU benchmark JSON, and this report. Challenge negative controls, recovery, numerical qualification, metrology, and holdout process assumptions without treating any supplementary tests as replacement confirmatory trials.
+
+---
+
+## Final verification addendum — 27 October 2026 (supersedes earlier pending-execution statements)
+
+**Exact corrected tested implementation SHA:** `752752f880ed7c4b0c77d399ca7c99f9a9bb094e`. Subsequent report, evidence-manifest and PR-metadata commits are **documentation/evidence only, not a newly tested implementation**.
+
+**GitHub Actions verification:** [run 40539883955](https://github.com/DavidOWilliams/Materials-design/actions/runs/40539883955), all three jobs successful. Actual tested-source checkout observed in raw logs. Corrected-source 35 focused/adversarial/numerical tests **passed**; foundation/recovery 370 **passed**. Original tested SHA rerun 13 focused and 348 regression tests **passed**. Repository-vs-original archive SHA256 job **passed**. Strict CPU benchmark executed and its JSON was preserved in the workflow artifact. See `P1_IR_EVIDENCE_MANIFEST.md` for downloadable artifact IDs and hashed ZIP snapshots.
+
+### Revised implementation finding dispositions (independent reviewer may disagree)
+
+| Finding | Implementation disposition after executed rerun | Qualification |
+|---|---|---|
+| P1-IR-01 | **RESOLVED for implementation verification** | Clean original SHA and corrected SHA reruns, exact dependency snapshots, logged commands and complete successful CI. This is not separately reviewed execution. |
+| P1-IR-02 | **PARTIALLY RESOLVED** | All supplementary adversarial tests execute successfully; fail-closed cache/config/objective/accounting, interruption/restart and blind isolation. True physically identical manufacturing process for arbitrary WP3 heterogeneous designs is unsupported: only a no-violation policy negative control is established. No new physics introduced. |
+| P1-IR-03 | **RESOLVED for scientific interpretation** | Historical 3D HV remains mathematically frozen; third tensile-stress objective is numerically negligible, so the observed result effectively measures two thermal/mass objectives. No meaningful stress tradeoff inferred. |
+| P1-IR-04 | **RESOLVED for code semantics; historical comparison unchanged** | Heldout eligible check now uses heldout inputs; actual revision `revision_applied` separated from `revision_attempted`. Historical result rows and scores untouched. Existing supported WP4 briefs have equal native/heldout requirement context. |
+| P1-IR-05 | **PARTIALLY RESOLVED; efficiency conclusion INCONCLUSIVE** | Instrumentation, strict CPU/counter validations, CPU-vs-wall benchmark, warmup and 60/80/100ms sensitivity executed. Original CPU-effect changes across implementation versions; supplementary timing shows nontrivial feedback overhead and variability. No computational-efficiency superiority claim. |
+| P1-IR-06 | **RESOLVED for evidence preservation** | 405 original files, 0 missing/modified, seven declared supplementary preserved; original/expanded manifests rechecked. |
+
+### CPU benchmark numerical findings (supplementary only)
+
+Seven repeats *excluding warmup* for each arm at four proposals, 32 elements. Control CPU time 104.846398 ± 0.307956 ms (sample SD); feedback 108.720272 ± 5.261594 ms. At 60ms both arms completed two candidates. At 80ms control completed three candidates in all repeats; feedback completed two in three repeats and three in four. At 100ms both completed three. CPU measurements came from `process_time_ns`, while additional wall-clock time was separately recorded via `perf_counter_ns`. The benchmark is environment-specific and cannot turn the preregistered 80ms result into a new confirmatory result.
+
+### Final Gate 3 handover
+
+Review the exact corrected source, CI run above, `foundation/tests/test_p1_ir_challenges.py`, `test_p1_ir_numerical.py`, correction report, original and checkpoint historical archives, `P1_IR_EVIDENCE_MANIFEST.md`, and the focused CPU benchmark JSON. The independent reviewer must reproduce selected adversarial and numerical checks, assess whether any remaining test gaps block Gate 2, and independently decide Gate 3.
+
+**Gate 3 remains OPEN; no developer self-approval.** PRs #9 and #11 remain draft and unmerged. WP6 acceptance and physics-model boundaries remain unchanged.

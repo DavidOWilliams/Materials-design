@@ -1,0 +1,65 @@
+name: Preserve independently reproducible P1 scientific evidence in Git
+on:
+  push:
+    branches:
+      - p1-equal-effort-from-accepted-wp5-2026-10-26
+    paths:
+      - .github/workflows/p1-preserve-evidence.yml
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  preserve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p1-equal-effort-from-accepted-wp5-2026-10-26
+          persist-credentials: true
+      - name: Download EXACT independently verifiable confirmatory run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p1-archive
+          gh run download 40483551395 --repo DavidOWilliams/Materials-design --name p1-verification-logs --dir /tmp/p1-archive
+          test -s /tmp/p1-archive/p1-confirmatory.log
+          src=$(find /tmp/p1-archive -name confirmatory_summary.json -type f -print -quit)
+          test -n "$src"
+          dirname "$src" > /tmp/p1-evidence-dir
+          evidence_dir=$(cat /tmp/p1-evidence-dir)
+          (cd "$evidence_dir" && sha256sum -c sha256_manifest.txt)
+          python - "$evidence_dir" <<'PY'
+          import json,sys
+          from pathlib import Path
+          data=json.loads((Path(sys.argv[1])/"environment_and_source.json").read_text())
+          assert data["git_checkout"]=="6eb62daec638185f5c5dc170182e9e0454b6e061",data
+          summary=json.loads((Path(sys.argv[1])/"confirmatory_summary.json").read_text())
+          assert summary["confirmatory_n_pairs"]==80
+          print("VERIFIED EXACT TESTED SOURCE",data["git_checkout"])
+          PY
+      - name: Generate scientific report and retain original raw evidence
+        run: |
+          set -euo pipefail
+          destination=foundation/p1/evidence/confirmed-source-6eb62da
+          test ! -e "$destination"
+          mkdir -p "$destination"
+          cp -a "$(cat /tmp/p1-evidence-dir)/." "$destination/"
+          cp /tmp/p1-archive/p1-focused.log "$destination/"
+          cp /tmp/p1-archive/p1-regression.log "$destination/"
+          cp /tmp/p1-archive/p1-pilot.log "$destination/"
+          cp /tmp/p1-archive/p1-confirmatory.log "$destination/"
+          python foundation/p1/make_report.py --evidence "$destination" --output "$destination/SCIENTIFIC_REPORT.md"
+          (cd "$destination" && find . -maxdepth 1 -type f ! -name sha256_manifest.txt ! -name sha256_manifest_plus_report.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest_plus_report.txt)
+          (cd "$destination" && sha256sum -c sha256_manifest_plus_report.txt)
+      - name: Commit evidence-only checkpoint; do not change tested source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add foundation/p1/evidence/confirmed-source-6eb62da
+          git diff --cached --quiet && { echo 'Evidence already archived'; exit 0; }
+          git commit -m "evidence(P1): preserve 80-pair tested-source archive and scientific report"
+          git push origin HEAD:p1-equal-effort-from-accepted-wp5-2026-10-26

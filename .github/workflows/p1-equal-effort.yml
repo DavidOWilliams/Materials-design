@@ -25,9 +25,10 @@ jobs:
           PYTHONPATH: foundation
         run: |
           set -o pipefail
-          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py -vv --tb=long | tee p1-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_ir_challenges.py foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee p1-focused.log
           .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
       - name: Exploratory P1 pilot (nonconfirmatory)
+        if: github.head_ref != 'p1-ir1-ir6-corrections-2026-10-27'
         env:
           PYTHONPATH: foundation
         run: |
@@ -36,18 +37,27 @@ jobs:
           cd foundation/p1/pilot-evidence
           find . -maxdepth 1 -type f ! -name sha256_manifest.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest.txt
       - name: Frozen P1 confirmatory trials (not independently accepted)
+        if: github.head_ref != 'p1-ir1-ir6-corrections-2026-10-27'
         env:
           PYTHONPATH: foundation
         run: |
           .venv-foundation/bin/python foundation/p1/confirm.py | tee p1-confirmatory.log
           cd foundation/p1/confirmatory-evidence
           sha256sum -c sha256_manifest.txt
+      - name: Supplementary CPU benchmark
+        if: github.head_ref == 'p1-ir1-ir6-corrections-2026-10-27'
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python foundation/p1/cpu_benchmark_ir05.py | tee p1-cpu.log
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: p1-verification-logs
           path: |
+            p1-cpu.log
+            foundation/p1/correction-evidence/
             p1-focused.log
             p1-regression.log
             p1-pilot.log

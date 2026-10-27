@@ -160,3 +160,12 @@ def test_ir04_heldout_evaluation_not_confused_with_native(tmp_path):
     assert all(set(r["achieved_objectives"])==set(native["results"][0]["achieved_objectives"])
                for r in held["results"])
     assert path.read_bytes()==original_bytes
+
+def test_09b_invalid_timestamp_order_rejected(tmp_path):
+    path,_=trial(tmp_path)
+    data=json.loads(path.read_text())
+    assert "started_utc_ns" in data["rows"][0]
+    data["rows"][0]["ended_utc_ns"]=data["rows"][0]["started_utc_ns"]-1
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match="timestamps"):
+        score_saved(path)

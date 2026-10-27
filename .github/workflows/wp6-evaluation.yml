@@ -33,6 +33,10 @@ jobs:
           PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_evaluation.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/wp6-tests.log
       - name: Install WP5 interactive test dependency
         run: .venv-foundation/bin/python -m pip install streamlit==1.40.2
+      - name: Portable unresolved reproduction regression without artifact environment
+        run: |
+          set -o pipefail
+          env -u WP6_ORIGINAL_NUMERICAL_ATTEMPTS PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_g2_02_reproduction.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/gate2-portable.log
       - name: Gate 2 focused challenges
         run: |
           set -o pipefail
@@ -58,8 +62,6 @@ jobs:
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_g2_02_reproduction.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/gate2-regression.log
       - name: Foundation regression
-        env:
-          WP6_ORIGINAL_NUMERICAL_ATTEMPTS: /tmp/wp6-evidence/original_numerical_attempts.json
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/wp6-evidence/regression.log

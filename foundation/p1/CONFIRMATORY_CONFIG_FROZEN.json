@@ -1,0 +1,36 @@
+{
+  "protocol_version": "p1-confirmatory-v1",
+  "source_baseline": "4078a83dc11e14703ff6cc03f5b62f4e48879d14",
+  "seed_start": 2001,
+  "seed_end_inclusive": 2020,
+  "methods": [
+    "sampling",
+    "explore"
+  ],
+  "feeds": [
+    0.25,
+    0.5
+  ],
+  "elements": 32,
+  "mass_limit": 31,
+  "budget_proposals": 4,
+  "layer": 0.005,
+  "route": "synthetic_ideal_planar_deposition",
+  "cpu_budget_ns": 80000000,
+  "reference": [
+    120000,
+    45,
+    1000000000
+  ],
+  "bootstrap_seed": 8846,
+  "bootstrap_repetitions": 2000,
+  "primary": "pooled stratified paired feasible normalized 3D hypervolume difference feedback minus control after four charged proposal slots",
+  "significance_claim": false,
+  "practical_hv_threshold": 0.02,
+  "practical_feasibility_difference": 0.1,
+  "heldout_supported_feed": true,
+  "heldout_explanation": "Each completed arm is rescored after search using the opposite supported feed resolution; this tests parameter sensitivity in the same ideal synthetic model, not external predictive validity.",
+  "exclusions": "Exclude no planned trials; failed/invalid attempts remain in denominator and count against budgets. Abort and flag analysis rather than silently dropping invalid/missing records.",
+  "interpretation": "synthetic estimated achieved state only; no measured validation",
+  "independent_review_required": true
+}

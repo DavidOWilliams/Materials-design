@@ -15,11 +15,14 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install foundation dependencies
-        run: bash foundation/setup.sh
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
       - name: Focused P1 test and full foundation regression
         env:
           PYTHONPATH: foundation
         run: |
+          set -o pipefail
           .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py -vv --tb=long | tee p1-focused.log
           .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
       - name: Upload verification logs

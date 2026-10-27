@@ -1,0 +1,131 @@
+name: P1 IR1-IR6 correction verification (separate from historical confirmation)
+on:
+  push:
+    branches: [p1-ir1-ir6-corrections-2026-10-27]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-source-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6eb62daec638185f5c5dc170182e9e0454b6e061
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact tested checkout
+        run: test "$(git rev-parse HEAD)" = 6eb62daec638185f5c5dc170182e9e0454b6e061
+      - name: Reproducible isolated environment
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip freeze > original-dependencies.txt
+      - name: Rerun ORIGINAL focused and foundation suites
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee original-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee original-regression.log
+          git rev-parse HEAD > original-tested-source.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-p1-source-verification
+          path: |
+            original-focused.log
+            original-regression.log
+            original-dependencies.txt
+            original-tested-source.txt
+  corrected-source-challenge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated foundation plus UI regression dependencies
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip freeze > corrected-dependencies.txt
+      - name: Execute adversarial suite, P1 checks and full regression
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          git rev-parse HEAD > corrected-tested-source.txt
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_ir_challenges.py foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee corrected-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee corrected-regression.log
+      - name: Exploratory CPU metrology
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python foundation/p1/cpu_benchmark_ir05.py | tee cpu-benchmark.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-ir-correction-challenges
+          path: |
+            corrected-tested-source.txt
+            corrected-focused.log
+            corrected-regression.log
+            corrected-dependencies.txt
+            cpu-benchmark.log
+            foundation/p1/correction-evidence/
+  evidence-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Compare preserved repository manifests to original CI artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p1-original
+          gh run download 40483551395 --repo DavidOWilliams/Materials-design --name p1-verification-logs --dir /tmp/p1-original
+          src=$(find /tmp/p1-original -name confirmatory_summary.json -print -quit)
+          test -n "$src"
+          original_dir=$(dirname "$src")
+          saved=foundation/p1/evidence/confirmed-source-6eb62da
+          test -d "$saved"
+          (cd "$original_dir" && sha256sum -c sha256_manifest.txt > /tmp/p1-original-hash.log)
+          (cd "$saved" && sha256sum -c sha256_manifest.txt > /tmp/p1-repo-original-hash.log)
+          (cd "$saved" && sha256sum -c sha256_manifest_plus_report.txt > /tmp/p1-expanded-hash.log)
+          python - "$original_dir" "$saved" <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          source,target=map(Path,sys.argv[1:])
+          index=lambda p:{f.name:hashlib.sha256(f.read_bytes()).hexdigest()
+                          for f in p.iterdir() if f.is_file()}
+          a,b=index(source),index(target)
+          missing=sorted(set(a)-set(b))
+          modified=sorted(n for n in a.keys()&b.keys() if a[n]!=b[n])
+          additions=sorted(set(b)-set(a))
+          out=dict(source_files=len(a),repository_files=len(b),
+                   missing=missing,modified=modified,added_report_and_logs=additions,
+                   source_identity=json.loads((source/"environment_and_source.json").read_text())["git_checkout"])
+          Path("integrity-result.json").write_text(json.dumps(out,indent=2)+"\n")
+          if missing or modified:raise SystemExit("Original evidence differs")
+          print(json.dumps(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-ir-archive-integrity
+          path: |
+            integrity-result.json
+            /tmp/p1-original-hash.log
+            /tmp/p1-repo-original-hash.log
+            /tmp/p1-expanded-hash.log

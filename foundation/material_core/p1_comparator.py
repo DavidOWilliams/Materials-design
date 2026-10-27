@@ -88,19 +88,22 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
                 materials=tuple(m for m in base.materials if m.id in active))
             revised = _revise(scoped, base.design, previous_feedback)
             base = _replace_design(base, revised)
-        totals["proposal_cpu_ns"] += process_time_ns() - start
+        proposal_ns = process_time_ns() - start
+        totals["proposal_cpu_ns"] += proposal_ns
         totals["proposals"] += 1
         row = dict(index=index, seed=seed, proposal=spec,
                    intended_hash=base.design.content_hash,
                    revision_applied=bool(feedback and previous_feedback is not None),
-                   status="pending")
+                   status="pending", proposal_cpu_ns=proposal_ns,
+                   manufacturing_cpu_ns=0, numerical_cpu_ns=0)
         # The blind-arm proposal is selected without feeding its achieved
         # state or numerical objective values back to the generator.
         start = process_time_ns()
         try:
             achieved = estimated_inputs(base, process)
             totals["manufacturing_transformations"] += 1
-            totals["manufacturing_cpu_ns"] += process_time_ns() - start
+            row["manufacturing_cpu_ns"] = process_time_ns() - start
+            totals["manufacturing_cpu_ns"] += row["manufacturing_cpu_ns"]
             row["achieved_inputs_hash"] = achieved.content_hash
         except Exception as exc:
             totals["failed_transformations"] += 1
@@ -114,7 +117,8 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         try:
             result = evaluate(achieved)
             totals["numerical_evaluations"] += 1
-            totals["numerical_cpu_ns"] += process_time_ns() - start
+            row["numerical_cpu_ns"] = process_time_ns() - start
+            totals["numerical_cpu_ns"] += row["numerical_cpu_ns"]
             observation = _feedback(result, float(mass_limit))
             row.update(status="complete", evaluation_hash=result.content_hash,
                        objectives={m.objective_id: (

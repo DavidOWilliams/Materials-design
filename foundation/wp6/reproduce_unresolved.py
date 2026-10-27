@@ -48,8 +48,8 @@ def main(original_path,output_dir):
         saved=matched[0]
         if not (saved["status"]=="complete" and saved["numerical_quality"]=="unresolved" and saved["eligible"] is False):
             raise ValueError("Original two-element case is not the required unresolved challenge")
-        inputs=RunInputs.model_validate(saved["input"])
-        original=Evaluation.model_validate(saved["evaluation"])
+        inputs=RunInputs.model_validate_json(json.dumps(saved["input"]))
+        original=Evaluation.model_validate_json(json.dumps(saved["evaluation"]))
         result=evaluate(inputs)
         eligible=numerical_comparison_eligible(result,inputs.brief)
         differences=[]

@@ -44,7 +44,11 @@ jobs:
         run: |
           set -euo pipefail
           destination=foundation/p1/evidence/confirmed-source-6eb62da
-          test ! -e "$destination"
+          if test -e "$destination"; then
+            (cd "$destination" && sha256sum -c sha256_manifest_plus_report.txt >/dev/null)
+            echo "Existing evidence preserved and verified; no changes"
+            exit 0
+          fi
           mkdir -p "$destination"
           cp -a "$(cat /tmp/p1-evidence-dir)/." "$destination/"
           cp /tmp/p1-archive/p1-focused.log "$destination/"

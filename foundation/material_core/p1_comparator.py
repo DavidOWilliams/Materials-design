@@ -169,7 +169,8 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             row["achieved_inputs_hash"] = achieved.content_hash
         except Exception as exc:
             totals["failed_transformations"] += 1
-            totals["manufacturing_cpu_ns"] += process_time_ns() - start
+            row["manufacturing_cpu_ns"] = process_time_ns() - start
+            totals["manufacturing_cpu_ns"] += row["manufacturing_cpu_ns"]
             row.update(status="transform_failed", error=repr(exc))
             rows.append(row)
             previous_feedback = None
@@ -200,7 +201,8 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             previous_feedback = observation
         except Exception as exc:
             totals["failed_evaluations"] += 1
-            totals["numerical_cpu_ns"] += process_time_ns() - start
+            row["numerical_cpu_ns"] = process_time_ns() - start
+            totals["numerical_cpu_ns"] += row["numerical_cpu_ns"]
             row.update(status="evaluation_failed", error=repr(exc))
             previous_feedback = None
         rows.append(row)

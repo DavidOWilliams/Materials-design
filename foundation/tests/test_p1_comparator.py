@@ -4,7 +4,7 @@ Executed by .github/workflows/p1-equal-effort.yml. No physical validation.
 """
 import json
 import pytest
-from material_core.p1_comparator import execute, compare
+from material_core.p1_comparator import execute, compare, score_saved
 
 def test_blind_comparator_continues_and_respects_budget(tmp_path):
     record = execute(seed=17, budget=3, feedback=False,
@@ -64,3 +64,16 @@ def test_density_feedback_triggers_with_wp3_three_material_catalogue(tmp_path):
     assert any(r["revision_applied"] for r in b["rows"][1:])
     assert all(not r["revision_applied"] for r in a["rows"])
     assert compare(tmp_path/"blind.json",tmp_path/"feedback.json")["matched_numerical_work"]
+
+def test_common_scorer_recomputes_and_rejects_tampering(tmp_path):
+    output=tmp_path/"trial.json"
+    execute(seed=18,budget=3,feedback=True,output=output,elements=32,
+            mass_limit=10.0)
+    saved=score_saved(output)
+    assert saved["scoring_evaluations"]==3
+    assert saved["external_process_validation"] is False
+    data=json.loads(output.read_text())
+    data["rows"][0]["objectives"]["areal_mass"]=-100.0
+    output.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match="Stored objective"):
+        score_saved(output)

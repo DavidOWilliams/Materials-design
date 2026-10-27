@@ -1,0 +1,50 @@
+name: D1 exact-source integration verification
+on:
+  push:
+    branches: [d1-governance-verification-2026-10-27]
+  workflow_dispatch:
+jobs:
+  d1-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 1f89c2d1bf64b669ca98b81f4305d20d08104e5c
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Clean installation and source identity
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d1-verification
+          test "$(git rev-parse HEAD)" = "1f89c2d1bf64b669ca98b81f4305d20d08104e5c"
+          git rev-parse HEAD | tee /tmp/d1-verification/source-sha.txt
+          bash foundation/setup.sh 2>&1 | tee /tmp/d1-verification/install.log
+          .venv-foundation/bin/python -m pip check 2>&1 | tee /tmp/d1-verification/pip-check.log
+          .venv-foundation/bin/python -m pip freeze > /tmp/d1-verification/dependencies.txt
+          .venv-foundation/bin/python --version > /tmp/d1-verification/python.txt
+      - name: WP1-WP6 regression and integration
+        run: |
+          set -euo pipefail
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q --tb=long 2>&1 | tee /tmp/d1-verification/regression.log
+      - name: WP6 accepted workflow focused tests
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_evaluation.py foundation/tests/test_wp6_g2_02_reproduction.py -vv --tb=long 2>&1 | tee /tmp/d1-verification/wp6.log
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/wp6/gate2_challenges.py /tmp/d1-verification/gate2 2>&1 | tee /tmp/d1-verification/gate2.log
+      - name: Evidence SHA256 verification
+        run: |
+          set -euo pipefail
+          find foundation -type f \( -name SHA256SUMS -o -name SHA256SUMS.txt \) -print > /tmp/d1-verification/manifest-locations.txt
+          while IFS= read -r manifest; do
+            (cd "$(dirname "$manifest")" && sha256sum -c "$(basename "$manifest")")
+          done < /tmp/d1-verification/manifest-locations.txt 2>&1 | tee /tmp/d1-verification/hash-check.log
+      - name: Upload verification evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-source-1f89c2-verification
+          path: /tmp/d1-verification/
+          if-no-files-found: warn

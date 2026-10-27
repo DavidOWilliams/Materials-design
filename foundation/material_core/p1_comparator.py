@@ -10,7 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from time import process_time_ns
+from time import process_time_ns, time_ns
 
 from .wp3_adapters import resolve_provider, DEFAULT
 from .wp4_feedback import scenario, _revise, _replace_design
@@ -131,6 +131,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         start = process_time_ns()
         spec, base = _candidate(provider, index)
         revision_ns = 0
+        actual_change = False
         if feedback and previous_feedback is not None:
             revision_start = process_time_ns()
             # WP4 revision policy assumes exactly two material records, while
@@ -147,14 +148,17 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             scoped = SimpleNamespace(
                 materials=tuple(m for m in base.materials if m.id in active))
             revised = _revise(scoped, base.design, previous_feedback)
+            actual_change = revised.architecture != base.design.architecture
             base = _replace_design(base, revised)
             revision_ns = process_time_ns() - revision_start
         proposal_ns = process_time_ns() - start
         totals["proposal_cpu_ns"] += proposal_ns
         totals["proposals"] += 1
         row = dict(index=index, seed=seed, proposal=spec,
+                   started_utc_ns=time_ns(),
                    intended_hash=base.design.content_hash,
-                   revision_applied=bool(feedback and previous_feedback is not None),
+                   revision_attempted=bool(feedback and previous_feedback is not None),
+                   revision_applied=actual_change,
                    status="pending", proposal_cpu_ns=proposal_ns,
                    manufacturing_cpu_ns=0, numerical_cpu_ns=0,
                    revision_cpu_ns=revision_ns, feedback_cpu_ns=0)
@@ -172,6 +176,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             row["manufacturing_cpu_ns"] = process_time_ns() - start
             totals["manufacturing_cpu_ns"] += row["manufacturing_cpu_ns"]
             row.update(status="transform_failed", error=repr(exc))
+            row["ended_utc_ns"]=time_ns()
             rows.append(row)
             previous_feedback = None
             checkpoint_after_row()
@@ -205,22 +210,72 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             totals["numerical_cpu_ns"] += row["numerical_cpu_ns"]
             row.update(status="evaluation_failed", error=repr(exc))
             previous_feedback = None
+        row["ended_utc_ns"]=time_ns()
         rows.append(row)
         checkpoint_after_row()
     record = dict(config=config, config_sha256=digest(config),
                   rows=rows, accounting=totals, measured_evidence=None,
                   claim="synthetic in-model comparison only",
-                  matched_cpu_budget=False, final_independent_scoring=False)
+                  matched_cpu_budget=False, final_independent_scoring=False,
+                  stop_reason="proposal_budget_exhausted")
     path.parent.mkdir(parents=True, exist_ok=True)
     # Refuse accidental replacement even if the file appears during execution.
     with path.open("x", encoding="utf-8") as f:
         f.write(json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + "\n")
     return record
 
+def audit_record(record):
+    """Fail closed for forged counters, row identities and cache declarations."""
+    cfg=record.get("config")
+    if not isinstance(cfg,dict) or record.get("config_sha256")!=digest(cfg):
+        raise ValueError("P1 config digest identity mismatch")
+    rows=record.get("rows")
+    counters=record.get("accounting")
+    if not isinstance(rows,list) or not isinstance(counters,dict) or len(rows)>cfg["budget"]:
+        raise ValueError("P1 candidate budget/accounting mismatch")
+    cpu=("proposal_cpu_ns","manufacturing_cpu_ns","numerical_cpu_ns","feedback_cpu_ns")
+    for i,row in enumerate(rows):
+        if row.get("index")!=i or row.get("status") not in (
+                "complete","evaluation_failed","transform_failed"):
+            raise ValueError("P1 row status/index invalid")
+        start_ns=row.get("started_utc_ns")
+        end_ns=row.get("ended_utc_ns")
+        if start_ns is not None or end_ns is not None:
+            if (type(start_ns) is not int or type(end_ns) is not int or
+                start_ns<=0 or end_ns<start_ns):
+                raise ValueError("Invalid candidate UTC timestamps")
+        for name in cpu+("revision_cpu_ns",):
+            val=row.get(name)
+            if type(val) is not int or val<0:
+                raise ValueError("Invalid per-candidate CPU counter: "+name)
+        if row["revision_cpu_ns"]>row["proposal_cpu_ns"]:
+            raise ValueError("Revision CPU exceeds generation CPU")
+        if not cfg["feedback"] and (row.get("revision_applied") or row["feedback_cpu_ns"]):
+            raise ValueError("Blind control leaked feedback")
+    for key in cpu:
+        if type(counters.get(key)) is not int or counters[key]!=sum(x[key] for x in rows):
+            raise ValueError("P1 CPU accounting mismatch: "+key)
+    def check(key,n):
+        if type(counters.get(key)) is not int or counters[key]!=n:
+            raise ValueError("P1 accounting mismatch: "+key)
+    check("proposals",len(rows))
+    check("numerical_evaluations",sum(x["status"]=="complete" for x in rows))
+    check("manufacturing_transformations",sum(x["status"]!="transform_failed" for x in rows))
+    check("failed_evaluations",sum(x["status"]=="evaluation_failed" for x in rows))
+    check("failed_transformations",sum(x["status"]=="transform_failed" for x in rows))
+    check("cache_hits",0)
+    check("cache_misses",sum(x["status"]!="transform_failed" for x in rows))
+    if record.get("stop_reason") not in (None,"proposal_budget_exhausted"):
+        raise ValueError("Invalid stop reason")
+    if record.get("stop_reason")=="proposal_budget_exhausted" and len(rows)!=cfg["budget"]:
+        raise ValueError("False budget exhaustion")
+    return True
+
 def compare(a, b):
     """Audit paired trial identity and nominal numerical-work budget."""
     x, y = (json.loads(Path(p).read_text()) for p in (a, b))
     for record in (x, y):
+        audit_record(record)
         if digest(record["config"]) != record["config_sha256"]:
             raise ValueError("Configuration digest mismatch")
         if record["config"]["budget"] != len(record["rows"]):
@@ -245,6 +300,7 @@ def score_saved(path, *, heldout_feed=None):
     Search budgets exclude these separate, individually counted solves.
     """
     data=json.loads(Path(path).read_text())
+    audit_record(data)
     cfg=data["config"]
     if cfg["schema"]!=SCHEMA or digest(cfg)!=data["config_sha256"]:
         raise ValueError("Invalid frozen configuration identity")
@@ -284,14 +340,16 @@ def score_saved(path, *, heldout_feed=None):
         if scores!=row["objectives"]:
             raise ValueError("Stored objective values disagree with recomputation")
         scored_result = result
+        scored_inputs = achieved
         if heldout_feed is not None:
             changed_process = scenario(cfg["layer"], heldout_feed, cfg["route"])
-            scored_result = evaluate(estimated_inputs(base, changed_process))
+            scored_inputs = estimated_inputs(base, changed_process)
+            scored_result = evaluate(scored_inputs)
             scores = {m.objective_id:None if m.value is None else m.value.value
                       for m in scored_result.metrics}
         results.append(dict(index=i,achieved_objectives=scores,
                             feasible=bool(numerical_comparison_eligible(
-                                scored_result, achieved.brief) and
+                                scored_result, scored_inputs.brief) and
                                 scored_result.feasibility=="conditional" and
                                 scored_result.manufacturing_feasibility=="conditional"),
                             evaluation_hash=scored_result.content_hash))

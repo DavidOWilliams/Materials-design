@@ -25,9 +25,10 @@ jobs:
           PYTHONPATH: foundation
         run: |
           set -o pipefail
-          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py -vv --tb=long | tee p1-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_ir_numerical.py foundation/tests/test_p1_ir_challenges.py foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee p1-focused.log
           .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
       - name: Exploratory P1 pilot (nonconfirmatory)
+        if: github.head_ref != 'p1-ir1-ir6-corrections-2026-10-27'
         env:
           PYTHONPATH: foundation
         run: |
@@ -36,18 +37,28 @@ jobs:
           cd foundation/p1/pilot-evidence
           find . -maxdepth 1 -type f ! -name sha256_manifest.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest.txt
       - name: Frozen P1 confirmatory trials (not independently accepted)
+        if: github.head_ref != 'p1-ir1-ir6-corrections-2026-10-27'
         env:
           PYTHONPATH: foundation
         run: |
           .venv-foundation/bin/python foundation/p1/confirm.py | tee p1-confirmatory.log
           cd foundation/p1/confirmatory-evidence
           sha256sum -c sha256_manifest.txt
+      - name: Supplementary CPU benchmark
+        if: github.head_ref == 'p1-ir1-ir6-corrections-2026-10-27'
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python foundation/p1/cpu_benchmark_ir05.py | tee p1-cpu.log
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: p1-verification-logs
           path: |
+            p1-cpu.log
+            foundation/p1/correction-evidence/
             p1-focused.log
             p1-regression.log
             p1-pilot.log
@@ -55,3 +66,88 @@ jobs:
             foundation/p1/confirmatory-evidence/
             foundation/p1/pilot-evidence/
           if-no-files-found: warn
+
+  ir-original-clean-checkout:
+    if: github.head_ref == 'p1-ir1-ir6-corrections-2026-10-27'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6eb62daec638185f5c5dc170182e9e0454b6e061
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact original source and environment
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 6eb62daec638185f5c5dc170182e9e0454b6e061
+          git rev-parse HEAD > original-exact-source.txt
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip freeze > original-dependencies.txt
+      - name: Clean original focused and foundation regression rerun
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv | tee original-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee original-regression.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-ir-original-source-rerun
+          path: |
+            original-exact-source.txt
+            original-dependencies.txt
+            original-focused.log
+            original-regression.log
+  ir-archive-integrity:
+    if: github.head_ref == 'p1-ir1-ir6-corrections-2026-10-27'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Audit original Action artifact against saved original and expanded SHA256 manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p1-ir-original
+          gh run download 40483551395 --repo DavidOWilliams/Materials-design --name p1-verification-logs --dir /tmp/p1-ir-original
+          file=$(find /tmp/p1-ir-original -name confirmatory_summary.json -print -quit)
+          test -n "$file"
+          src=$(dirname "$file")
+          dst=foundation/p1/evidence/confirmed-source-6eb62da
+          (cd "$src" && sha256sum -c sha256_manifest.txt > "$GITHUB_WORKSPACE/original-artifact-check.log")
+          (cd "$dst" && sha256sum -c sha256_manifest.txt > "$GITHUB_WORKSPACE/repository-original-check.log")
+          (cd "$dst" && sha256sum -c sha256_manifest_plus_report.txt > "$GITHUB_WORKSPACE/repository-expanded-check.log")
+          python - "$src" "$dst" <<'PY'
+          import hashlib,sys,json
+          from pathlib import Path
+          a,b=(Path(p) for p in sys.argv[1:])
+          files=lambda p:{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in p.iterdir() if f.is_file()}
+          original,preserved=files(a),files(b)
+          missing=sorted(set(original)-set(preserved))
+          modified=sorted(k for k in original.keys()&preserved.keys() if original[k]!=preserved[k])
+          additions=sorted(set(preserved)-set(original))
+          result=dict(artifact_file_count=len(original),preserved_file_count=len(preserved),
+                      missing=missing,modified=modified,supplementary=additions)
+          Path("p1-ir-evidence-integrity.json").write_text(json.dumps(result,indent=2)+"\n")
+          if missing or modified:raise SystemExit("Archival mismatch")
+          print(json.dumps(result))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-ir-evidence-integrity
+          path: |
+            p1-ir-evidence-integrity.json
+            original-artifact-check.log
+            repository-original-check.log
+            repository-expanded-check.log

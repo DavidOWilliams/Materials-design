@@ -66,13 +66,16 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
     totals = dict(proposals=0, numerical_evaluations=0,
                   manufacturing_transformations=0, failed_evaluations=0,
                   failed_transformations=0, cache_hits=0, cache_misses=0,
+                  feedback_calculations=0, feedback_cpu_ns=0,
                   numerical_cpu_ns=0, manufacturing_cpu_ns=0,
                   proposal_cpu_ns=0, final_scoring_evaluations=0)
     # Both arms use an independently instantiated provider with the same seed.
     for index in range(budget):
         start = process_time_ns()
         spec, base = _candidate(provider, index)
+        revision_ns = 0
         if feedback and previous_feedback is not None:
+            revision_start = process_time_ns()
             # WP4 revision policy assumes exactly two material records, while
             # the WP3 catalogue retains an unused third record for other pairs.
             # Project only the candidate's active two records for revision
@@ -88,6 +91,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
                 materials=tuple(m for m in base.materials if m.id in active))
             revised = _revise(scoped, base.design, previous_feedback)
             base = _replace_design(base, revised)
+            revision_ns = process_time_ns() - revision_start
         proposal_ns = process_time_ns() - start
         totals["proposal_cpu_ns"] += proposal_ns
         totals["proposals"] += 1
@@ -95,7 +99,8 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
                    intended_hash=base.design.content_hash,
                    revision_applied=bool(feedback and previous_feedback is not None),
                    status="pending", proposal_cpu_ns=proposal_ns,
-                   manufacturing_cpu_ns=0, numerical_cpu_ns=0)
+                   manufacturing_cpu_ns=0, numerical_cpu_ns=0,
+                   revision_cpu_ns=revision_ns, feedback_cpu_ns=0)
         # The blind-arm proposal is selected without feeding its achieved
         # state or numerical objective values back to the generator.
         start = process_time_ns()
@@ -119,7 +124,13 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             totals["numerical_evaluations"] += 1
             row["numerical_cpu_ns"] = process_time_ns() - start
             totals["numerical_cpu_ns"] += row["numerical_cpu_ns"]
-            observation = _feedback(result, float(mass_limit))
+            observation = None
+            if feedback:
+                fb_start = process_time_ns()
+                observation = _feedback(result, float(mass_limit))
+                row["feedback_cpu_ns"] = process_time_ns() - fb_start
+                totals["feedback_calculations"] += 1
+                totals["feedback_cpu_ns"] += row["feedback_cpu_ns"]
             row.update(status="complete", evaluation_hash=result.content_hash,
                        objectives={m.objective_id: (
                            None if m.value is None else m.value.value)
@@ -128,7 +139,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
                        feasibility=result.feasibility,
                        manufacturing_feasibility=result.manufacturing_feasibility,
                        numerical_quality=result.numerical_quality)
-            previous_feedback = observation if feedback else None
+            previous_feedback = observation
         except Exception as exc:
             totals["failed_evaluations"] += 1
             totals["numerical_cpu_ns"] += process_time_ns() - start

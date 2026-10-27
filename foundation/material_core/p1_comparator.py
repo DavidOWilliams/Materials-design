@@ -177,7 +177,7 @@ def compare(a, b):
                 matched_cpu_time=False, independent_scoring=False)
 
 
-def score_saved(path):
+def score_saved(path, *, heldout_feed=None):
     """Rebuild and recompute every candidate with the same synthetic evaluator.
 
     This is common *in-model* scoring, NOT an independent physical process model.
@@ -222,17 +222,24 @@ def score_saved(path):
                 for m in result.metrics}
         if scores!=row["objectives"]:
             raise ValueError("Stored objective values disagree with recomputation")
+        scored_result = result
+        if heldout_feed is not None:
+            changed_process = scenario(cfg["layer"], heldout_feed, cfg["route"])
+            scored_result = evaluate(estimated_inputs(base, changed_process))
+            scores = {m.objective_id:None if m.value is None else m.value.value
+                      for m in scored_result.metrics}
         results.append(dict(index=i,achieved_objectives=scores,
                             feasible=bool(numerical_comparison_eligible(
-                                result, achieved.brief) and
-                                result.feasibility=="conditional" and
-                                result.manufacturing_feasibility=="conditional"),
-                            evaluation_hash=result.content_hash))
+                                scored_result, achieved.brief) and
+                                scored_result.feasibility=="conditional" and
+                                scored_result.manufacturing_feasibility=="conditional"),
+                            evaluation_hash=scored_result.content_hash))
         previous_feedback=(_feedback(result,cfg["mass_limit"])
                            if cfg["feedback"] else None)
     return dict(config_sha256=data["config_sha256"],
                 common_scorer="WP4 achieved state + WP2 numerical evaluator",
-                scoring_evaluations=len(results),results=results,
+                scoring_evaluations=len(results)*(2 if heldout_feed is not None else 1),
+                heldout_feed=heldout_feed,results=results,
                 measured_evidence=None,
                 external_process_validation=False)
 

@@ -58,6 +58,8 @@ jobs:
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_g2_02_reproduction.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/gate2-regression.log
       - name: Foundation regression
+        env:
+          WP6_ORIGINAL_NUMERICAL_ATTEMPTS: /tmp/wp6-evidence/original_numerical_attempts.json
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/wp6-evidence/regression.log

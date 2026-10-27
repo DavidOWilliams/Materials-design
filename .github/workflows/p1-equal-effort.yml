@@ -25,7 +25,7 @@ jobs:
           PYTHONPATH: foundation
         run: |
           set -o pipefail
-          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_ir_challenges.py foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee p1-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_ir_numerical.py foundation/tests/test_p1_ir_challenges.py foundation/tests/test_p1_comparator.py foundation/tests/test_p1_analysis.py -vv --tb=long | tee p1-focused.log
           .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
       - name: Exploratory P1 pilot (nonconfirmatory)
         if: github.head_ref != 'p1-ir1-ir6-corrections-2026-10-27'

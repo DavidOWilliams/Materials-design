@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 from material_core.p1_comparator import execute, compare, score_saved
-from foundation.p1.analysis import (
+from analysis import (
     analyze, paired_bootstrap, feasible_hypervolume, prefix_for_cpu)
 
 HERE=Path(__file__).resolve().parent
@@ -77,7 +77,7 @@ def run():
                 parity=compare(paths["blind"],paths["feedback"])
                 if not parity["matched_numerical_work"]:
                     raise ValueError("Equal numerical-work budget violated")
-                from foundation.p1.analysis import summarize_pair
+                from analysis import summarize_pair
                 summary=summarize_pair(data["blind"],data["feedback"],
                     scores["blind"],scores["feedback"],
                     cpu_limit_ns=cfg["cpu_budget_ns"])

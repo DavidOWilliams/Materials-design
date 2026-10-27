@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.0.2, pluggy-1.7.0 -- /home/runner/work/Materials-design/Materials-design/.venv-foundation/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/Materials-design/Materials-design
+configfile: pytest.ini
+collecting ... collected 11 items
+
+foundation/tests/test_p1_comparator.py::test_blind_comparator_continues_and_respects_budget PASSED [  9%]
+foundation/tests/test_p1_comparator.py::test_both_arms_are_budget_auditable_and_immutable PASSED [ 18%]
+foundation/tests/test_p1_comparator.py::test_invalid_configuration_creates_nothing PASSED [ 27%]
+foundation/tests/test_p1_comparator.py::test_mismatched_seed_rejected PASSED [ 36%]
+foundation/tests/test_p1_comparator.py::test_tampered_config_rejected PASSED [ 45%]
+foundation/tests/test_p1_comparator.py::test_density_feedback_triggers_with_wp3_three_material_catalogue PASSED [ 54%]
+foundation/tests/test_p1_comparator.py::test_common_scorer_recomputes_and_rejects_tampering PASSED [ 63%]
+foundation/tests/test_p1_comparator.py::test_per_candidate_cpu_accounting_reconciles PASSED [ 72%]
+foundation/tests/test_p1_comparator.py::test_heldout_process_sensitivity_preserves_search_evidence PASSED [ 81%]
+foundation/tests/test_p1_comparator.py::test_mid_trial_interruption_checkpoints_and_resumes_without_repeating PASSED [ 90%]
+foundation/tests/test_p1_comparator.py::test_incompatible_or_corrupt_checkpoint_rejected_without_mutation PASSED [100%]
+
+============================== 11 passed in 2.39s ==============================

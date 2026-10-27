@@ -1,0 +1,163 @@
+{
+  "record": {
+    "accounting": {
+      "cache_hits": 0,
+      "cache_misses": 4,
+      "failed_evaluations": 0,
+      "failed_transformations": 0,
+      "feedback_calculations": 4,
+      "feedback_cpu_ns": 20027,
+      "final_scoring_evaluations": 0,
+      "manufacturing_cpu_ns": 20106054,
+      "manufacturing_transformations": 4,
+      "numerical_cpu_ns": 23246205,
+      "numerical_evaluations": 4,
+      "proposal_cpu_ns": 71034296,
+      "proposals": 4
+    },
+    "config": {
+      "budget": 4,
+      "elements": 32,
+      "feed": 0.5,
+      "feedback": true,
+      "layer": 0.005,
+      "mass_limit": 31.0,
+      "method": "sampling",
+      "provider": "wp3-synthetic-catalogue-provider-v1",
+      "route": "synthetic_ideal_planar_deposition",
+      "schema": "p1-equal-proposals-v1",
+      "seed": 2009
+    },
+    "config_sha256": "1dcd616be184553bd60a2d523835d83917cac5cd82ad243723a7029adbebaf01",
+    "rows": [
+      {
+        "achieved_inputs_hash": "4dc608eba14a946a05d3281526e9aafd82caca570cbdbcda927540f53ef02d31",
+        "evaluation_hash": "570d8ff8a086bf9f8b5edf3fbe8820e48f56c032411f9606d202bf6741d11e64",
+        "feasibility": "conditional",
+        "feedback_cpu_ns": 4969,
+        "index": 0,
+        "intended_hash": "81dd99b0fcc32ccdf5db80f32c3f8926d438c47d1cd2c20c4d1cbca140dafcc7",
+        "manufacturing_cpu_ns": 4856647,
+        "manufacturing_feasibility": "conditional",
+        "numerical_cpu_ns": 5732599,
+        "numerical_quality": "qualified",
+        "objectives": {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 1.4094628242311558e-08,
+          "thermal_transmission": 59999.99999999999
+        },
+        "proposal": {
+          "architecture": "homogeneous",
+          "fraction": 0.5,
+          "pair": [
+            "scenario_A",
+            "scenario_B"
+          ]
+        },
+        "proposal_cpu_ns": 15098175,
+        "qualified": true,
+        "revision_applied": false,
+        "revision_cpu_ns": 0,
+        "seed": 2009,
+        "status": "complete"
+      },
+      {
+        "achieved_inputs_hash": "8eb93bb02ad2827dcf8fe0bfd4507ce0e7b4b187a129d8164e6de7dff6926d01",
+        "evaluation_hash": "a5437304a3c00fa12291b1ecc60320d9795b7ebe0d2e6d95ea7c987caf507d1a",
+        "feasibility": "conditional",
+        "feedback_cpu_ns": 5020,
+        "index": 1,
+        "intended_hash": "1a692b30e20cadeb166b008405ca755e010529e5b20856734088e781923a3cf3",
+        "manufacturing_cpu_ns": 5108927,
+        "manufacturing_feasibility": "conditional",
+        "numerical_cpu_ns": 5870456,
+        "numerical_quality": "unresolved",
+        "objectives": {
+          "areal_mass": 21.25,
+          "tensile_thermal_mismatch": 4200135.023259551,
+          "thermal_transmission": 25454.545454545452
+        },
+        "proposal": {
+          "architecture": "gradient",
+          "fraction": 0.81470125,
+          "knot_position": 0.5638635,
+          "pair": [
+            "scenario_A",
+            "scenario_C"
+          ]
+        },
+        "proposal_cpu_ns": 15474727,
+        "qualified": false,
+        "revision_applied": false,
+        "revision_cpu_ns": 0,
+        "seed": 2009,
+        "status": "complete"
+      },
+      {
+        "achieved_inputs_hash": "b776ccb556537289a2069d53c44870c1d0b027e065b446ed8dd1c9cb5ca14088",
+        "evaluation_hash": "e5356354993b15093cfd8ef245f6c3ac7ddf3249671f23588a59ac0cc91d6d51",
+        "feasibility": "infeasible",
+        "feedback_cpu_ns": 4929,
+        "index": 2,
+        "intended_hash": "0ecb38d30b1532afacaed2ef0d36fe5db2f22fe9da348accb3643e24d4804150",
+        "manufacturing_cpu_ns": 5064725,
+        "manufacturing_feasibility": "conditional",
+        "numerical_cpu_ns": 5814131,
+        "numerical_quality": "unresolved",
+        "objectives": {
+          "areal_mass": 35.0,
+          "tensile_thermal_mismatch": 10421954.599940067,
+          "thermal_transmission": 74999.99999999999
+        },
+        "proposal": {
+          "architecture": "layered",
+          "fraction": 0.14435787,
+          "knot_position": 0.5,
+          "pair": [
+            "scenario_A",
+            "scenario_B"
+          ]
+        },
+        "proposal_cpu_ns": 20831296,
+        "qualified": false,
+        "revision_applied": false,
+        "revision_cpu_ns": 0,
+        "seed": 2009,
+        "status": "complete"
+      },
+      {
+        "achieved_inputs_hash": "d0375860e934a3d2a116e5d835030f2f6e286467d44b9248221a2a829b818250",
+        "evaluation_hash": "eeb15eff9f1fe3c339cdf25ff55bf97af301d583ccb427f05b4392a46968d3bf",
+        "feasibility": "infeasible",
+        "feedback_cpu_ns": 5109,
+        "index": 3,
+        "intended_hash": "04ad8eea451304d793927e0e15307e6c49db868025942523b7921b88394b837f",
+        "manufacturing_cpu_ns": 5075755,
+        "manufacturing_feasibility": "conditional",
+        "numerical_cpu_ns": 5829019,
+        "numerical_quality": "qualified",
+        "objectives": {
+          "areal_mass": 32.5,
+          "tensile_thermal_mismatch": 1.5449880957918438e-08,
+          "thermal_transmission": 75000.0
+        },
+        "proposal": {
+          "architecture": "layered",
+          "fraction": 0.24107556,
+          "knot_position": 0.5,
+          "pair": [
+            "scenario_C",
+            "scenario_B"
+          ]
+        },
+        "proposal_cpu_ns": 19630098,
+        "qualified": false,
+        "revision_applied": true,
+        "revision_cpu_ns": 4175378,
+        "seed": 2009,
+        "status": "complete"
+      }
+    ]
+  },
+  "sha256": "981ed1cbd014a33e77baefdb805a80eb82a0f7f37c874b01aae5d8edac82946b"
+}

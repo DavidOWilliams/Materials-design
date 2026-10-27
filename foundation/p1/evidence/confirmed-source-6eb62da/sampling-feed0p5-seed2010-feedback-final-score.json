@@ -1,0 +1,102 @@
+{
+  "heldout": {
+    "common_scorer": "WP4 achieved state + WP2 numerical evaluator",
+    "config_sha256": "acdebbd6cb6fa04150dbd48e385610a6b6df5c63d7fac8c6739b82f1d07b155e",
+    "external_process_validation": false,
+    "heldout_feed": 0.25,
+    "measured_evidence": null,
+    "results": [
+      {
+        "achieved_objectives": {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 1.4094628242311558e-08,
+          "thermal_transmission": 59999.99999999999
+        },
+        "evaluation_hash": "7d5a98a1a763720f093e6d41487ef81ad107cec61a55f3264ea80fa0c3dea104",
+        "feasible": true,
+        "index": 0
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 10896892.65536724,
+          "thermal_transmission": 33333.333333333336
+        },
+        "evaluation_hash": "71e7107f001930272b6660bc9cccb906ec055df9c90e27ac08315d820e9a929a",
+        "feasible": false,
+        "index": 1
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 32.5,
+          "tensile_thermal_mismatch": 7878257.613458516,
+          "thermal_transmission": 72916.66666666666
+        },
+        "evaluation_hash": "e04f3bd8d0f99b4aba1ec4b603d3e5a157331e4d70513f6590f598a69106bdc4",
+        "feasible": false,
+        "index": 2
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 23.75,
+          "tensile_thermal_mismatch": 1.2874900798265365e-08,
+          "thermal_transmission": 42499.99999999999
+        },
+        "evaluation_hash": "8ded9e553a939efc03a807ed41d4edf28dd3e89898592141a6e2f608f2d83cac",
+        "feasible": true,
+        "index": 3
+      }
+    ],
+    "scoring_evaluations": 8
+  },
+  "native": {
+    "common_scorer": "WP4 achieved state + WP2 numerical evaluator",
+    "config_sha256": "acdebbd6cb6fa04150dbd48e385610a6b6df5c63d7fac8c6739b82f1d07b155e",
+    "external_process_validation": false,
+    "heldout_feed": null,
+    "measured_evidence": null,
+    "results": [
+      {
+        "achieved_objectives": {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 1.4094628242311558e-08,
+          "thermal_transmission": 59999.99999999999
+        },
+        "evaluation_hash": "570d8ff8a086bf9f8b5edf3fbe8820e48f56c032411f9606d202bf6741d11e64",
+        "feasible": true,
+        "index": 0
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 10896892.65536724,
+          "thermal_transmission": 33333.333333333336
+        },
+        "evaluation_hash": "5cd2791801397c7d4a2a764828ec408bba7c676264b1f1bef8a215276681e40f",
+        "feasible": false,
+        "index": 1
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 28.75,
+          "tensile_thermal_mismatch": 7614362.787246166,
+          "thermal_transmission": 60000.00000000001
+        },
+        "evaluation_hash": "3b925b7ffe74a89eb97bd4c020aa5d31d4ca40f3e832aaa0bca6f93e43826787",
+        "feasible": false,
+        "index": 2
+      },
+      {
+        "achieved_objectives": {
+          "areal_mass": 22.5,
+          "tensile_thermal_mismatch": 1.2197274440461925e-08,
+          "thermal_transmission": 35000.0
+        },
+        "evaluation_hash": "a9b99b3c4b9ae376bf09ca6f12ca40e8739f091b9974ecfe983073b7a78b1a67",
+        "feasible": true,
+        "index": 3
+      }
+    ],
+    "scoring_evaluations": 4
+  }
+}

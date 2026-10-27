@@ -1,0 +1,43 @@
+{
+  "status": "reconstructed_partial_reproduction_not_physical_validation",
+  "source_doi": "10.1016/j.addma.2020.101647",
+  "sign_convention": "negative tension",
+  "literal_549_526_um": {
+    "B4C_fraction": 0.5818759936406995,
+    "B4C_stress_Pa": -1054761235.0741912,
+    "SiC_stress_Pa": 1467842631.319977
+  },
+  "diagnostic_reversed_526_549_um": {
+    "B4C_fraction": 0.5609170887763263,
+    "B4C_stress_Pa": -1111605756.864516,
+    "SiC_stress_Pa": 1420047669.9714277
+  },
+  "thickness_ratio_sweep": {
+    "1": {
+      "B4C_fraction": 0.5714285714285714,
+      "B4C_stress_Pa": -1083045735.1290686,
+      "SiC_stress_Pa": 1444060980.1720912
+    },
+    "2": {
+      "B4C_fraction": 0.7272727272727273,
+      "B4C_stress_Pa": -671335379.9936755,
+      "SiC_stress_Pa": 1790227679.983135
+    },
+    "4": {
+      "B4C_fraction": 0.8421052631578947,
+      "B4C_stress_Pa": -381379342.86638165,
+      "SiC_stress_Pa": 2034023161.9540348
+    },
+    "8": {
+      "B4C_fraction": 0.9142857142857143,
+      "B4C_stress_Pa": -204622551.03548875,
+      "SiC_stress_Pa": 2182640544.378546
+    }
+  },
+  "surrogate_purge": {
+    "material": "Play-Doh, not ceramic calibration",
+    "equivalent_trace_length_mm": 2829.421210522584,
+    "equivalent_travel_time_s": 565.8842421045167,
+    "six_switch_volume_cm3": 19.2
+  }
+}

@@ -1,0 +1,147 @@
+name: WP4 manufacturing feedback qualification
+on:
+  push:
+    branches:
+      - wp4-manufacturing-feedback-2026-10-25
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "foundation/**"
+      - ".github/workflows/wp4-qualification.yml"
+jobs:
+  wp4-direct-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Locked environment
+        run: bash foundation/setup.sh
+      - name: Dependency health
+        run: .venv-foundation/bin/python -m pip check
+      - name: WP4 focused tests
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp4_*.py -q
+      - name: Streamlit UI test dependency
+        run: .venv-foundation/bin/python -m pip install streamlit==1.40.2
+      - name: WP5 application syntax and vertical acceptance
+        run: |
+          .venv-foundation/bin/python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py foundation/tests/test_wp5_streamlit_interaction.py -q
+      - name: WP5-R1 finding-specific interactive evidence
+        env:
+          WP5_R1_EVIDENCE_DIR: /tmp/wp5-r1-evidence
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_streamlit_interaction.py -k wp5_r1 -vv --tb=long 2>&1 | tee /tmp/wp5-r1-focused-tests.log
+          git rev-parse HEAD | tee /tmp/wp5-r1-actual-checkout-sha.txt
+      - name: Archive WP5-R1 finding-specific evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-r1-${{ github.sha }}
+          path: |
+            /tmp/wp5-r1-focused-tests.log
+            /tmp/wp5-r1-actual-checkout-sha.txt
+            /tmp/wp5-r1-evidence/**
+            /tmp/wp5-browser-pip-freeze.txt
+          if-no-files-found: warn
+      - name: WP5-IR2 strict budget and recovery evidence
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wp5-ir2-evidence
+          git rev-parse HEAD | tee /tmp/wp5-ir2-evidence/checkout-sha.txt
+          .venv-foundation/bin/python --version | tee /tmp/wp5-ir2-evidence/python-version.txt
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp5_service.py -k wp5_ir2 -vv --tb=long 2>&1 | tee /tmp/wp5-ir2-evidence/ir2-tests.log
+      - name: Archive WP5-IR2 regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-ir2-${{ github.sha }}
+          path: /tmp/wp5-ir2-evidence/**
+          if-no-files-found: warn
+      - name: Browser test dependencies
+        run: |
+          .venv-foundation/bin/python -m pip install playwright==1.56.0
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp5-browser-pip-freeze.txt
+          .venv-foundation/bin/python -m pip check | tee /tmp/wp5-ir2-evidence/combined-pip-check.txt
+          cp /tmp/wp5-browser-pip-freeze.txt /tmp/wp5-ir2-evidence/combined-pip-freeze.txt
+      - name: Live Chromium interactive WP5 acceptance
+        env:
+          PYTHONPATH: foundation
+          WP5_BROWSER_WORKSPACE: /tmp/wp5-browser-workspace
+        run: |
+          set -euo pipefail
+          .venv-foundation/bin/python -m streamlit run foundation/wp5_app.py --server.headless true --server.address 127.0.0.1 --server.port 8501 >/tmp/wp5-streamlit.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do curl --fail --silent http://127.0.0.1:8501/_stcore/health >/dev/null && break; sleep 2; done
+          .venv-foundation/bin/python foundation/tests/wp5_browser_acceptance.py
+      - name: Archive WP5 browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-browser-${{ github.sha }}
+          path: |
+            /tmp/wp5-browser-workspace/wp5-browser-acceptance.png
+            /tmp/wp5-browser-workspace/campaign.json
+            /tmp/wp5-streamlit.log
+            /tmp/wp5-browser-pip-freeze.txt
+          if-no-files-found: warn
+      - name: Full foundation and recovery regression
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q
+      - name: WP4 campaign and portable reopen/recompute
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-dossier.json --journal /tmp/wp4-checkpoints.jsonl --elements 256 --budget 4
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-dossier.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-dossier.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-no-feedback.json --elements 256 --budget 4 --no-feedback
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-impossible.json --elements 256 --budget 4 --mass-limit 1
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_journal import recover; assert recover("/tmp/wp4-checkpoints.jsonl")'
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'from material_core.wp4_alternate import alternate_duty; print(alternate_duty(elements=256)["adapter"])'
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-uniform.json --route synthetic_ideal_uniform_batch_deposition --layer 0.01 --elements 256 --budget 4
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-uniform.json
+      - name: Higher-resolution qualified-candidate challenge
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-higher-resolution.json --elements 4096 --budget 4
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-higher-resolution.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-higher-resolution.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; x=json.load(open("/tmp/wp4-higher-resolution.json"))["record"]; print(json.dumps([{"index":r["index"],"numerical_quality":r["numerical_quality"],"feasible":r["feasible"],"feedback":r["feedback"]} for r in x["records"]]))'
+      - name: Preregistered resolution sensitivity and paired comparison
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_comparisons import sensitivity,paired; json.dump(sensitivity(elements=256,budget=4),open("/tmp/wp4-sensitivity.json","w"),sort_keys=True,indent=2); json.dump(paired(elements=256,budget=4),open("/tmp/wp4-paired.json","w"),sort_keys=True,indent=2)'
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_export import export; json.dump(export("/tmp/wp4-dossier.json"),open("/tmp/wp4-export.json","w"),sort_keys=True,indent=2)'
+      - name: Independent review R1-R5 evidence archive
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -c 'import json; from material_core.wp4_alternate import alternate_duty; from material_core.wp4_feedback import save,recompute; c=alternate_duty(elements=4096,budget=4)["campaign"]; save("/tmp/wp4-alternate-campaign.json",c); print(recompute("/tmp/wp4-alternate-campaign.json"))'
+      - name: Independent reviewer interruption, continuation and evaluator-call audit
+        run: PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp4_review_evidence.py
+      - name: Freeze actual branch checkout identity
+        run: |
+          git rev-parse HEAD | tee /tmp/wp4-tested-sha.txt
+          .venv-foundation/bin/python --version | tee /tmp/wp4-python.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp4-qualification-dossiers
+          path: |
+            /tmp/wp4-dossier.json
+            /tmp/wp4-no-feedback.json
+            /tmp/wp4-impossible.json
+            /tmp/wp4-checkpoints.jsonl
+            /tmp/wp4-checkpoints.jsonl.manifest.json
+            /tmp/wp4-checkpoints.jsonl.attempts.jsonl
+            /tmp/wp4-review/
+            /tmp/wp4-alternate-campaign.json
+            /tmp/wp4-r2-journal.jsonl
+            /tmp/wp4-r2-journal.jsonl.attempts.jsonl
+            /tmp/wp4-r2-accounting.json
+            /tmp/wp4-uniform.json
+            /tmp/wp4-higher-resolution.json
+            /tmp/wp4-sensitivity.json
+            /tmp/wp4-paired.json
+            /tmp/wp4-export.json
+            /tmp/wp4-tested-sha.txt
+            /tmp/wp4-python.txt
+          if-no-files-found: warn

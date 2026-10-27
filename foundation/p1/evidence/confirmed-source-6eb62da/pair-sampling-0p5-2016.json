@@ -1,0 +1,103 @@
+{
+  "arm_files": {
+    "blind": "sampling-feed0p5-seed2016-blind.json",
+    "feedback": "sampling-feed0p5-seed2016-feedback.json"
+  },
+  "feed": 0.5,
+  "method": "sampling",
+  "parity": {
+    "blind": {
+      "cache_hits": 0,
+      "cache_misses": 4,
+      "failed_evaluations": 0,
+      "failed_transformations": 0,
+      "feedback_calculations": 0,
+      "feedback_cpu_ns": 0,
+      "final_scoring_evaluations": 0,
+      "manufacturing_cpu_ns": 20280864,
+      "manufacturing_transformations": 4,
+      "numerical_cpu_ns": 24123848,
+      "numerical_evaluations": 4,
+      "proposal_cpu_ns": 62250573,
+      "proposals": 4
+    },
+    "feedback": {
+      "cache_hits": 0,
+      "cache_misses": 4,
+      "failed_evaluations": 0,
+      "failed_transformations": 0,
+      "feedback_calculations": 4,
+      "feedback_cpu_ns": 24176,
+      "final_scoring_evaluations": 0,
+      "manufacturing_cpu_ns": 20596232,
+      "manufacturing_transformations": 4,
+      "numerical_cpu_ns": 24660028,
+      "numerical_evaluations": 4,
+      "proposal_cpu_ns": 62660027,
+      "proposals": 4
+    },
+    "independent_scoring": false,
+    "matched_cpu_time": false,
+    "matched_numerical_work": true
+  },
+  "robustness": {
+    "control_hv": 0.1799768518518519,
+    "feedback_hv": 0.1799768518518519
+  },
+  "seed": 2016,
+  "summary": {
+    "cpu_work": {
+      "control_hv": 0.2592592592592592,
+      "control_slots": 2,
+      "feedback_hv": 0.2592592592592592,
+      "feedback_slots": 2
+    },
+    "numerical_work": {
+      "control_feasible": true,
+      "control_hv": 0.2592592592592592,
+      "feedback_feasible": true,
+      "feedback_hv": 0.2592592592592592
+    },
+    "objective_vectors": {
+      "control": [
+        {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 1.4094628242311558e-08,
+          "thermal_transmission": 59999.99999999999
+        },
+        {
+          "areal_mass": 25.0,
+          "tensile_thermal_mismatch": 2.0328790734103208e-08,
+          "thermal_transmission": 50000.0
+        },
+        {
+          "areal_mass": 25.0,
+          "tensile_thermal_mismatch": 2.0328790734103208e-08,
+          "thermal_transmission": 50000.0
+        }
+      ],
+      "feedback": [
+        {
+          "areal_mass": 30.0,
+          "tensile_thermal_mismatch": 1.4094628242311558e-08,
+          "thermal_transmission": 59999.99999999999
+        },
+        {
+          "areal_mass": 25.0,
+          "tensile_thermal_mismatch": 2.0328790734103208e-08,
+          "thermal_transmission": 50000.0
+        },
+        {
+          "areal_mass": 25.0,
+          "tensile_thermal_mismatch": 2.0328790734103208e-08,
+          "thermal_transmission": 50000.0
+        }
+      ]
+    },
+    "reference": [
+      120000.0,
+      45.0,
+      1000000000.0
+    ]
+  }
+}

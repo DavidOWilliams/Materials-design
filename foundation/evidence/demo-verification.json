@@ -1,0 +1,119 @@
+{
+  "claim": "Same-host separate-process numerical replay, not physical validation",
+  "fixtures": [
+    {
+      "architecture": "homogeneous",
+      "create": {
+        "run_id": "89e7e097364540b593e3dd1da5e26999",
+        "input_hash": "f20da910ec1da4a81ad72d5eaed928584e2129a1923e15b6c06a7c5b65f0d951",
+        "status": "complete",
+        "flux_W_m2": 20000.0
+      },
+      "replay": {
+        "run_id": "89e7e097364540b593e3dd1da5e26999",
+        "input_hash": "f20da910ec1da4a81ad72d5eaed928584e2129a1923e15b6c06a7c5b65f0d951",
+        "replay": "passed",
+        "rtol": 1e-10,
+        "flux_atol_W_m2": 1e-07,
+        "temperature_atol_K": 1e-08
+      },
+      "commands": [
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--architecture",
+          "homogeneous"
+        ],
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--replay",
+          "89e7e097364540b593e3dd1da5e26999"
+        ]
+      ],
+      "elapsed_seconds": 0.8328643620000094
+    },
+    {
+      "architecture": "layered",
+      "create": {
+        "run_id": "d8ad1db3509644fe9899556ccb0ee8a0",
+        "input_hash": "860f847b9a19e2accfdad1d304dcf13deddd5bd129a9b5644d1697f4ce7fb58e",
+        "status": "complete",
+        "flux_W_m2": 33333.33333333607
+      },
+      "replay": {
+        "run_id": "d8ad1db3509644fe9899556ccb0ee8a0",
+        "input_hash": "860f847b9a19e2accfdad1d304dcf13deddd5bd129a9b5644d1697f4ce7fb58e",
+        "replay": "passed",
+        "rtol": 1e-10,
+        "flux_atol_W_m2": 1e-07,
+        "temperature_atol_K": 1e-08
+      },
+      "commands": [
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--architecture",
+          "layered"
+        ],
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--replay",
+          "d8ad1db3509644fe9899556ccb0ee8a0"
+        ]
+      ],
+      "elapsed_seconds": 0.8156046609999521
+    },
+    {
+      "architecture": "gradient",
+      "create": {
+        "run_id": "dfff4a084a90454999c51ed70deaa8f7",
+        "input_hash": "53afde9d0b3344327ebf504688eaabab3e58bfbd2ff39125b9546b2039a5b33f",
+        "status": "complete",
+        "flux_W_m2": 49708.00100816644
+      },
+      "replay": {
+        "run_id": "dfff4a084a90454999c51ed70deaa8f7",
+        "input_hash": "53afde9d0b3344327ebf504688eaabab3e58bfbd2ff39125b9546b2039a5b33f",
+        "replay": "passed",
+        "rtol": 1e-10,
+        "flux_atol_W_m2": 1e-07,
+        "temperature_atol_K": 1e-08
+      },
+      "commands": [
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--architecture",
+          "gradient"
+        ],
+        [
+          "/workspace/scratch/3c56ad540c71/wp1-final-env/bin/python",
+          "-m",
+          "material_core.demo",
+          "--store",
+          "/workspace/scratch/3c56ad540c71/wp1-final-demo/store",
+          "--replay",
+          "dfff4a084a90454999c51ed70deaa8f7"
+        ]
+      ],
+      "elapsed_seconds": 0.8409861190000356
+    }
+  ]
+}

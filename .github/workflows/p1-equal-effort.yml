@@ -1,0 +1,57 @@
+name: P1 equal-effort comparator verification
+on:
+  push:
+    branches:
+      - p1-equal-effort-from-accepted-wp5-2026-10-26
+  pull_request:
+  workflow_dispatch:
+jobs:
+  p1-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install foundation dependencies
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+      - name: Focused P1 test and full foundation regression
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py -vv --tb=long | tee p1-focused.log
+          .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
+      - name: Exploratory P1 pilot (nonconfirmatory)
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python foundation/p1/pilot.py | tee p1-pilot.log
+          .venv-foundation/bin/python -m pip freeze > foundation/p1/pilot-evidence/dependencies.txt
+          cd foundation/p1/pilot-evidence
+          find . -maxdepth 1 -type f ! -name sha256_manifest.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest.txt
+      - name: Frozen P1 confirmatory trials (not independently accepted)
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python foundation/p1/confirm.py | tee p1-confirmatory.log
+          cd foundation/p1/confirmatory-evidence
+          sha256sum -c sha256_manifest.txt
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-verification-logs
+          path: |
+            p1-focused.log
+            p1-regression.log
+            p1-pilot.log
+            p1-confirmatory.log
+            foundation/p1/confirmatory-evidence/
+            foundation/p1/pilot-evidence/
+          if-no-files-found: warn

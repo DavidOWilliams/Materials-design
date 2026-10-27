@@ -1,0 +1,8 @@
+{
+  "git_checkout": "6eb62daec638185f5c5dc170182e9e0454b6e061",
+  "git_parents": "",
+  "github_sha": "d638b1b7ee0bbd7d81f476f931fdb6ceb762f185",
+  "protocol_sha256": "f874daae784fbba693ec44f856bb904d1ff4a2b06ca97ca59c10275dc75166f0",
+  "python": "3.12.15 (main, Oct  1 2026, 02:35:59) [GCC 13.3.0]",
+  "system": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39"
+}

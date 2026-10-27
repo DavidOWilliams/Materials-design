@@ -213,17 +213,60 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
     record = dict(config=config, config_sha256=digest(config),
                   rows=rows, accounting=totals, measured_evidence=None,
                   claim="synthetic in-model comparison only",
-                  matched_cpu_budget=False, final_independent_scoring=False)
+                  matched_cpu_budget=False, final_independent_scoring=False,
+                  stop_reason="proposal_budget_exhausted")
     path.parent.mkdir(parents=True, exist_ok=True)
     # Refuse accidental replacement even if the file appears during execution.
     with path.open("x", encoding="utf-8") as f:
         f.write(json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + "\n")
     return record
 
+def audit_record(record):
+    """Fail closed for forged counters, row identities and cache declarations."""
+    cfg=record.get("config")
+    if not isinstance(cfg,dict) or record.get("config_sha256")!=digest(cfg):
+        raise ValueError("P1 config identity mismatch")
+    rows=record.get("rows")
+    counters=record.get("accounting")
+    if not isinstance(rows,list) or not isinstance(counters,dict) or len(rows)>cfg["budget"]:
+        raise ValueError("P1 candidate budget/accounting mismatch")
+    cpu=("proposal_cpu_ns","manufacturing_cpu_ns","numerical_cpu_ns","feedback_cpu_ns")
+    for i,row in enumerate(rows):
+        if row.get("index")!=i or row.get("status") not in (
+                "complete","evaluation_failed","transform_failed"):
+            raise ValueError("P1 row status/index invalid")
+        for name in cpu+("revision_cpu_ns",):
+            val=row.get(name)
+            if type(val) is not int or val<0:
+                raise ValueError("Invalid per-candidate CPU counter: "+name)
+        if row["revision_cpu_ns"]>row["proposal_cpu_ns"]:
+            raise ValueError("Revision CPU exceeds generation CPU")
+        if not cfg["feedback"] and (row.get("revision_applied") or row["feedback_cpu_ns"]):
+            raise ValueError("Blind control leaked feedback")
+    for key in cpu:
+        if type(counters.get(key)) is not int or counters[key]!=sum(x[key] for x in rows):
+            raise ValueError("P1 CPU accounting mismatch: "+key)
+    def check(key,n):
+        if type(counters.get(key)) is not int or counters[key]!=n:
+            raise ValueError("P1 accounting mismatch: "+key)
+    check("proposals",len(rows))
+    check("numerical_evaluations",sum(x["status"]=="complete" for x in rows))
+    check("manufacturing_transformations",sum(x["status"]!="transform_failed" for x in rows))
+    check("failed_evaluations",sum(x["status"]=="evaluation_failed" for x in rows))
+    check("failed_transformations",sum(x["status"]=="transform_failed" for x in rows))
+    check("cache_hits",0)
+    check("cache_misses",sum(x["status"]!="transform_failed" for x in rows))
+    if record.get("stop_reason") not in (None,"proposal_budget_exhausted"):
+        raise ValueError("Invalid stop reason")
+    if record.get("stop_reason")=="proposal_budget_exhausted" and len(rows)!=cfg["budget"]:
+        raise ValueError("False budget exhaustion")
+    return True
+
 def compare(a, b):
     """Audit paired trial identity and nominal numerical-work budget."""
     x, y = (json.loads(Path(p).read_text()) for p in (a, b))
     for record in (x, y):
+        audit_record(record)
         if digest(record["config"]) != record["config_sha256"]:
             raise ValueError("Configuration digest mismatch")
         if record["config"]["budget"] != len(record["rows"]):
@@ -248,6 +291,7 @@ def score_saved(path, *, heldout_feed=None):
     Search budgets exclude these separate, individually counted solves.
     """
     data=json.loads(Path(path).read_text())
+    audit_record(data)
     cfg=data["config"]
     if cfg["schema"]!=SCHEMA or digest(cfg)!=data["config_sha256"]:
         raise ValueError("Invalid frozen configuration identity")

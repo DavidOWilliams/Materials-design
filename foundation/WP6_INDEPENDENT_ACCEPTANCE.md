@@ -77,3 +77,41 @@ Not all requested authoritative documents were recoverable under exact names fro
 **Minimum correction:** Make the new test self-contained under ordinary foundation/recovered-WP0 test discovery, while preserving a separately mandated SHA-pinned original artifact reproduction in the dedicated WP6 workflow. Acceptable: check a small immutable test fixture and its SHA256 into the test assets, or explicitly and safely skip the historical-artifact-only test outside its separately configured WP6 job **provided the general suite still exercises the relevant contract using a local fixture**. Do not introduce unconditional network access or require a private token in all project CI jobs. After correction rerun targeted WP6, full regression, WP3 and WP4 integration workflows at exact new tested source; preserve successful originals and archive identity. This is one bounded test-harness correction, not permission to change numerical models, feedback or WP5 baselines.
 
 **Gate status:** Gate 1 PASS (WP6 functionality), G2-01 PASS, G2-02 PASS, Gate 2 overall **integration reconciliation pending**; Gate 3 independent review performed, **formal acceptance withheld**. P1/P2/P3 scientific gaps are deferred and not blockers for bounded D1. WP7 planning permitted; formal D1 release remains separately gated. Docs only; no merge or baseline move.
+
+
+## FINAL independent WP6 Gate 3 acceptance — 27 October 2026 (supersedes earlier open snapshots)
+
+**FORMAL DECISION: ACCEPT WP6 for the bounded D1 synthetic computational demonstration/evaluation scope.** Gates 1, 2 and 3 are closed for the exact implementation below. This is independent AI software/evidence/methodology review, not experimental ceramic validation or scientific proof of generalisation. All earlier OPEN/withheld positions in this file are dated review history and **are superseded by this section only**. Documentation commit carrying this record is not the tested implementation.
+
+### Frozen identities and verified CI
+
+- **Accepted WP6 implementation source:** `1f89c2d1bf64b669ca98b81f4305d20d08104e5c` (PR #7 branch, draft/unmerged).
+- **Actual GitHub Actions merge checkout:** `7f039f070bcb044b8bf0fc9112a15a0f7d2f7157`. GitHub CI raw checkout log independently checked.
+- WP6 workflow https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857738, job `122311429939`, **success**; evidence artifact `12748729866`, independently hashed ZIP SHA256 `ff8c4ecad1be50f5a5b6d5c5496ade2bb906cd615cb9819bf8d585a3e7f459b2`, matching GitHub digest. **All 28 of 28** artifact SHA256SUMS entries independently recomputed and matched. Archived `source-sha.txt` identifies the actual merge checkout. Archive includes original and corrected numerical evaluation, raw dossiers, environment, focused tests, campaign and replay logs.
+- WP6 workflow: **14 WP6 focused tests passed**, separate **portable test 1 passed** with `WP6_ORIGINAL_NUMERICAL_ATTEMPTS` deliberately unset, separate **immutable original-artifact reproduction 1 passed** with archive supplied, **350 foundation/recovery tests passed**, **nine 4096-element campaigns completed** and **nine separate-process persisted campaign dossier replays verified**.
+- WP3 integration workflow https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857597, **all four jobs success**. Contract/vertical job `122311430461`: **344 foundation/recovery tests passed**; supplemental checks ran. 
+- WP4 integration workflow https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857615, job `122311429075`, **success**: 85 focused tests, 44 WP5 tests and 350 foundation/recovery tests passed. Previous WP3/WP4 failures caused solely by an absent historical-artifact environment variable are resolved.
+- GitHub compare from prior checked source `328625ede938734e0ac40383b9b80fdd542136fa`: only `.github/workflows/wp6-evaluation.yml` and `foundation/tests/test_wp6_g2_02_reproduction.py` changed. No WP2 scientific numerical kernel, WP3 search, WP4 feedback, or accepted WP5 implementation was changed.
+
+### Final finding dispositions
+
+| Finding | Independent disposition | Evidence |
+|---|---|---|
+| G2-01 actual no-improvement | **CLOSED** | Frozen genuine `no_improvement_possible`, not just budget exhaustion; zero feasible candidates and persisted replay |
+| G2-02 numerical unresolved/ineligible | **CLOSED** | Original two-element archived RunInputs reconstructed in independent Python process; computed evaluation `status=complete`, `numerical_quality=unresolved`, `numerical_comparison_eligible=false`, identical input hash and `differences=[]` at preregistered 1e-12 relative/1e-10 absolute tolerances; `gate2-independent/reproduction.json` |
+| Portable fixture/integration | **CLOSED** | New test creates the same registered two-element scenario locally when historical artifact variable absent; executes, not skipped; dedicated WP6 workflow separately downloads SHA-verified historical archive; WP3+WP4 restored green |
+| R1 feedback comparative superiority | **ACCEPTED BOUNDED LIMITATION / P1 DEFERRED** | Actual unequal effort recorded; no causal equal-cost superiority established |
+| R2 held-out physics generalisation | **ACCEPTED BOUNDED LIMITATION / P2 DEFERRED** | Held-out brief-duty identity only; supported mass/process sensitivity; no new-physics qualification |
+| R3 negative/challenge scope | **PASS for bounded D1** | No improvement, no feasible, invalid budget, unsupported edit, cancel, corrupt dossier, unresolved qualification and explicit absence of measured evidence |
+| R4 independent numerical verification | **PASS for replay/recomputation integrity only** | Numerical model itself remains within earlier WP2/WP3 qualification boundaries; no new external physical validation |
+| P3 measured ceramic manufacturing | **DEFERRED E1/E2/V1** | All nine campaign cases retain measured evidence null |
+
+### Gate decision, release and controls
+
+- **Gate 1 — PASS:** reproducible executions, persistence, environment/test evidence and nine dossier replays.
+- **Gate 2 — PASS:** original and targeted adverse scientific outcomes executed honestly; portable foundation regression and WP3/WP4 compatibility restored.
+- **Gate 3 — PASS, bounded independent review:** checked frozen source changes, workflow logs, evidence ZIP and manifest, original-vs-recomputed numerical equality, method claims and distinct scientific exclusions. **This is formal WP6 acceptance at source `1f89c2d...` only.**
+- **WP7 readiness — PROCEED** to implementation and D1 release checks. WP7 is **NOT already accepted or released**. The accepted WP5 baseline remains `4078a83dc11e14703ff6cc03f5b62f4e48879d14`. No merge, baseline movement or new scientific feature is authorised.
+- P1 equal-effort feedback proof, P2 independent physical-domain benchmarks and P3 measured ceramics E1/E2 are traceably deferred in `foundation/SCIENTIFIC_EVIDENCE_ROADMAP_P1_P3.md`; none retroactively blocks bounded WP6. D1 ≠ V1. Specialist discovery, new materials/architectures, lifecycle analysis, residual-stress physics and future FE/CFD remain longer-term Vision objectives, not accepted WP6 functions.
+
+**Reviewer:** separately tasked independent ChatGPT review; final acceptance recorded as documentation-only, distinct from tested source, PR #8 remains draft/unmerged. Do not treat this record as authorisation to merge PR #7 or #8.

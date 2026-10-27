@@ -37,6 +37,20 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/gate2_challenges.py /tmp/wp6-evidence/gate2 2>&1 | tee /tmp/wp6-evidence/gate2.log
+      - name: Reproduce original archived unresolved WP2 case in separate process
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/wp6-original
+          curl --fail --location --retry 3 --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/vnd.github+json" --output /tmp/wp6-original/original.zip "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/12681955393/zip"
+          echo "39e01e06110ef612f6ff561dea6a2568b0fc8b539dde9c466e2cab4a6033d3da  /tmp/wp6-original/original.zip" | sha256sum -c -
+          unzip -q /tmp/wp6-original/original.zip -d /tmp/wp6-original/extracted
+          cd /tmp/wp6-original/extracted
+          sha256sum -c SHA256SUMS
+          cd "$GITHUB_WORKSPACE"
+          cp /tmp/wp6-original/extracted/gate2/numerical_attempts.json /tmp/wp6-evidence/original_numerical_attempts.json
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/reproduce_unresolved.py /tmp/wp6-evidence/original_numerical_attempts.json /tmp/wp6-evidence/gate2-independent 2>&1 | tee /tmp/wp6-evidence/gate2-independent.log
       - name: Foundation regression
         run: |
           set -o pipefail

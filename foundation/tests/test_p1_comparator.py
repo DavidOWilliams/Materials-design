@@ -83,3 +83,15 @@ def test_per_candidate_cpu_accounting_reconciles(tmp_path):
                    output=tmp_path/"cpu.json",elements=32)
     for category in ("proposal_cpu_ns","manufacturing_cpu_ns","numerical_cpu_ns"):
         assert sum(row[category] for row in record["rows"])==record["accounting"][category]
+
+def test_heldout_process_sensitivity_preserves_search_evidence(tmp_path):
+    trial=tmp_path/"trial.json"
+    execute(seed=5,budget=3,feedback=True,output=trial,
+            elements=32,feed=.25,mass_limit=10.0)
+    prior=trial.read_bytes()
+    native=score_saved(trial)
+    sensitivity=score_saved(trial,heldout_feed=.5)
+    assert native["scoring_evaluations"]==3
+    assert sensitivity["scoring_evaluations"]==6
+    assert sensitivity["heldout_feed"]==.5
+    assert trial.read_bytes()==prior

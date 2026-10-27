@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-9.0.2, pluggy-1.7.0 -- /home/runner/work/Materials-design/Materials-design/.venv-foundation/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/Materials-design/Materials-design
+configfile: pytest.ini
+collecting ... collected 9 items
+
+foundation/tests/test_p1_comparator.py::test_blind_comparator_continues_and_respects_budget PASSED [ 11%]
+foundation/tests/test_p1_comparator.py::test_both_arms_are_budget_auditable_and_immutable PASSED [ 22%]
+foundation/tests/test_p1_comparator.py::test_invalid_configuration_creates_nothing PASSED [ 33%]
+foundation/tests/test_p1_comparator.py::test_mismatched_seed_rejected PASSED [ 44%]
+foundation/tests/test_p1_comparator.py::test_tampered_config_rejected PASSED [ 55%]
+foundation/tests/test_p1_comparator.py::test_density_feedback_triggers_with_wp3_three_material_catalogue PASSED [ 66%]
+foundation/tests/test_p1_comparator.py::test_common_scorer_recomputes_and_rejects_tampering PASSED [ 77%]
+foundation/tests/test_p1_comparator.py::test_per_candidate_cpu_accounting_reconciles PASSED [ 88%]
+foundation/tests/test_p1_comparator.py::test_heldout_process_sensitivity_preserves_search_evidence PASSED [100%]
+
+============================== 9 passed in 1.73s ===============================

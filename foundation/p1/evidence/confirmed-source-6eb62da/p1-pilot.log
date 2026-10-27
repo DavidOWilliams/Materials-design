@@ -1,0 +1,9 @@
+{"complete": 4, "feasible": 7, "feed": 0.25, "feedback": false, "mean_cpu_ms": 110.654, "method": "sampling", "n": 4, "qualified": 7, "revisions": 0}
+{"complete": 4, "feasible": 7, "feed": 0.25, "feedback": true, "mean_cpu_ms": 114.756, "method": "sampling", "n": 4, "qualified": 7, "revisions": 3}
+{"complete": 4, "feasible": 6, "feed": 0.5, "feedback": false, "mean_cpu_ms": 108.598, "method": "sampling", "n": 4, "qualified": 6, "revisions": 0}
+{"complete": 4, "feasible": 7, "feed": 0.5, "feedback": true, "mean_cpu_ms": 115.376, "method": "sampling", "n": 4, "qualified": 7, "revisions": 3}
+{"complete": 4, "feasible": 4, "feed": 0.25, "feedback": false, "mean_cpu_ms": 109.613, "method": "explore", "n": 4, "qualified": 4, "revisions": 0}
+{"complete": 4, "feasible": 4, "feed": 0.25, "feedback": true, "mean_cpu_ms": 111.895, "method": "explore", "n": 4, "qualified": 4, "revisions": 4}
+{"complete": 4, "feasible": 8, "feed": 0.5, "feedback": false, "mean_cpu_ms": 110.317, "method": "explore", "n": 4, "qualified": 8, "revisions": 0}
+{"complete": 4, "feasible": 8, "feed": 0.5, "feedback": true, "mean_cpu_ms": 108.855, "method": "explore", "n": 4, "qualified": 8, "revisions": 0}
+{"status": "PILOT_ONLY", "trials": 32, "output": "foundation/p1/pilot-evidence"}

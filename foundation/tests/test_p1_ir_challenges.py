@@ -137,3 +137,26 @@ def test_12_exact_budget_exhaustion(tmp_path):
     forged["rows"].pop()
     with pytest.raises(ValueError,match="accounting|budget exhaustion"):
         audit_record(forged)
+
+# IR-04: an attempted correction that leaves architecture unchanged must not
+# masquerade as an applied material revision.
+def test_ir04_revision_attempt_is_distinct_from_actual_change(tmp_path):
+    original=p1._revise
+    with patch.object(p1,"_revise",side_effect=lambda scoped,design,feedback: design):
+        _,result=trial(tmp_path,feedback=True,limit=10.,budget=3)
+    assert result["rows"][1]["revision_attempted"] is True
+    assert result["rows"][1]["revision_applied"] is False
+    assert result["rows"][0]["revision_applied"] is False
+
+# IR-04: held-out is replayed after immutable native checks and distinct
+# scored results retain the actual alternative-process numerical hash.
+def test_ir04_heldout_evaluation_not_confused_with_native(tmp_path):
+    path,_=trial(tmp_path,feedback=True,limit=10.)
+    original_bytes=path.read_bytes()
+    native=score_saved(path)
+    held=score_saved(path,heldout_feed=.5)
+    assert held["heldout_feed"]==.5
+    assert held["scoring_evaluations"]==2*len(native["results"])
+    assert all(set(r["achieved_objectives"])==set(native["results"][0]["achieved_objectives"])
+               for r in held["results"])
+    assert path.read_bytes()==original_bytes

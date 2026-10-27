@@ -73,7 +73,20 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         start = process_time_ns()
         spec, base = _candidate(provider, index)
         if feedback and previous_feedback is not None:
-            revised = _revise(base, base.design, previous_feedback)
+            # WP4 revision policy assumes exactly two material records, while
+            # the WP3 catalogue retains an unused third record for other pairs.
+            # Project only the candidate's active two records for revision
+            # decision; evaluate with the unchanged full WP3 property pack.
+            from types import SimpleNamespace
+            active = {fraction.material_id for fraction in
+                      (base.design.architecture.composition.fractions
+                       if hasattr(base.design.architecture, "composition")
+                       else base.design.architecture.layers[0].composition.fractions
+                       if hasattr(base.design.architecture, "layers")
+                       else base.design.architecture.knots[0].composition.fractions)}
+            scoped = SimpleNamespace(
+                materials=tuple(m for m in base.materials if m.id in active))
+            revised = _revise(scoped, base.design, previous_feedback)
             base = _replace_design(base, revised)
         totals["proposal_cpu_ns"] += process_time_ns() - start
         totals["proposals"] += 1

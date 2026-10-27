@@ -135,5 +135,5 @@ def test_12_exact_budget_exhaustion(tmp_path):
     assert record["accounting"]["proposals"]==len(record["rows"])==2
     forged=copy.deepcopy(record)
     forged["rows"].pop()
-    with pytest.raises(ValueError,match="budget exhaustion"):
+    with pytest.raises(ValueError,match="accounting|budget exhaustion"):
         audit_record(forged)

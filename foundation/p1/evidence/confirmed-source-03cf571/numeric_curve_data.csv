@@ -1,0 +1,17 @@
+stratum,proposal_budget,mean_paired_hv
+sampling/feed-0.25,1,0.0
+sampling/feed-0.25,2,0.0
+sampling/feed-0.25,3,0.014814814814814812
+sampling/feed-0.25,4,0.017274305555555557
+sampling/feed-0.5,1,0.0
+sampling/feed-0.5,2,0.0
+sampling/feed-0.5,3,0.03900462962962962
+sampling/feed-0.5,4,0.03900462962962962
+explore/feed-0.25,1,0.0
+explore/feed-0.25,2,0.0
+explore/feed-0.25,3,0.0
+explore/feed-0.25,4,0.0
+explore/feed-0.5,1,0.0
+explore/feed-0.5,2,0.0
+explore/feed-0.5,3,0.0
+explore/feed-0.5,4,0.0

@@ -1,0 +1,510 @@
+{
+  "caveat": "Synthetic in-model finding, not measured ceramic evidence",
+  "confirmatory_n_pairs": 80,
+  "cpu_paired_hv": {
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "mean": 0.0,
+    "n": 80
+  },
+  "feasibility_paired": {
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "mean": 0.0,
+    "n": 80
+  },
+  "heldout_by_scenario": {
+    "('explore', 0.25)": {
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "mean": 0.0,
+      "n": 20
+    },
+    "('explore', 0.5)": {
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "mean": 0.0,
+      "n": 20
+    },
+    "('sampling', 0.25)": {
+      "ci95": [
+        0.009374999999999998,
+        0.09675925925925924
+      ],
+      "mean": 0.04837962962962962,
+      "n": 20
+    },
+    "('sampling', 0.5)": {
+      "ci95": [
+        0.0,
+        0.03796296296296297
+      ],
+      "mean": 0.014814814814814817,
+      "n": 20
+    }
+  },
+  "per_scenario": {
+    "('explore', 0.25)": {
+      "all_paired_cpu_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "all_paired_feasibility_differences": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "all_paired_hv_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "paired_cpu_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_feasibility": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      }
+    },
+    "('explore', 0.5)": {
+      "all_paired_cpu_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "all_paired_feasibility_differences": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "all_paired_hv_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "paired_cpu_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_feasibility": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      }
+    },
+    "('sampling', 0.25)": {
+      "all_paired_cpu_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "all_paired_feasibility_differences": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "all_paired_hv_differences": [
+        0.1296296296296296,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.04918981481481477,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.16666666666666674,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "paired_cpu_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_feasibility": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_hv": {
+        "ci95": [
+          0.0,
+          0.04042245370370371
+        ],
+        "mean": 0.017274305555555557,
+        "n": 20
+      }
+    },
+    "('sampling', 0.5)": {
+      "all_paired_cpu_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "all_paired_feasibility_differences": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "all_paired_hv_differences": [
+        0.2962962962962962,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2962962962962962,
+        0.0,
+        0.18749999999999994,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "paired_cpu_hv": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_feasibility": {
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "mean": 0.0,
+        "n": 20
+      },
+      "paired_hv": {
+        "ci95": [
+          0.0,
+          0.08344907407407405
+        ],
+        "mean": 0.03900462962962962,
+        "n": 20
+      }
+    }
+  },
+  "performance_curves": {
+    "explore/feed-0.25": [
+      {
+        "budget_proposals": 1,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 2,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 3,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 4,
+        "mean_paired_hv": 0.0
+      }
+    ],
+    "explore/feed-0.5": [
+      {
+        "budget_proposals": 1,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 2,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 3,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 4,
+        "mean_paired_hv": 0.0
+      }
+    ],
+    "sampling/feed-0.25": [
+      {
+        "budget_proposals": 1,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 2,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 3,
+        "mean_paired_hv": 0.014814814814814812
+      },
+      {
+        "budget_proposals": 4,
+        "mean_paired_hv": 0.017274305555555557
+      }
+    ],
+    "sampling/feed-0.5": [
+      {
+        "budget_proposals": 1,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 2,
+        "mean_paired_hv": 0.0
+      },
+      {
+        "budget_proposals": 3,
+        "mean_paired_hv": 0.03900462962962962
+      },
+      {
+        "budget_proposals": 4,
+        "mean_paired_hv": 0.03900462962962962
+      }
+    ]
+  },
+  "physical_validation": false,
+  "primary": {
+    "ci95": [
+      0.0037037037037037043,
+      0.025925925925925925
+    ],
+    "mean": 0.014069733796296294,
+    "n_pairs": 80
+  },
+  "protocol_sha256": "f874daae784fbba693ec44f856bb904d1ff4a2b06ca97ca59c10275dc75166f0",
+  "protocol_version": "p1-confirmatory-v1",
+  "search_and_scorer_model_independence": false
+}

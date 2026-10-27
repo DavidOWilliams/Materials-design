@@ -10,7 +10,7 @@ def fmt(value):
     return f"{value:+.6f}" if isinstance(value,(int,float)) else str(value)
 
 def effect(row):
-    return f'{fmt(row["mean"])} (95% paired CI {fmt(row["ci95"][0])} to {fmt(row["ci95"][1])}; n={row["n"]})'
+    return f'{fmt(row["mean"])} (95% paired CI {fmt(row["ci95"][0])} to {fmt(row["ci95"][1])}; n={row.get("n",row.get("n_pairs"))})'
 
 def make_report(root, output):
     root=Path(root)

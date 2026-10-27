@@ -77,3 +77,9 @@ def test_common_scorer_recomputes_and_rejects_tampering(tmp_path):
     output.write_text(json.dumps(data))
     with pytest.raises(ValueError,match="Stored objective"):
         score_saved(output)
+
+def test_per_candidate_cpu_accounting_reconciles(tmp_path):
+    record=execute(seed=44,budget=3,feedback=False,
+                   output=tmp_path/"cpu.json",elements=32)
+    for category in ("proposal_cpu_ns","manufacturing_cpu_ns","numerical_cpu_ns"):
+        assert sum(row[category] for row in record["rows"])==record["accounting"][category]

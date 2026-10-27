@@ -36,3 +36,6 @@
 
 ## Boundaries
 WP4 accepted implementation remains unchanged. WP6 independent review PR #8 reports Gate 1 PASS, Gate 2 OPEN and withheld formal WP6 acceptance; P1 does not close those requirements. There is no physical ceramic validation, CFD/sintering/porosity modelling, or new independently calibrated manufacturing model.
+
+## Additional independent archive audit (27 October 2026)
+A separate direct calculation from the 80 preserved `all_paired_trials.json` entries reproduced the reported paired mean `+0.014069733796296294`: **6 positive paired differences, 74 exactly zero, 0 negative**. This sparse-effect pattern should be explicitly considered when interpreting bootstrap intervals, generalisability, and practical benefit. The review must not infer universal improvement from a positive mean. The original evidence remains unchanged.

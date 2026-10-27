@@ -32,7 +32,7 @@ jobs:
           .venv-foundation/bin/python foundation/p1/pilot.py | tee p1-pilot.log
           .venv-foundation/bin/python -m pip freeze > foundation/p1/pilot-evidence/dependencies.txt
           cd foundation/p1/pilot-evidence
-          sha256sum $(find . -maxdepth 1 -type f ! -name sha256_manifest.txt -printf '%f\\n' | sort) > sha256_manifest.txt
+          find . -maxdepth 1 -type f ! -name sha256_manifest.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest.txt
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,8 +1,7 @@
 name: Preserve independently reproducible P1 scientific evidence in Git
 on:
-  push:
-    branches:
-      - p1-equal-effort-from-accepted-wp5-2026-10-26
+  pull_request:
+    types: [opened, synchronize]
     paths:
       - .github/workflows/p1-preserve-evidence.yml
   workflow_dispatch:

@@ -2,7 +2,7 @@
 import json, platform, statistics, sys, tempfile, time
 from pathlib import Path
 from material_core.p1_comparator import execute
-from foundation.p1.analysis import prefix_for_cpu
+from analysis import prefix_for_cpu
 
 def run():
     rows=[]

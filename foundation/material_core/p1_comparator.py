@@ -10,7 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from time import process_time_ns
+from time import process_time_ns, time_ns
 
 from .wp3_adapters import resolve_provider, DEFAULT
 from .wp4_feedback import scenario, _revise, _replace_design
@@ -155,6 +155,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         totals["proposal_cpu_ns"] += proposal_ns
         totals["proposals"] += 1
         row = dict(index=index, seed=seed, proposal=spec,
+                   started_utc_ns=time_ns(),
                    intended_hash=base.design.content_hash,
                    revision_attempted=bool(feedback and previous_feedback is not None),
                    revision_applied=actual_change,
@@ -175,6 +176,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             row["manufacturing_cpu_ns"] = process_time_ns() - start
             totals["manufacturing_cpu_ns"] += row["manufacturing_cpu_ns"]
             row.update(status="transform_failed", error=repr(exc))
+            row["ended_utc_ns"]=time_ns()
             rows.append(row)
             previous_feedback = None
             checkpoint_after_row()
@@ -208,6 +210,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             totals["numerical_cpu_ns"] += row["numerical_cpu_ns"]
             row.update(status="evaluation_failed", error=repr(exc))
             previous_feedback = None
+        row["ended_utc_ns"]=time_ns()
         rows.append(row)
         checkpoint_after_row()
     record = dict(config=config, config_sha256=digest(config),
@@ -235,6 +238,12 @@ def audit_record(record):
         if row.get("index")!=i or row.get("status") not in (
                 "complete","evaluation_failed","transform_failed"):
             raise ValueError("P1 row status/index invalid")
+        start_ns=row.get("started_utc_ns")
+        end_ns=row.get("ended_utc_ns")
+        if start_ns is not None or end_ns is not None:
+            if (type(start_ns) is not int or type(end_ns) is not int or
+                start_ns<=0 or end_ns<start_ns):
+                raise ValueError("Invalid candidate UTC timestamps")
         for name in cpu+("revision_cpu_ns",):
             val=row.get(name)
             if type(val) is not int or val<0:

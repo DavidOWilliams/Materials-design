@@ -6,10 +6,10 @@
 
 - Working draft PR: https://github.com/DavidOWilliams/Materials-design/pull/9 (not merged).
 - Original accepted WP5 tested source: `4078a83dc11e14703ff6cc03f5b62f4e48879d14`.
-- P1 confirmatory tested source: `6eb62daec638185f5c5dc170182e9e0454b6e061`.
+- Original confirmatory tested source: `6eb62daec638185f5c5dc170182e9e0454b6e061`; checkpoint-corrected tested source: `03cf5718da6b88c05c75ce492ea963507899f66b`.
 - Successful confirmatory Actions: https://github.com/DavidOWilliams/Materials-design/actions/runs/40483551395, artifact 12724002391.
 - Frozen scientific plan: `foundation/p1/CONFIRMATORY_PROTOCOL_FROZEN.md` and `CONFIRMATORY_CONFIG_FROZEN.json`, committed *before* confirmatory outcomes.
-- Permanent evidence snapshot: `foundation/p1/evidence/confirmed-source-6eb62da/`, contains raw arm records, independent in-model scoring artifacts, trial analysis, CSV/graph, dependency/source snapshot, two SHA256 manifests and CI raw logs.
+- Permanent evidence snapshots: `foundation/p1/evidence/confirmed-source-6eb62da/` and `foundation/p1/evidence/confirmed-source-03cf571/`, each contains raw arm records, independent in-model scoring artifacts, trial analysis, CSV/graph, dependency/source snapshot, two SHA256 manifests and CI raw logs.
 - Any documentation/evidence commits after the exact P1 tested SHA do not constitute newer tested source.
 - Independent WP6 review remains formally open; P1 does not modify WP6 acceptance.
 
@@ -32,3 +32,11 @@
 State **Gate 1** (infrastructure and restart), **Gate 2** (adversarial scientific challenges) and **Gate 3** (independent acceptance), each PASS, OPEN, or FAIL with evidence. The reviewer must list any unresolved findings, exact tested SHA and source checkout, numerical quantities independently recalculated, retention status, and restrictions on claims. Do not infer superiority in manufactured ceramics from synthetic in-model improvement. WP6 formal acceptance remains entirely separate.
 
 The implementer has NOT independently approved these findings.
+
+## Mandatory recovery replication reconciliation — 27 October 2026
+
+The post-outcome checkpoint correction is a **new tested software source**, not a retrospective replacement of frozen results. At \`03cf5718da6b88c05c75ce492ea963507899f66b\`, GitHub Actions run \`40486605412\` passed 11 focused and 350 regression tests, including interruption/resume and corrupted/incompatible checkpoint challenges. Both 80-pair evidence archives have their own original and expanded SHA256 manifests and complete raw outcome records.
+
+The 80-pair frozen configuration was run again, using identical seeds and assumptions. Equal-numerical-work HV effect and CI were unchanged (+0.0140697; +0.0037037 to +0.0259259). Original 80ms CPU-prefix mean was -0.0017289 (95% CI -0.0051866 to 0); the corrected-source replication gave 0 (CI 0 to 0). The reviewer must explicitly determine what, if anything, this implementation-sensitive CPU result allows the programme to claim. Do not pool the two studies, represent repeated seeds as independent new trials, or claim physical validation.
+
+For Gate 1, directly audit recovered candidate identities and absence of repeated numerical work at corrected source, while keeping original source's identified interruption loss as historical. Gate 3 remains entirely separate.

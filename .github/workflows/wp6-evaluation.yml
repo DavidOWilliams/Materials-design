@@ -51,6 +51,12 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           cp /tmp/wp6-original/extracted/gate2/numerical_attempts.json /tmp/wp6-evidence/original_numerical_attempts.json
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp6/reproduce_unresolved.py /tmp/wp6-evidence/original_numerical_attempts.json /tmp/wp6-evidence/gate2-independent 2>&1 | tee /tmp/wp6-evidence/gate2-independent.log
+      - name: Focused archived unresolved reproduction regression
+        env:
+          WP6_ORIGINAL_NUMERICAL_ATTEMPTS: /tmp/wp6-evidence/original_numerical_attempts.json
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp6_g2_02_reproduction.py -vv --tb=long 2>&1 | tee /tmp/wp6-evidence/gate2-regression.log
       - name: Foundation regression
         run: |
           set -o pipefail

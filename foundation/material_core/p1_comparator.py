@@ -8,6 +8,7 @@ This is a bounded density-guided correction, not multiobjective optimisation.
 from __future__ import annotations
 import hashlib
 import json
+import os
 from pathlib import Path
 from time import process_time_ns
 
@@ -35,6 +36,45 @@ def _feedback(evaluation, mass_limit):
 def _candidate(provider, index):
     spec = provider.start() if index == 0 else provider.proposal(index - 1)
     return spec, provider.build(spec, ())
+
+def _save_checkpoint(path, record):
+    """Atomic restart record; checksum guards truncated or edited snapshots."""
+    checkpoint=Path(str(path)+".checkpoint.json")
+    payload=dict(record=record,sha256=digest(record))
+    temporary=Path(str(checkpoint)+".pending")
+    if temporary.exists():
+        raise FileExistsError("Unresolved partial checkpoint write")
+    checkpoint.parent.mkdir(parents=True,exist_ok=True)
+    with temporary.open("x",encoding="utf-8") as f:
+        f.write(json.dumps(payload,indent=2,sort_keys=True,allow_nan=False)+"\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(temporary,checkpoint)
+
+def _load_checkpoint(path, config):
+    checkpoint=Path(str(path)+".checkpoint.json")
+    if not checkpoint.exists():
+        return None
+    payload=json.loads(checkpoint.read_text())
+    record=payload["record"]
+    if payload.get("sha256")!=digest(record) or record.get("config")!=config:
+        raise ValueError("Incompatible or corrupt P1 checkpoint")
+    if record.get("config_sha256")!=digest(config):
+        raise ValueError("P1 checkpoint config digest mismatch")
+    rows=record.get("rows")
+    if not isinstance(rows,list) or len(rows)>config["budget"]:
+        raise ValueError("P1 checkpoint proposal count mismatch")
+    if any(row.get("index")!=i or row.get("status") not in
+           ("complete","evaluation_failed","transform_failed")
+           for i,row in enumerate(rows)):
+        raise ValueError("P1 checkpoint row/index invalid")
+    totals=record.get("accounting",{})
+    if totals.get("proposals")!=len(rows):
+        raise ValueError("P1 checkpoint accounting count mismatch")
+    for key in ("proposal_cpu_ns","manufacturing_cpu_ns","numerical_cpu_ns","feedback_cpu_ns"):
+        if totals.get(key)!=sum(row.get(key,0) for row in rows):
+            raise ValueError("P1 checkpoint CPU accounting mismatch: "+key)
+    return record
 
 def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             layer=0.005, feed=0.25, route="synthetic_ideal_planar_deposition",
@@ -69,8 +109,25 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
                   feedback_calculations=0, feedback_cpu_ns=0,
                   numerical_cpu_ns=0, manufacturing_cpu_ns=0,
                   proposal_cpu_ns=0, final_scoring_evaluations=0)
+    # Resume recorded candidates without charging or repeating earlier solves.
+    journal=_load_checkpoint(path,config)
+    if journal is not None:
+        rows=journal["rows"]
+        totals=journal["accounting"]
+        for i,row in enumerate(rows):
+            spec,_=_candidate(provider,i)
+            if canonical(spec)!=canonical(row["proposal"]):
+                raise ValueError("P1 checkpoint proposal stream mismatch")
+        if feedback and rows and rows[-1]["status"]=="complete":
+            mass=rows[-1].get("objectives",{}).get("areal_mass")
+            if mass is not None and mass>float(mass_limit):
+                previous_feedback=dict(metric="areal_mass",relation="le",
+                                       actual=mass,limit=float(mass_limit))
+    def checkpoint_after_row():
+        _save_checkpoint(path,dict(config=config,config_sha256=digest(config),
+                                  rows=rows,accounting=totals))
     # Both arms use an independently instantiated provider with the same seed.
-    for index in range(budget):
+    for index in range(len(rows),budget):
         start = process_time_ns()
         spec, base = _candidate(provider, index)
         revision_ns = 0
@@ -116,6 +173,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             row.update(status="transform_failed", error=repr(exc))
             rows.append(row)
             previous_feedback = None
+            checkpoint_after_row()
             continue
         start = process_time_ns()
         totals["cache_misses"] += 1  # caching deliberately disabled for parity
@@ -146,6 +204,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             row.update(status="evaluation_failed", error=repr(exc))
             previous_feedback = None
         rows.append(row)
+        checkpoint_after_row()
     record = dict(config=config, config_sha256=digest(config),
                   rows=rows, accounting=totals, measured_evidence=None,
                   claim="synthetic in-model comparison only",

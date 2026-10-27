@@ -4,6 +4,7 @@ on:
     types: [opened, synchronize]
     paths:
       - .github/workflows/p1-preserve-evidence.yml
+      - foundation/p1/make_report.py
   workflow_dispatch:
 permissions:
   actions: read

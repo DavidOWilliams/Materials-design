@@ -25,6 +25,14 @@ jobs:
           set -o pipefail
           .venv-foundation/bin/python -m pytest foundation/tests/test_p1_comparator.py -vv --tb=long | tee p1-focused.log
           .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q | tee p1-regression.log
+      - name: Exploratory P1 pilot (nonconfirmatory)
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python foundation/p1/pilot.py | tee p1-pilot.log
+          .venv-foundation/bin/python -m pip freeze > foundation/p1/pilot-evidence/dependencies.txt
+          cd foundation/p1/pilot-evidence
+          sha256sum $(find . -maxdepth 1 -type f ! -name sha256_manifest.txt -printf '%f\\n' | sort) > sha256_manifest.txt
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -33,4 +41,6 @@ jobs:
           path: |
             p1-focused.log
             p1-regression.log
+            p1-pilot.log
+            foundation/p1/pilot-evidence/
           if-no-files-found: warn

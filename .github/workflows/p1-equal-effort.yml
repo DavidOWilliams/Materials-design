@@ -33,6 +33,13 @@ jobs:
           .venv-foundation/bin/python -m pip freeze > foundation/p1/pilot-evidence/dependencies.txt
           cd foundation/p1/pilot-evidence
           find . -maxdepth 1 -type f ! -name sha256_manifest.txt -print0 | sort -z | xargs -0 sha256sum > sha256_manifest.txt
+      - name: Frozen P1 confirmatory trials (not independently accepted)
+        env:
+          PYTHONPATH: foundation
+        run: |
+          .venv-foundation/bin/python foundation/p1/confirm.py | tee p1-confirmatory.log
+          cd foundation/p1/confirmatory-evidence
+          sha256sum -c sha256_manifest.txt
       - name: Upload verification logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -42,5 +49,7 @@ jobs:
             p1-focused.log
             p1-regression.log
             p1-pilot.log
+            p1-confirmatory.log
+            foundation/p1/confirmatory-evidence/
             foundation/p1/pilot-evidence/
           if-no-files-found: warn

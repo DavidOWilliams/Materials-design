@@ -95,3 +95,51 @@ def test_heldout_process_sensitivity_preserves_search_evidence(tmp_path):
     assert sensitivity["scoring_evaluations"]==6
     assert sensitivity["heldout_feed"]==.5
     assert trial.read_bytes()==prior
+
+def test_mid_trial_interruption_checkpoints_and_resumes_without_repeating(tmp_path):
+    from unittest.mock import patch
+    import material_core.p1_comparator as cmp
+    path=tmp_path/"interrupted.json"
+    original=cmp._candidate
+    def stop_after_two(provider,index):
+        if index==2:
+            raise KeyboardInterrupt("simulated process interruption")
+        return original(provider,index)
+    with patch.object(cmp,"_candidate",side_effect=stop_after_two):
+        with pytest.raises(KeyboardInterrupt):
+            execute(seed=5,budget=4,feedback=True,output=path,elements=32,
+                    mass_limit=10.0)
+    checkpoint=tmp_path/"interrupted.json.checkpoint.json"
+    assert checkpoint.exists() and not path.exists()
+    pre=json.loads(checkpoint.read_text())["record"]
+    assert len(pre["rows"])==2
+    recovered=execute(seed=5,budget=4,feedback=True,output=path,elements=32,
+                      mass_limit=10.0)
+    assert recovered["accounting"]["proposals"]==4
+    assert recovered["rows"][:2]==pre["rows"]
+    assert len(recovered["rows"])==4
+    assert score_saved(path)["scoring_evaluations"]==4
+
+def test_incompatible_or_corrupt_checkpoint_rejected_without_mutation(tmp_path):
+    from unittest.mock import patch
+    import material_core.p1_comparator as cmp
+    path=tmp_path/"interrupted.json"
+    original=cmp._candidate
+    def stop_after_one(provider,index):
+        if index==1:raise KeyboardInterrupt()
+        return original(provider,index)
+    with patch.object(cmp,"_candidate",side_effect=stop_after_one):
+        with pytest.raises(KeyboardInterrupt):
+            execute(seed=7,budget=3,feedback=False,output=path,elements=32)
+    journal=tmp_path/"interrupted.json.checkpoint.json"
+    pristine=journal.read_bytes()
+    with pytest.raises(ValueError,match="Incompatible"):
+        execute(seed=8,budget=3,feedback=False,output=path,elements=32)
+    assert journal.read_bytes()==pristine
+    data=json.loads(journal.read_text())
+    data["record"]["rows"][0]["intended_hash"]="f"*64
+    journal.write_text(json.dumps(data))
+    corrupted=journal.read_bytes()
+    with pytest.raises(ValueError,match="corrupt"):
+        execute(seed=7,budget=3,feedback=False,output=path,elements=32)
+    assert journal.read_bytes()==corrupted and not path.exists()

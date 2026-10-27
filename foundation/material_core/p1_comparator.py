@@ -131,6 +131,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         start = process_time_ns()
         spec, base = _candidate(provider, index)
         revision_ns = 0
+        actual_change = False
         if feedback and previous_feedback is not None:
             revision_start = process_time_ns()
             # WP4 revision policy assumes exactly two material records, while
@@ -147,6 +148,7 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
             scoped = SimpleNamespace(
                 materials=tuple(m for m in base.materials if m.id in active))
             revised = _revise(scoped, base.design, previous_feedback)
+            actual_change = revised.architecture != base.design.architecture
             base = _replace_design(base, revised)
             revision_ns = process_time_ns() - revision_start
         proposal_ns = process_time_ns() - start
@@ -154,7 +156,8 @@ def execute(*, seed, budget, feedback, output, elements=128, mass_limit=31.0,
         totals["proposals"] += 1
         row = dict(index=index, seed=seed, proposal=spec,
                    intended_hash=base.design.content_hash,
-                   revision_applied=bool(feedback and previous_feedback is not None),
+                   revision_attempted=bool(feedback and previous_feedback is not None),
+                   revision_applied=actual_change,
                    status="pending", proposal_cpu_ns=proposal_ns,
                    manufacturing_cpu_ns=0, numerical_cpu_ns=0,
                    revision_cpu_ns=revision_ns, feedback_cpu_ns=0)
@@ -284,14 +287,16 @@ def score_saved(path, *, heldout_feed=None):
         if scores!=row["objectives"]:
             raise ValueError("Stored objective values disagree with recomputation")
         scored_result = result
+        scored_inputs = achieved
         if heldout_feed is not None:
             changed_process = scenario(cfg["layer"], heldout_feed, cfg["route"])
-            scored_result = evaluate(estimated_inputs(base, changed_process))
+            scored_inputs = estimated_inputs(base, changed_process)
+            scored_result = evaluate(scored_inputs)
             scores = {m.objective_id:None if m.value is None else m.value.value
                       for m in scored_result.metrics}
         results.append(dict(index=i,achieved_objectives=scores,
                             feasible=bool(numerical_comparison_eligible(
-                                scored_result, achieved.brief) and
+                                scored_result, scored_inputs.brief) and
                                 scored_result.feasibility=="conditional" and
                                 scored_result.manufacturing_feasibility=="conditional"),
                             evaluation_hash=scored_result.content_hash))

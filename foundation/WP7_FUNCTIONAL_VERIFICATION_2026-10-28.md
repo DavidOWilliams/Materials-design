@@ -9,3 +9,10 @@ The workflow https://github.com/DavidOWilliams/Materials-design/actions/runs/406
 Earlier source 823b4c49d5396f2af28dcd307551e764b336f1be: WP7 tests, regressions and full-resolution sample generation passed, but browser interaction failed in run 40672057889. A 28 October Chromium diagnostic run 40672883410 found a missing state commit between entering workspace and submitting the campaign. The current browser script explicitly commits workspace input and waits for Streamlit rerender. Final result still requires inspection of the new run.
 
 Unqualified: comprehensive human usability and WP3 ZIP upload through real Chromium. A separate human/independent browser walkthrough is part of Gate 3. No release acceptance claimed.
+
+
+## Final source-specific evidence addendum — supersedes pending status above
+
+**Gate 1 automated functional qualification: PASS (bounded scope)** on implementation SHA 4fc1bc3bd07de146460be1729469c7ea1e35969c, GitHub Actions run 40673439977, job 122765726102, conclusion success. Python 3.12.15 on Ubuntu. Exactly **7/7 new WP7 focused tests passed**, including two actual Streamlit AppTest WP3/WP4 journeys. Real Chromium Playwright job completed successfully at this exact source SHA: rendered launch, edited workspace committed, WP4 campaign generated a **3-candidate** dossier, verified persistence, selected inspection and numerical replay; screenshots and browser logs archived. Clean installation, startup and full regression succeeded. This is not a standalone WP3 Chromium upload test: that remains an explicit independent UI walkthrough requirement. No independent Gate 3 conducted.
+
+Evidence artifact **12808843984**, SHA256 ZIP **6c660389e94ed6873b4f8931f5647458159fbf2d989087a0b375e3476250b028**, https://github.com/DavidOWilliams/Materials-design/actions/runs/40673439977/artifacts/12808843984. Browser issue fixed in implementation and tested rather than waived. Gate 1 status now PASS for the tested bounded automated journey, with noted independent usability follow-up.

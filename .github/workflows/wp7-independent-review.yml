@@ -1,0 +1,45 @@
+name: WP7 independently authored release challenges
+on:
+  push:
+    branches:
+      - independent/wp7-d1-review-2026-10-28
+  workflow_dispatch:
+jobs:
+  independent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up numerical environment
+        run: bash foundation/setup.sh
+      - name: Capture tested checkout and provenance
+        run: |
+          mkdir -p /tmp/wp7-independent
+          git rev-parse HEAD > /tmp/wp7-independent/checkout-sha.txt
+          git rev-parse HEAD^{tree} > /tmp/wp7-independent/checkout-tree.txt
+          git rev-parse 4fc1bc3bd07de146460be1729469c7ea1e35969c^{tree} > /tmp/wp7-independent/source-tree.txt
+          git diff --name-only 4fc1bc3bd07de146460be1729469c7ea1e35969c HEAD > /tmp/wp7-independent/review-diff.txt
+          .venv-foundation/bin/python --version > /tmp/wp7-independent/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp7-independent/freeze.txt
+          .venv-foundation/bin/python -m pip check > /tmp/wp7-independent/pip-check.txt
+      - name: Independently authored WP7 challenges
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_independent_challenges.py 2>&1 | tee /tmp/wp7-independent/independent-challenges.log
+      - name: Inherited full foundation/recovery suite
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/wp7-independent/regressions.log
+      - name: Archive and hash all review evidence
+        if: always()
+        run: |
+          cd /tmp/wp7-independent
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp7-independent-challenges
+          path: /tmp/wp7-independent/**

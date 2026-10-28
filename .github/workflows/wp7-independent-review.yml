@@ -4,6 +4,12 @@ on:
     branches:
       - independent/wp7-d1-review-2026-10-28
   workflow_dispatch:
+  pull_request:
+    branches:
+      - wp7-d1-app-implementation-2026-10-28
+    paths:
+      - 'review/**'
+      - '.github/workflows/wp7-independent-review.yml'
 jobs:
   independent:
     runs-on: ubuntu-latest

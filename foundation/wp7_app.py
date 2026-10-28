@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
-from d1_visuals import campaign_view, feedback_view
+from d1_visuals import campaign_view, feedback_view, architecture_view
 from material_core.wp5_service import execute, replay, portable_import
 from material_core.wp7_view import summary, selected_candidate
 from material_core.wp3_search import run_search, recompute_search
@@ -39,10 +39,11 @@ with tab_run:
     mass, layer_default, feed_default = defaults[preset]
     st.caption("Preset values are synthetic and may be edited. Only the stated bounded WP4 fixture is supported.")
     fixture = starting_inputs(elements=128, mass_limit=mass)
-    st.json({"duty": fixture.brief.duty,
-             "constraints": [c.model_dump(mode="json") for c in fixture.brief.constraints],
-             "materials": [m.id for m in fixture.materials],
-             "measured_evidence": None})
+    st.write("**Engineering duty:**", fixture.brief.duty)
+    st.write("**Synthetic constituent catalogue:**", ", ".join(m.id for m in fixture.materials))
+    st.dataframe([c.model_dump(mode="json") for c in fixture.brief.constraints], use_container_width=True)
+    with st.expander("Technical challenge and assumption details"):
+        st.json({"duty": fixture.brief.duty, "constraints": [c.model_dump(mode="json") for c in fixture.brief.constraints], "materials": [m.id for m in fixture.materials], "measured_evidence": None})
     filename = st.text_input("New D1 dossier filename", "d1-example.json")
     elements = st.selectbox("Mesh elements", [128, 256, 512, 4096], index=0)
     mass_limit = st.number_input("Mass ceiling (kg/m²)", min_value=0.01, value=mass, key=preset)
@@ -62,7 +63,7 @@ with tab_run:
             record = execute(target, elements=elements, mass_limit=mass_limit, layer=layer,
                              feed=feed, budget=int(budget), feedback=feedback, brief=brief)
             st.session_state["d1_path"] = str(target)
-            st.success(f"Persisted {len(record['records'])} candidates to {target} (stop: {record['stop_reason']}). Open tab 2.")
+            st.success(f"Saved {len(record['records'])} candidates to {target} (stop: {record['stop_reason']}). Inspect them in step 3.")
         except Exception as exc:
             st.error(f"Campaign rejected or failed: {type(exc).__name__}: {exc}")
 with tab_mixed:
@@ -92,12 +93,16 @@ with tab_mixed:
             st.error(f"WP3 ledger rejected: {exc}")
     mixed = st.session_state.get("wp7_mixed")
     if mixed:
-        st.json({"source": mixed["ledger"], "stop_reason": mixed["stop_reason"],
-                 "qualified_pareto": mixed["pareto"], "scientific_boundary": mixed["scientific_boundary"],
-                 "measured_evidence": None})
+        st.info("WP3 stopped: " + str(mixed["stop_reason"]) + ". These are intended-state numerical results, not achieved-state predictions or measurements.")
+        with st.expander("WP3 source, scientific qualification and full Pareto evidence"):
+            st.json({"source": mixed["ledger"], "stop_reason": mixed["stop_reason"], "qualified_pareto": mixed["pareto"], "scientific_boundary": mixed["scientific_boundary"], "measured_evidence": None})
         chosen_mixed = campaign_view(mixed, scope="WP3 intended-state only", key="wp3_visual_choice")
         if chosen_mixed is not None:
-            st.json(mixed_candidate(mixed["ledger"], int(chosen_mixed)))
+            candidate_detail = mixed_candidate(mixed["ledger"], int(chosen_mixed))
+            if candidate_detail.get("intended_design"):
+                architecture_view(candidate_detail["intended_design"], key="wp3_architecture")
+            with st.expander("Full WP3 candidate source, numerical evaluation and provenance"):
+                st.json(candidate_detail)
             if st.button("Select WP3 candidate for WP4 handoff"):
                 try:
                     cfg = mixed["config"]
@@ -181,7 +186,7 @@ with tab_review:
             except Exception as exc:
                 st.error(f"Recovery rejected: {exc}")
     else:
-        st.info("First explore WP3, inspect a numerically qualified A/B gradient, then select it for handoff. Unsupported designs are rejected explicitly.")
+        st.info("For selected-design WP4 handoff, first explore WP3 and choose a compatible qualified A/B gradient. You can separately inspect a standalone WP4 demonstration dossier below.")
     st.subheader("WP4 dossier inspection and conditional Pareto")
     review_path = st.text_input("Verified dossier to inspect", st.session_state.get("d1_path", str(workspace / "d1-example.json")))
     if st.button("Inspect dossier and Pareto"):
@@ -193,10 +198,9 @@ with tab_review:
     data = st.session_state.get("d1_review")
     if data:
         st.info("Eligibility and Pareto use accepted WP4 feasibility and WP3 strict dominance, not a new scientific model. Only candidates from this one common scenario are compared.")
-        st.json({"source": data["path"], "brief_hash": data["brief_hash"],
-                 "stop_reason": data["stop_reason"], "objective_definitions": data["directions"],
-                 "pareto": data["pareto"], "measured_evidence": None,
-                 "manufacturing_validation": data["manufacturing_validation"]})
+        st.info("WP4 stopped: " + str(data["stop_reason"]) + ". All achieved states are synthetic estimates, not measurements.")
+        with st.expander("WP4 verified source, objective definitions and scientific evidence"):
+            st.json({"source": data["path"], "brief_hash": data["brief_hash"], "stop_reason": data["stop_reason"], "objective_definitions": data["directions"], "pareto": data["pareto"], "measured_evidence": None, "manufacturing_validation": data["manufacturing_validation"]})
         chosen = campaign_view(data, scope="WP4 synthetic estimated-achieved state", key="wp4_visual_choice")
         if chosen is not None:
             detail = selected_candidate(data["path"], int(chosen))

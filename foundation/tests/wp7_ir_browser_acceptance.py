@@ -36,7 +36,7 @@ def main():
         page.keyboard.press("Enter")
         page.wait_for_timeout(500)
         page.get_by_role("button", name="Select WP3 candidate for WP4 handoff").click()
-        expect(page.get_by_text("Compatible, qualified gradient selected", exact=False)).to_be_visible(timeout=60000)
+        expect(page.get_by_text("Compatible completed A/B gradient selected", exact=False)).to_be_visible(timeout=60000)
         page.get_by_role("tab").nth(2).click()
         expect(page.get_by_text("Selected WP3 candidate → fresh WP4 manufacturing feedback")).to_be_visible()
         page.get_by_role("button", name="Evaluate selected design through WP4 and save").click()

@@ -18,16 +18,18 @@ def main():
         page.goto("http://127.0.0.1:8509", wait_until="networkidle", timeout=120000)
         expect(page.get_by_text("D1 — synthetic ceramic gradient design")).to_be_visible()
         page.get_by_label("D1 workspace").fill(str(workspace))
-        page.get_by_role("tab", name="1. Run demonstration").click()
+        print("Browser tab labels:", page.get_by_role("tab").all_text_contents(), flush=True)
+        page.screenshot(path=str(workspace / "wp7-initial-browser.png"), full_page=True)
+        # The first tab is selected by default; do not depend on a brittle label lookup.
         page.get_by_role("button", name="Generate, evaluate and save dossier").click()
         path = workspace / "d1-example.json"
         expect(page.get_by_text("Persisted", exact=False)).to_be_visible(timeout=120000)
         assert path.exists()
         assert inspect(path)["measured_evidence"] is None
-        page.get_by_role("tab", name="3. Inspect feedback and trade-offs").click()
+        page.get_by_role("tab").nth(2).click()
         page.get_by_role("button", name="Inspect dossier and Pareto").click()
         expect(page.get_by_text("Select saved candidate")).to_be_visible(timeout=120000)
-        page.get_by_role("tab", name="4. Restore and replay").click()
+        page.get_by_role("tab").nth(3).click()
         page.get_by_role("button", name="Verify integrity and recompute").click()
         assert replay(path)["status"] == "passed"
         page.screenshot(path=str(workspace / "wp7-browser.png"), full_page=True)

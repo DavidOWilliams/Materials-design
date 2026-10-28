@@ -1,35 +1,29 @@
-# WP7 Gate 1–3 qualification and independent reviewer handover — OPEN
+# WP7 qualification gates and independent release handover — current controls
 
-Date: 28 October 2026. Accepted WP6 source: `1f89c2d1bf64b669ca98b81f4305d20d08104e5c`. WP7 implementation branch: `wp7-d1-app-implementation-2026-10-28` (separate from governance PR #12 and workflow PR #13). **These notes are not a test result or independent review.** Do not copy the WP6 PASSES to WP7.
+**Accepted pre-WP7 baseline:** `1f89c2d1bf64b669ca98b81f4305d20d08104e5c`. WP7 implementation draft PR #16, isolated from governance PR #12 and verification PR #13. Do not substitute merge checkout SHAs for actual source checkout. The final tested implementation SHA, run references, archive identities and disposition must be recorded in the dated WP7 completion report **only after actual execution**. No source code changes permitted after a PASS without retesting affected tests.
 
-## Required Gate 1 execution
-- Python 3.12 fresh checkout and `bash foundation/setup.sh` plus Streamlit pin, environment inventory, `pip check` and startup.
-- `PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py -vv` exercises actual Streamlit AppTest widgets; this is an actual application-testing harness, not a browser test.
-- Launch real Streamlit, use browser to run all three presets, inspect/trade-offs/select/export, close/restart, restore/replay; screenshot/video and browser test record. Existing `foundation/tests/wp5_browser_acceptance.py` tests the *WP5* interface only and cannot count as WP7 browser PASS.
-- Reproduce WP6, WP3/WP4 and WP1/WP2 retained numerical checks at **exact** WP7 implementation source.
+## Gate 1 — actual runnable interface
+1. Clean Python 3.12 setup using `foundation/setup.sh` + Streamlit 1.40.2; freeze and pip-check.
+2. `foundation/tests/test_wp7_d1_demo.py` actually interacts via Streamlit AppTest, including WP4 generation/inspection/replay. `foundation/tests/test_wp7_mixed_architectures.py` tests the WP3 integrated service path, three architecture classes, ZIP restore and separate-process recompute. This is *not* a real Chromium test.
+3. `foundation/tests/wp7_browser_acceptance.py` drives a real running Streamlit process in Chromium; capture initial/final screenshots, raw browser/server logs. Browser coverage is currently bounded to the WP4 user journey; WP3 mixed-architecture rendered interaction additionally needs specific independent walkthrough or browser extension.
+4. Restart/reopen/copy/restore, selected candidate and evidence detail, raw export; no claim based on HTTP health alone.
 
-## Required Gate 2 challenge evidence
-- Valid 31 kg/m² default, 1 kg/m² infeasible; vary layer/feed/mesh and supported brief budget (do not generalise unqualified mesh).
-- Reject malformed/unsupported brief, invalid budget, existing dossier path, invalid import destination and forged checksum.
-- Assert no infeasible/unresolved record is Pareto eligible. Compare preserved numeric outputs to accepted WP6 reference; test clean-run repeatability, separate-process replay, cancellation and durable journal recovery using existing WP5 interfaces. Capture raw logs and working dossier.
-- Reproducibility manifest must include exact checkout HEAD and source diff from WP6, OS/Python `pip freeze`, setup logs, independent-run stdout, SHA256 for every JSON, archived evidence, workflow job SHA and URL.
+## Gate 2 — challenges and reproducibility
+- Valid mass limit 31, impossible mass limit 1; 4096 element evidence archive includes WP3 three architectures and WP4 representative/infeasible examples.
+- Invalid budget, existing path, tampered WP4 checksum, forged WP3 ZIP payload, path traversal and replay in separate Python process; unknown status must stay unknown, never promoted to eligible.
+- Numerical/reference regressions `foundation/tests recovered_wp0`; verify exact WP7 source, preserve prior WP2/WP6 evidence.
+- Create full example archive from `foundation/wp7_create_examples.py`, independently check SHA256SUMS nonempty, derive evidence hashes from bytes. Record output SHA, seed, budget, system version, environment, workflow identity and limitations.
 
-## Gate 3 independent review checklist
-- Independently verify exact candidate SHA and diff vs WP6, assess any scientific or eligibility interpretation changes, verify the *actual* WP7 UI and challenge logs, reproduce restore and independent replay, verify archive hashes and documentation.
-- Resolve the **high-severity multi-architecture application gap**: WP7 as currently implemented only provides WP4 gradient sequence; homogeneous and layered WP2 references are not selectable in the WP7 app. D1 checklist #1 remains open.
-- Resolve whether intended representative scenario actually produced more than one candidate; if not, do not claim a multi-candidate Pareto comparison. Assess saved example dossier availability, full numerical environment and physical limitations.
-- Do not mark independent acceptance before the independent reviewer signs finding dispositions. No release tag or merge is authorised.
+## Gate 3 — genuinely separate reviewer
+Verify every requirement in Implementation Plan v2; inspect actual PR #16 diff from accepted WP6, all tests, browser and failure evidence, portable ZIP, independent-process recompute and scientific labels. Review whether the separate WP3 numerical-only and WP4 gradient-feedback demonstrations meet bounded D1 scope, or require one unified user dossier before D1 release. Check no cross-context Pareto comparison and no invented V1 evidence. Sign finding dispositions and explicit go/no-go **independently**. The implementation author cannot self-declare independent acceptance.
 
-## Evidence manifest skeleton — fill from executed runs only
-- Proposed tested source SHA: **NOT YET QUALIFIED**
-- Gate 1 Streamlit AppTest result: **NOT YET EXECUTED**
-- Gate 1 real browser result: **NOT YET EXECUTED**
-- Gate 2 numerical/regression result: **NOT YET EXECUTED**
-- Gate 2 separate-process replay: **NOT YET EXECUTED**
-- D1 saved example dossier and SHA256: **NOT YET EXECUTED/ARCHIVED**
-- Exact-source Actions run and artifact ID: **NOT YET AVAILABLE**
-- Independent release disposition: **NOT ACCEPTED**
+## Outstanding issues pending evidence
+- **High:** Independent WP7 Gate 3 acceptance not performed. No tag/merge.
+- **Medium:** WP3/UI and WP4/UI are separate scientific comparisons; no manufacturing-aware Pareto across all three architectures. Whether this meets original D1 checklist needs reviewer judgement.
+- **Medium:** User-facing WP3 ZIP browser import is currently implemented, but needs actual upload/multi-process validation and independent UI review.
+- **Medium:** Streamlit and Playwright test dependencies pinned but not fully hash locked; final freeze must be retained.
+- **Scientific limits, not software bugs:** Synthetic scenario inputs, unknown manufacturing feasibility of intended-only WP3, omitted process physics, no real ceramic V1 evidence.
+- **Provenance:** WP6 original final Gate 3 reviewer report still not archived; this does not reclassify the independently verified 28 October D1 integration baseline.
 
-Historical verified WP6 evidence remains unaltered: runs 40666591136, 40668433992; artifact 12807606181.
-
-**Disposition:** WP7 implementation started, incomplete candidate and evidence package. **NOT READY for independent WP7 release review.** Do not self-declare Gates 1–3.
+## Current release disposition
+Only claim actual WP7 gate executions with evidence-linked result lines in a separate completion report. Until then **NOT ACCEPTED / NOT TAGGED / NOT MERGED**.

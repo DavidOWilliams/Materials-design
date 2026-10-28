@@ -1,0 +1,91 @@
+name: D1 release-candidate exact-tree qualification
+on:
+  push:
+    branches: [d1-release-candidate-2026-10-28, main]
+  pull_request:
+    paths: ['.github/workflows/d1-release-candidate-qualification.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release-source tree equivalence to independently accepted WP7
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d1-release-evidence
+          git rev-parse HEAD | tee /tmp/d1-release-evidence/release-head.txt
+          git rev-parse HEAD^{tree} | tee /tmp/d1-release-evidence/release-tree.txt
+          git rev-parse c8f0292351553129fbcbdac3bd4f7a84a39365f9^{tree} | tee /tmp/d1-release-evidence/accepted-implementation-tree.txt
+          test "$(git rev-parse c8f0292351553129fbcbdac3bd4f7a84a39365f9^{tree})" = "b9ab5ed7b54ff670783e7fb6a8816538be7eb1ae"
+          git diff --name-status c8f0292351553129fbcbdac3bd4f7a84a39365f9 HEAD | tee /tmp/d1-release-evidence/accepted-source-diff.txt
+          python - <<'PY'
+          import subprocess
+          paths=subprocess.check_output(["git","diff","--name-only","c8f0292351553129fbcbdac3bd4f7a84a39365f9","HEAD"],text=True).splitlines()
+          assert paths, "missing expected release packaging"
+          for p in paths:
+              assert ((p.startswith("foundation/D1_") or p=="foundation/PROGRAMME_DELIVERY_LEDGER.md") and p.endswith(".md")) or (p.startswith(".github/workflows/d1-") and p.endswith(".yml")), f"Unexpected source change: {p}"
+          print("ACCEPTED APPLICATION SOURCE EQUIVALENT: docs/verification workflow differences only")
+          PY
+      - name: Fresh pinned numerical and UI dependencies
+        run: |
+          set -euo pipefail
+          bash foundation/setup.sh 2>&1 | tee /tmp/d1-release-evidence/install.log
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip check | tee /tmp/d1-release-evidence/pip-check.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/d1-release-evidence/dependencies.txt
+          .venv-foundation/bin/python -VV > /tmp/d1-release-evidence/python.txt
+      - name: Foundation/recovery and WP7 correction regressions
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q --tb=long 2>&1 | tee /tmp/d1-release-evidence/regressions.log
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_ir01_ir04.py foundation/tests/test_wp7_mixed_architectures.py -vv --tb=long 2>&1 | tee /tmp/d1-release-evidence/wp7-corrections.log
+      - name: Build new immutable complete example dossiers and separate-process replays
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py /tmp/d1-release-evidence/examples --elements 4096 --budget 9 2>&1 | tee /tmp/d1-release-evidence/examples.log
+          test -s /tmp/d1-release-evidence/examples/example-manifest.json
+      - name: Application smoke and independent browser user journey
+        run: |
+          set -euo pipefail
+          .venv-foundation/bin/python -m pip install playwright==1.58.0
+          .venv-foundation/bin/python -m playwright install chromium
+          .venv-foundation/bin/python -m pip check | tee /tmp/d1-release-evidence/browser-pip-check.txt
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8509 > /tmp/d1-release-evidence/browser-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8509/_stcore/health > /tmp/d1-release-evidence/health.txt; then break; fi
+            sleep 2
+          done
+          test -s /tmp/d1-release-evidence/health.txt
+          WP7_IR_BROWSER_WORKSPACE=/tmp/d1-release-evidence/browser-dossier PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/d1-release-evidence/browser.log
+      - name: Fail-closed source-specific archive and evidence checksum
+        if: always()
+        run: |
+          set -euo pipefail
+          cd /tmp/d1-release-evidence
+          test -s release-head.txt
+          test -s accepted-source-diff.txt
+          test -s examples/example-manifest.json
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+          test -s SHA256SUMS
+          sha256sum -c SHA256SUMS > archive-check.log
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-release-candidate-exact-tree
+          path: /tmp/d1-release-evidence/
+          if-no-files-found: warn
+          retention-days: 90

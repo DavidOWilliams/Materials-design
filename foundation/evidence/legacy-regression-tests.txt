@@ -1,0 +1,59 @@
+........................................................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 18%]
+........................................................................ [ 25%]
+........................................................................ [ 31%]
+........................................................................ [ 37%]
+........................................................................ [ 43%]
+........................................................................ [ 50%]
+........................................................................ [ 56%]
+........................................................................ [ 62%]
+........................................................................ [ 68%]
+........................................................................ [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 87%]
+........................................................................ [ 94%]
+....................................................................     [100%]
+=============================== warnings summary ===============================
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:20
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:20: DeprecationWarning: This module has been moved to the pymatgen.core.elasticity module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.elasticity.strain import Deformation
+
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:20
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:20: DeprecationWarning: This module has been moved to the pymatgen.core.elasticity.strain module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.elasticity.strain import Deformation
+
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:21
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:21: DeprecationWarning: This module has been moved to the pymatgen.core.graphs module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.graphs import MoleculeGraph
+
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:22
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:22: DeprecationWarning: This module has been moved to the pymatgen.core.local_env module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.local_env import OpenBabelNN, metal_edge_extender
+
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:23
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:23: DeprecationWarning: This module has been moved to the pymatgen.core.molecule_matcher module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.molecule_matcher import MoleculeMatcher
+
+../wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:24
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/emmet/core/utils.py:24: DeprecationWarning: This module has been moved to the pymatgen.core.structure_matcher module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.structure_matcher import (
+
+../wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/pourbaix_diagram.py:27
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/pourbaix_diagram.py:27: DeprecationWarning: Entry, ComputedEntry and ComputedStructureEntry have been moved to pymatgen.core.entries module. This stub will be removed v2027.1.
+    from pymatgen.entries.compatibility import MU_H2O
+
+../wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/compatibility/__init__.py:23
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/compatibility/__init__.py:23: DeprecationWarning: This module has been moved to the pymatgen.core.structure_analyzer module. This stub will be removed v2027.1. 
+    from pymatgen.analysis.structure_analyzer import oxide_type, sulfide_type
+
+../wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/pourbaix_diagram.py:27
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/pymatgen/analysis/pourbaix_diagram.py:27: DeprecationWarning: All compatibility have been moved to the pymatgen.analysis.compatibility module. This stub will be removed v2027.1.
+    from pymatgen.entries.compatibility import MU_H2O
+
+../wp1-legacy-env/lib/python3.12/site-packages/mp_api/client/mprester.py:18
+  /workspace/scratch/3c56ad540c71/wp1-legacy-env/lib/python3.12/site-packages/mp_api/client/mprester.py:18: DeprecationWarning: Entry, ComputedEntry and ComputedStructureEntry have been moved to pymatgen.core.entries module. This stub will be removed v2027.1.
+    from pymatgen.entries.computed_entries import ComputedStructureEntry
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1148 passed, 10 warnings in 33.44s

@@ -1,0 +1,64 @@
+name: WP5 foundation verification
+on:
+  push:
+    branches: [wp5-application-2026-10-26]
+    paths:
+      - 'foundation/**'
+      - '.github/workflows/wp5-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Source identity and tree
+        run: |
+          mkdir -p wp5-evidence
+          git rev-parse HEAD | tee wp5-evidence/checked-out-sha.txt
+          git rev-parse HEAD^{tree} | tee wp5-evidence/checked-out-tree.txt
+          git status --porcelain=v1 | tee wp5-evidence/initial-status.txt
+          python3 -c 'import json,os;print(json.dumps({"github_sha":os.environ["GITHUB_SHA"],"github_ref":os.environ["GITHUB_REF"]}))' | tee wp5-evidence/source.json
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: foundation/requirements.lock.txt
+      - name: Install locked foundation dependencies
+        run: |
+          python -m pip install --require-hashes -r foundation/requirements.lock.txt
+          python -m pip check
+          python -m pip freeze > wp5-evidence/pip-freeze.txt
+      - name: WP5 focused tests
+        continue-on-error: true
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          python -m compileall -q foundation/wp5_app.py foundation/material_core/wp5_service.py foundation/material_core/wp5_brief_editor.py
+          python -m pytest -q foundation/tests/test_wp5_brief_editor.py foundation/tests/test_wp5_service.py 2>&1 | tee wp5-evidence/wp5-focused.log
+          echo "${PIPESTATUS[0]}" > wp5-evidence/wp5-focused.exit
+      - name: Foundation and WP2–WP4 regression
+        continue-on-error: true
+        env:
+          PYTHONPATH: foundation
+        run: |
+          set -o pipefail
+          python -m pytest -q foundation/tests 2>&1 | tee wp5-evidence/foundation.log
+          echo "${PIPESTATUS[0]}" > wp5-evidence/foundation.exit
+      - name: Archive evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp5-foundation-${{ github.sha }}
+          path: wp5-evidence/
+          if-no-files-found: warn
+      - name: Enforce test result
+        run: |
+          test "$(cat wp5-evidence/wp5-focused.exit)" = 0
+          test "$(cat wp5-evidence/foundation.exit)" = 0

@@ -40,7 +40,7 @@ jobs:
       - name: Gate 1 - actual Streamlit widget interactions and independent process replay
         run: |
           set -o pipefail
-          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py -vv --tb=long 2>&1 | tee /tmp/wp7-evidence/wp7-focused.log
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py foundation/tests/test_wp7_mixed_architectures.py -vv --tb=long 2>&1 | tee /tmp/wp7-evidence/wp7-focused.log
       - name: Gate 2 - accepted numerical/application regressions
         run: |
           set -o pipefail
@@ -61,6 +61,8 @@ jobs:
           set -euo pipefail
           .venv-foundation/bin/python -m pip install playwright==1.58.0 > /tmp/wp7-evidence/browser-install.log 2>&1
           .venv-foundation/bin/python -m playwright install chromium >> /tmp/wp7-evidence/browser-install.log 2>&1
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp7-evidence/final-freeze.txt
+          .venv-foundation/bin/python -m pip check > /tmp/wp7-evidence/final-pip-check.txt
           PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8509 > /tmp/wp7-evidence/browser-server.log 2>&1 &
           pid=$!
           trap 'kill $pid 2>/dev/null || true' EXIT

@@ -53,10 +53,10 @@ def test_selected_gradient_handoff_and_separate_process_replay(tmp_path):
 
 
 def test_checkpoint_cancel_recover_preserves_selected_lineage(tmp_path):
-    ledger = source(tmp_path)
+    ledger = source(tmp_path, mass=1.)
     journal = tmp_path / "selected.journal.jsonl"
     result = start_checkpointed_handoff(ledger, 3, journal,
-        elements=128,mass_limit=31., budget=4, cancel_after=1)
+        elements=128,mass_limit=1., budget=4, cancel_after=1)
     assert result["completed"] == 1
     assert result["stop_reason"] == "cancelled"
     restored = tmp_path / "recovered.json"

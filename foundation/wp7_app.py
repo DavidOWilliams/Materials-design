@@ -18,11 +18,14 @@ from material_core.wp3_search import run_search, recompute_search
 from material_core.wp7_search_dossier import mixed_summary, mixed_candidate, export_mixed_zip, import_mixed_zip
 from material_core.wp5_brief_editor import open_brief
 from material_core.wp4_feedback import starting_inputs
+from material_core.wp7_handoff import (qualified_handoff_source, execute_handoff, verify_handoff,
+    start_checkpointed_handoff, recover_checkpointed_handoff)
+from material_core.wp5_service import journal_status
 
 st.set_page_config(page_title="D1 synthetic materials design", layout="wide")
-st.title("D1 — synthetic ceramic gradient design")
+st.title("D1 — synthetic ceramic material-system design")
 st.warning("Computational demonstration, NOT measured achieved-state evidence, physical ceramic validation, or production engineering guidance.")
-st.caption("Two hypothetical scenario constituents; planar coupon; thermal transmission, areal mass and tensile thermal mismatch. The supported WP4 design-revision policy changes composition after an exceeded mass constraint.")
+st.caption("WP3: three hypothetical A/B/C catalogue constituents across homogeneous, layered and gradient architectures. WP4: two-constituent A/B bounded gradient feedback only. The two Pareto sets are scientifically distinct.")
 workspace = Path(st.text_input("D1 workspace", "d1-workspace")).expanduser()
 tab_run, tab_mixed, tab_review, tab_restore = st.tabs(["1. Run demonstration", "2. Explore three architectures", "3. Inspect feedback and trade-offs", "4. Restore and replay"])
 with tab_run:
@@ -94,6 +97,20 @@ with tab_mixed:
         if mixed["rows"]:
             chosen_mixed = st.selectbox("Select WP3 candidate", [r["candidate"] for r in mixed["rows"]])
             st.json(mixed_candidate(mixed["ledger"], int(chosen_mixed)))
+            if st.button("Select WP3 candidate for WP4 handoff"):
+                try:
+                    cfg = mixed["config"]
+                    chosen, provenance = qualified_handoff_source(
+                        mixed["ledger"], int(chosen_mixed),
+                        elements=cfg["elements"], mass_limit=cfg["mass_limit"])
+                    st.session_state["wp7_handoff"] = {
+                        "ledger": mixed["ledger"], "index": int(chosen_mixed),
+                        "elements": cfg["elements"], "mass_limit": cfg["mass_limit"]}
+                    st.success("Compatible, qualified gradient selected. A separate WP4 achieved-state evaluation is required.")
+                    st.json(provenance)
+                except Exception as exc:
+                    st.session_state.pop("wp7_handoff", None)
+                    st.error(f"Selected candidate NOT compatible with bounded WP4 feedback: {exc}")
         try:
             zip_bytes = export_mixed_zip(mixed["ledger"])
             st.download_button("Download full verified WP3 dossier ZIP", data=zip_bytes,
@@ -116,6 +133,55 @@ with tab_mixed:
             st.error(f"WP3 archive restore rejected: {exc}")
 
 with tab_review:
+    st.subheader("Selected WP3 candidate → fresh WP4 manufacturing feedback")
+    chosen = st.session_state.get("wp7_handoff")
+    if chosen:
+        st.json({"source_ledger": chosen["ledger"], "candidate_index": chosen["index"],
+                 "scope": "A/B gradient only; numerical context recomputed; no mixed Pareto"})
+        handoff_file = st.text_input("New handoff WP4 dossier", str(workspace / "selected-wp4.json"))
+        journal_file = st.text_input("New checkpoint journal", str(workspace / "selected-wp4-journal.jsonl"))
+        recovered_file = st.text_input("New recovered dossier", str(workspace / "selected-wp4-recovered.json"))
+        handoff_layer = st.selectbox("Selected design layer resolution (m)", [0.0025,0.005,0.01], index=1)
+        handoff_feed = st.selectbox("Selected design feed increment", [0.125,0.25,0.5], index=1)
+        handoff_budget = st.number_input("Selected design candidate budget", min_value=2, max_value=30, value=4)
+        cancel_after = st.number_input("Cooperatively cancel after completed candidates", min_value=0,
+                                       max_value=int(handoff_budget)-1, value=1)
+        if st.button("Evaluate selected design through WP4 and save"):
+            try:
+                result = execute_handoff(chosen["ledger"], chosen["index"], handoff_file,
+                    elements=chosen["elements"], mass_limit=chosen["mass_limit"],
+                    layer=handoff_layer, feed=handoff_feed, budget=int(handoff_budget))
+                st.json(verify_handoff(handoff_file))
+                st.session_state["d1_path"] = handoff_file
+                st.success("WP3 lineage verified and new WP4 estimated-state dossier saved; inspect below.")
+            except Exception as exc:
+                st.error(f"Selected-design evaluation rejected: {exc}")
+        if st.button("Start checkpointed selected-design campaign and cancel"):
+            try:
+                outcome = start_checkpointed_handoff(chosen["ledger"], chosen["index"],
+                    journal_file, elements=chosen["elements"], mass_limit=chosen["mass_limit"],
+                    layer=handoff_layer, feed=handoff_feed, budget=int(handoff_budget),
+                    cancel_after=int(cancel_after))
+                st.json(outcome)
+            except Exception as exc:
+                st.error(f"Checkpointed campaign rejected: {exc}")
+        if st.button("Inspect cancellation checkpoints"):
+            try:
+                st.json(journal_status(journal_file))
+            except Exception as exc:
+                st.error(f"Journal rejected: {exc}")
+        if st.button("Recover selected-design journal into immutable dossier"):
+            try:
+                result = recover_checkpointed_handoff(journal_file, recovered_file)
+                st.json(verify_handoff(recovered_file))
+                st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
+                st.session_state["d1_path"] = recovered_file
+                st.success("Recovered original selected design and verified source lineage.")
+            except Exception as exc:
+                st.error(f"Recovery rejected: {exc}")
+    else:
+        st.info("First explore WP3, inspect a numerically qualified A/B gradient, then select it for handoff. Unsupported designs are rejected explicitly.")
+    st.subheader("WP4 dossier inspection and conditional Pareto")
     review_path = st.text_input("Verified dossier to inspect", st.session_state.get("d1_path", str(workspace / "d1-example.json")))
     if st.button("Inspect dossier and Pareto"):
         try:

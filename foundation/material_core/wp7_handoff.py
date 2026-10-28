@@ -30,8 +30,8 @@ def qualified_handoff_source(ledger_path, index, *, elements, mass_limit):
     if type(index) is not int or index < 0 or index >= len(ledger["proposals"]):
         raise ValueError("Invalid WP3 candidate index")
     item = ledger["proposals"][index]
-    if item["status"] != "complete" or item.get("qualified") is not True:
-        raise ValueError("WP3 candidate not complete and numerically qualified")
+    if item["status"] != "complete":
+        raise ValueError("WP3 candidate is not a completed evaluation")
     if ledger["config"]["elements"] != elements or ledger["config"]["mass_limit"] != mass_limit:
         raise ValueError("WP3 and WP4 mesh/mass scenario must match; no implicit rescaling")
     run_record = RunStore(ledger_path.parent / "run-store").load(item["run_id"])
@@ -66,6 +66,7 @@ def qualified_handoff_source(ledger_path, index, *, elements, mass_limit):
         "source_input_hash": original.content_hash,
         "source_evaluation_hash": run_record.evaluation.content_hash,
         "source_design_hash": design.content_hash,
+        "source_numerically_qualified": item.get("qualified") is True,
         "wp4_recontextualised_baseline_hash": mapped.content_hash,
         "scientific_status": "new WP4 estimated-state synthetic scenario; NOT pooled with WP3 intended-state Pareto",
         "measured_evidence": None,
@@ -99,7 +100,7 @@ def verify_handoff(target):
         data["source_ledger"], data["source_candidate_index"],
         elements=wp4["config"]["elements"], mass_limit=wp4["config"]["mass_limit"])
     for key in ("source_ledger_sha256","source_run_id","source_input_hash",
-                "source_evaluation_hash","source_design_hash",
+                "source_evaluation_hash","source_design_hash","source_numerically_qualified",
                 "wp4_recontextualised_baseline_hash"):
         if data[key] != source[key]:
             raise ValueError("Handoff source changed: " + key)

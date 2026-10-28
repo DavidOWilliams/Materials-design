@@ -24,10 +24,10 @@ def main():
         expect(page.get_by_text("Persisted", exact=False)).to_be_visible(timeout=120000)
         assert path.exists()
         assert inspect(path)["measured_evidence"] is None
-        page.get_by_role("tab", name="2. Inspect candidates and trade-offs").click()
+        page.get_by_role("tab", name="3. Inspect feedback and trade-offs").click()
         page.get_by_role("button", name="Inspect dossier and Pareto").click()
         expect(page.get_by_text("Select saved candidate")).to_be_visible(timeout=120000)
-        page.get_by_role("tab", name="3. Restore and replay").click()
+        page.get_by_role("tab", name="4. Restore and replay").click()
         page.get_by_role("button", name="Verify integrity and recompute").click()
         assert replay(path)["status"] == "passed"
         page.screenshot(path=str(workspace / "wp7-browser.png"), full_page=True)

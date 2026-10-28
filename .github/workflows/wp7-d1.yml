@@ -1,0 +1,88 @@
+name: WP7 D1 exact-head qualification candidate
+on:
+  pull_request:
+    paths:
+      - 'foundation/wp7_app.py'
+      - 'foundation/material_core/wp7_view.py'
+      - 'foundation/tests/test_wp7_d1_demo.py'
+      - 'foundation/tests/wp7_browser_acceptance.py'
+      - 'foundation/wp7_create_examples.py'
+      - 'foundation/material_core/wp7_search_dossier.py'
+      - '.github/workflows/wp7-d1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Immutable candidate source identity
+        run: |
+          mkdir -p /tmp/wp7-evidence
+          git rev-parse HEAD | tee /tmp/wp7-evidence/source-sha.txt
+          git status --short | tee /tmp/wp7-evidence/git-status.txt
+          git diff --stat 1f89c2d1bf64b669ca98b81f4305d20d08104e5c..HEAD | tee /tmp/wp7-evidence/changes-from-wp6.txt
+      - name: Clean pinned foundation installation
+        run: |
+          set -o pipefail
+          bash foundation/setup.sh 2>&1 | tee /tmp/wp7-evidence/install.log
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2 2>&1 | tee /tmp/wp7-evidence/streamlit-install.log
+          .venv-foundation/bin/python -m pip freeze | tee /tmp/wp7-evidence/freeze.txt
+          .venv-foundation/bin/python -m pip check | tee /tmp/wp7-evidence/pip-check.txt
+          .venv-foundation/bin/python -VV | tee /tmp/wp7-evidence/python.txt
+          uname -a | tee /tmp/wp7-evidence/platform.txt
+      - name: Gate 1 - actual Streamlit widget interactions and independent process replay
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py foundation/tests/test_wp7_mixed_architectures.py -vv --tb=long 2>&1 | tee /tmp/wp7-evidence/wp7-focused.log
+      - name: Gate 2 - accepted numerical/application regressions
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q --tb=short 2>&1 | tee /tmp/wp7-evidence/full-regression.log
+      - name: Create reproducible full-resolution WP3/WP4 dossiers and separate-process replay
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py /tmp/wp7-evidence/example-dossiers --elements 4096 --budget 9 2>&1 | tee /tmp/wp7-evidence/examples.log
+      - name: Startup health (NOT actual browser test)
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8509 > /tmp/wp7-evidence/startup.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:8509/_stcore/health > /tmp/wp7-evidence/health.txt; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Gate 1 - real Chromium browser interaction (not only health)
+        run: |
+          set -euo pipefail
+          .venv-foundation/bin/python -m pip install playwright==1.58.0 > /tmp/wp7-evidence/browser-install.log 2>&1
+          .venv-foundation/bin/python -m playwright install chromium >> /tmp/wp7-evidence/browser-install.log 2>&1
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp7-evidence/final-freeze.txt
+          .venv-foundation/bin/python -m pip check > /tmp/wp7-evidence/final-pip-check.txt
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8509 > /tmp/wp7-evidence/browser-server.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          export WP7_BROWSER_WORKSPACE=/tmp/wp7-evidence/browser-dossier
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_browser_acceptance.py 2>&1 | tee /tmp/wp7-evidence/browser-test.log
+      - name: Archive source-specific evidence with checksums
+        if: always()
+        run: |
+          cd /tmp/wp7-evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp7-d1-exact-source-evidence
+          path: /tmp/wp7-evidence
+          if-no-files-found: error

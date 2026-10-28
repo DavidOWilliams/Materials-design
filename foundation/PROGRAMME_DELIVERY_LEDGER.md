@@ -101,3 +101,10 @@ Source-controlled evidence: WP6 workflow `40538857738` (CI merge checkout `7f039
 - WP3 intended-state Pareto and WP4 estimated-achieved-state Pareto separate. WP4 can consume **compatible A/B gradient** WP3 selection only. Cooperatively cancel at candidate boundaries. WP4 `*.handoff.json` is not independently relocatable with WP4 dossier: preserve WP3 workspace/ledger/run store or verified WP3 ZIP.
 - Scientific limits D1 synthetic demonstration; no P1/P2/P3/E1/E2 scientific claims or measured ceramics / V1. IR05 historical WP6 original *final* Gate 3 PASS report remains unlocated. Earlier WP6 PR #8 review with Gate 2 OPEN at older SHA remains preserved; do not cite it as the final later PASS record.
 - **READY FOR OWNER APPROVAL only if exact release packaging/code tree and checks are evidenced.** No application merge, tag or published release authorised by this appendix.
+
+
+---
+
+## IR05 documentary-source correction — 28 October 2026 (authoritative supersession of outdated gap statements above)
+
+**IR05 CLOSED — original final independent WP6 acceptance recovered:** [`foundation/WP6_INDEPENDENT_ACCEPTANCE.md` at documentation-only commit `5c6c2e368664ee91a038f2677d4304eed7db7a4e`](https://github.com/DavidOWilliams/Materials-design/blob/5c6c2e368664ee91a038f2677d4304eed7db7a4e/foundation/WP6_INDEPENDENT_ACCEPTANCE.md). Its final dated section, **“FINAL independent WP6 Gate 3 acceptance — 27 October 2026”**, explicitly accepts bounded WP6 at tested `1f89c2d1bf64b669ca98b81f4305d20d08104e5c`, Gates 1, 2 and 3 PASS. Independent WP6 workflow [40538857738](https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857738), artifact `12748729866`, ZIP SHA256 `ff8c4ecad1be50f5a5b6d5c5496ade2bb906cd615cb9819bf8d585a3e7f459b2`, archived manifest 28/28; independent WP3 run `40538857597` and WP4 run `40538857615` succeeded. The same original report retains earlier Gate 2 OPEN and withheld findings as historical, source-specific snapshots; those are **superseded by the final acceptance section, not overwritten**. The final report commit is documentation-only, distinct from tested WP6 application source.

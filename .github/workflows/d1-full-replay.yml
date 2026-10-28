@@ -1,0 +1,105 @@
+name: D1 full immutable-source numerical and application verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  full-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout immutable WP6 implementation
+        uses: actions/checkout@v4
+        with:
+          ref: 1f89c2d1bf64b669ca98b81f4305d20d08104e5c
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Establish exact source and dependency identity
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d1-full"
+          test "$(git rev-parse HEAD)" = "1f89c2d1bf64b669ca98b81f4305d20d08104e5c"
+          git rev-parse HEAD | tee "$RUNNER_TEMP/d1-full/implementation-sha.txt"
+          echo "$GITHUB_SHA" > "$RUNNER_TEMP/d1-full/workflow-revision.txt"
+          python --version | tee "$RUNNER_TEMP/d1-full/python.txt"
+          bash foundation/setup.sh 2>&1 | tee "$RUNNER_TEMP/d1-full/install.log"
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip check | tee "$RUNNER_TEMP/d1-full/pip-check.txt"
+          .venv-foundation/bin/python -m pip freeze > "$RUNNER_TEMP/d1-full/dependencies.txt"
+      - name: WP3 and WP4 targeted integration regressions
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_*.py foundation/tests/test_wp4_*.py -q --tb=long 2>&1 | tee "$RUNNER_TEMP/d1-full/wp3-wp4.log"
+      - name: Restore numerical WP1 and WP2 dossiers and independently replay
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/verify_demo.py --output "$RUNNER_TEMP/d1-full/wp1-replay" 2>&1 | tee "$RUNNER_TEMP/d1-full/wp1-replay.log"
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/verify_wp2.py --output "$RUNNER_TEMP/d1-full/wp2-replay" 2>&1 | tee "$RUNNER_TEMP/d1-full/wp2-replay.log"
+      - name: WP4 4096-element dossier restoration and replay
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m material_core.wp4_feedback run "$RUNNER_TEMP/d1-full/wp4-dossier.json" --journal "$RUNNER_TEMP/d1-full/wp4-checkpoints.jsonl" --elements 4096 --budget 4 2>&1 | tee "$RUNNER_TEMP/d1-full/wp4-run.log"
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen "$RUNNER_TEMP/d1-full/wp4-dossier.json" 2>&1 | tee "$RUNNER_TEMP/d1-full/wp4-reopen.log"
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute "$RUNNER_TEMP/d1-full/wp4-dossier.json" 2>&1 | tee "$RUNNER_TEMP/d1-full/wp4-recompute.log"
+      - name: WP6 full-resolution accepted evaluation and separate-process dossier replay
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/wp6/evaluate.py --output "$RUNNER_TEMP/d1-full/wp6-campaigns" --elements 4096 --budget 4 2>&1 | tee "$RUNNER_TEMP/d1-full/wp6-campaigns.log"
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/wp6/verify_archive.py "$RUNNER_TEMP/d1-full/wp6-campaigns" 2>&1 | tee "$RUNNER_TEMP/d1-full/wp6-replay.log"
+          test -s "$RUNNER_TEMP/d1-full/wp6-campaigns/separate_process_replay.json"
+      - name: Verify original independently archived WP6 unresolved-case evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/d1-full/historical"
+          curl --fail --location --retry 3 --header "Authorization: Bearer $GH_TOKEN" --header "Accept: application/vnd.github+json" -o "$RUNNER_TEMP/d1-full/historical.zip" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/12681955393/zip"
+          echo "39e01e06110ef612f6ff561dea6a2568b0fc8b539dde9c466e2cab4a6033d3da  $RUNNER_TEMP/d1-full/historical.zip" | sha256sum -c - | tee "$RUNNER_TEMP/d1-full/historical-zip-check.log"
+          unzip -q "$RUNNER_TEMP/d1-full/historical.zip" -d "$RUNNER_TEMP/d1-full/historical"
+          test -s "$RUNNER_TEMP/d1-full/historical/SHA256SUMS"
+          (cd "$RUNNER_TEMP/d1-full/historical" && sha256sum -c SHA256SUMS) | tee "$RUNNER_TEMP/d1-full/historical-manifest-check.log"
+          test -s "$RUNNER_TEMP/d1-full/historical/gate2/numerical_attempts.json"
+          PYTHONPATH=.:foundation .venv-foundation/bin/python foundation/wp6/reproduce_unresolved.py "$RUNNER_TEMP/d1-full/historical/gate2/numerical_attempts.json" "$RUNNER_TEMP/d1-full/independent-unresolved" 2>&1 | tee "$RUNNER_TEMP/d1-full/independent-unresolved.log"
+      - name: Startup smoke test for WP5 application
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:foundation .venv-foundation/bin/python -m streamlit run foundation/wp5_app.py --server.headless true --server.address 127.0.0.1 --server.port 8501 >"$RUNNER_TEMP/d1-full/streamlit.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ok=0
+          for i in $(seq 1 40); do
+            if curl --fail --silent --show-error http://127.0.0.1:8501/_stcore/health >"$RUNNER_TEMP/d1-full/streamlit-health.txt" 2>/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = 1
+          cat "$RUNNER_TEMP/d1-full/streamlit-health.txt"
+      - name: Fail closed on empty or invalid evidence manifests
+        if: always()
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/d1-full"
+          test -s historical-manifest-check.log
+          test -s implementation-sha.txt
+          test -s wp6-campaigns/separate_process_replay.json
+          python - <<'PY'
+          import json, pathlib
+          p=pathlib.Path("wp6-campaigns/separate_process_replay.json")
+          data=json.loads(p.read_text())
+          assert isinstance(data,list) and len(data)==9,(type(data),len(data))
+          assert all(isinstance(row,dict) and row.get("measured_evidence") is None for row in data)
+          print("Nine archival replay rows present; measured evidence remains unknown")
+          PY
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+          test -s SHA256SUMS
+          sha256sum -c SHA256SUMS | tee evidence-check.log
+      - name: Upload complete evidence even when checks fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-full-replay-source-1f89c2
+          path: ${{ runner.temp }}/d1-full/
+          if-no-files-found: warn
+          retention-days: 90

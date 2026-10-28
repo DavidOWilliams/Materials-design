@@ -38,6 +38,12 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_corrective_independent_tests.py 2>&1 | tee /tmp/wp7-review/ir01-ir04.log
+      - name: Independent real-browser WP7 correction walkthrough
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pip install playwright==1.58.0
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+          PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_corrective_browser.py 2>&1 | tee /tmp/wp7-review/ui-review.log
       - name: Full foundation and recovery regressions
         run: |
           set -o pipefail

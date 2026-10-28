@@ -1,0 +1,60 @@
+name: WP7 independent correction rereview
+on:
+  push:
+    branches:
+      - independent/wp7-correction-rereview-2026-10-28
+  pull_request:
+    branches:
+      - wp7-ir01-ir04-corrective-2026-10-28
+    paths:
+      - 'review/**'
+      - '.github/workflows/wp7-independent-correction.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Clean numerical setup and pinned UI dependency
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+      - name: Capture exact source and dependency evidence
+        run: |
+          mkdir -p /tmp/wp7-review
+          git rev-parse HEAD > /tmp/wp7-review/ci-checkout.txt
+          git rev-parse c8f0292351553129fbcbdac3bd4f7a84a39365f9 > /tmp/wp7-review/tested-source.txt
+          git diff --name-only c8f0292351553129fbcbdac3bd4f7a84a39365f9 HEAD > /tmp/wp7-review/reviewer-only-changes.txt
+          .venv-foundation/bin/python --version > /tmp/wp7-review/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/wp7-review/dependencies.txt
+          .venv-foundation/bin/python -m pip check > /tmp/wp7-review/pip-check.txt
+      - name: Reviewer-authored independent IR01 and IR04 challenges
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_corrective_independent_tests.py 2>&1 | tee /tmp/wp7-review/ir01-ir04.log
+      - name: Independent real-browser WP7 correction walkthrough
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pip install playwright==1.58.0
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+          PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_corrective_browser.py 2>&1 | tee /tmp/wp7-review/ui-review.log
+      - name: Full foundation and recovery regressions
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/wp7-review/regression.log
+      - name: Hash evidence
+        if: always()
+        run: |
+          cd /tmp/wp7-review
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wp7-correction-independent
+          path: /tmp/wp7-review/**

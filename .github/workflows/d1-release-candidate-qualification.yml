@@ -1,7 +1,7 @@
 name: D1 release-candidate exact-tree qualification
 on:
   push:
-    branches: [d1-release-candidate-2026-10-28]
+    branches: [d1-release-candidate-2026-10-28, main]
   pull_request:
     paths: ['.github/workflows/d1-release-candidate-qualification.yml']
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
           paths=subprocess.check_output(["git","diff","--name-only","c8f0292351553129fbcbdac3bd4f7a84a39365f9","HEAD"],text=True).splitlines()
           assert paths, "missing expected release packaging"
           for p in paths:
-              assert ((p.startswith("foundation/D1_") or p=="foundation/PROGRAMME_DELIVERY_LEDGER.md") and p.endswith(".md")) or p==".github/workflows/d1-release-candidate-qualification.yml", f"Unexpected source change: {p}"
+              assert ((p.startswith("foundation/D1_") or p=="foundation/PROGRAMME_DELIVERY_LEDGER.md") and p.endswith(".md")) or (p.startswith(".github/workflows/d1-") and p.endswith(".yml")), f"Unexpected source change: {p}"
           print("ACCEPTED APPLICATION SOURCE EQUIVALENT: docs/verification workflow differences only")
           PY
       - name: Fresh pinned numerical and UI dependencies

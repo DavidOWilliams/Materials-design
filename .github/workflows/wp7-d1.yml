@@ -10,6 +10,7 @@ on:
       - 'foundation/material_core/wp7_search_dossier.py'
       - 'foundation/material_core/wp7_handoff.py'
       - 'foundation/tests/test_wp7_ir01_ir04.py'
+      - 'foundation/tests/wp7_ir_browser_acceptance.py'
       - '.github/workflows/wp7-d1.yml'
   workflow_dispatch:
 permissions:
@@ -76,6 +77,14 @@ jobs:
           trap 'kill $pid 2>/dev/null || true' EXIT
           export WP7_BROWSER_WORKSPACE=/tmp/wp7-evidence/browser-dossier
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_browser_acceptance.py 2>&1 | tee /tmp/wp7-evidence/browser-test.log
+      - name: Gate 1 - WP7 IR selected candidate handoff and recovery real browser
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8509 > /tmp/wp7-evidence/ir-browser-server.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          export WP7_IR_BROWSER_WORKSPACE=/tmp/wp7-evidence/ir-browser-dossier
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/wp7-evidence/ir-browser-test.log
       - name: Archive source-specific evidence with checksums
         if: always()
         run: |

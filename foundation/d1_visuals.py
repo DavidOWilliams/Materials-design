@@ -4,6 +4,7 @@ No synthesis, scientific modelling, qualification or Pareto recalculation is per
 """
 from __future__ import annotations
 
+import math
 import pandas as pd
 import streamlit as st
 import altair as alt
@@ -23,7 +24,7 @@ def _value(row, objective, scope):
         "tensile_thermal_mismatch": "tensile_thermal_mismatch_Pa",
     }[objective]
     v = row.get(key)
-    return float(v) if type(v) in (int, float) else None
+    return float(v) if type(v) in (int, float) and math.isfinite(v) else None
 
 
 def _valid(row, scope):
@@ -195,12 +196,15 @@ def feedback_view(record):
     estimated = _estimated_design(record)
     if estimated:
         st.markdown("**C1 — intended and estimated profiles**")
+        st.caption("Synthetic process prediction only. Distinct marker/line styles distinguish the states; constituent colours identify material IDs.")
         a_kind, a_rows, _ = _rows(intended)
         b_kind, b_rows, _ = _rows(estimated)
-        if a_kind == b_kind and a_rows and b_rows and {r["constituent"] for r in a_rows} == {r["constituent"] for r in b_rows}:
+        if (a_kind == b_kind and a_rows and b_rows
+                and {r["constituent"] for r in a_rows} == {r["constituent"] for r in b_rows}
+                and {r["basis"] for r in a_rows} == {r["basis"] for r in b_rows}):
             both = pd.DataFrame([dict(r, state="Intended") for r in a_rows]+
                                 [dict(r, state="Synthetic estimated") for r in b_rows])
-            st.altair_chart(alt.Chart(both).mark_line(point=True).encode(
+            st.altair_chart(alt.Chart(both).mark_line(point=True, interpolate=("step-after" if a_kind=="layered" else "linear")).encode(
                 x=alt.X("position:Q",scale=alt.Scale(domain=[0,1])),
                 y=alt.Y("fraction:Q",scale=alt.Scale(domain=[0,1])),
                 color="constituent:N",strokeDash="state:N",

@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
+from d1_visuals import campaign_view, feedback_view
 from material_core.wp5_service import execute, replay, portable_import
 from material_core.wp7_view import summary, selected_candidate
 from material_core.wp3_search import run_search, recompute_search
@@ -23,7 +24,8 @@ from material_core.wp7_handoff import (qualified_handoff_source, execute_handoff
 from material_core.wp5_service import journal_status
 
 st.set_page_config(page_title="D1 synthetic materials design", layout="wide")
-st.title("D1 — synthetic ceramic material-system design")
+st.title("D1 — guided material-system design")
+st.markdown("**Journey:** Define challenge → Explore designs → Evaluate manufacturing → Compare alternatives → Preserve evidence")
 st.warning("Computational demonstration, NOT measured achieved-state evidence, physical ceramic validation, or production engineering guidance.")
 st.caption("WP3: three hypothetical A/B/C catalogue constituents across homogeneous, layered and gradient architectures. WP4: two-constituent A/B bounded gradient feedback only. The two Pareto sets are scientifically distinct.")
 workspace = Path(st.text_input("D1 workspace", "d1-workspace")).expanduser()
@@ -93,9 +95,8 @@ with tab_mixed:
         st.json({"source": mixed["ledger"], "stop_reason": mixed["stop_reason"],
                  "qualified_pareto": mixed["pareto"], "scientific_boundary": mixed["scientific_boundary"],
                  "measured_evidence": None})
-        st.dataframe(mixed["rows"], use_container_width=True)
-        if mixed["rows"]:
-            chosen_mixed = st.selectbox("Select WP3 candidate", [r["candidate"] for r in mixed["rows"]])
+        chosen_mixed = campaign_view(mixed, scope="WP3 intended-state only", key="wp3_visual_choice")
+        if chosen_mixed is not None:
             st.json(mixed_candidate(mixed["ledger"], int(chosen_mixed)))
             if st.button("Select WP3 candidate for WP4 handoff"):
                 try:
@@ -196,10 +197,12 @@ with tab_review:
                  "stop_reason": data["stop_reason"], "objective_definitions": data["directions"],
                  "pareto": data["pareto"], "measured_evidence": None,
                  "manufacturing_validation": data["manufacturing_validation"]})
-        st.dataframe(data["rows"], use_container_width=True)
-        if data["rows"]:
-            chosen = st.selectbox("Select saved candidate", [r["candidate"] for r in data["rows"]])
-            st.json(selected_candidate(data["path"], int(chosen)))
+        chosen = campaign_view(data, scope="WP4 synthetic estimated-achieved state", key="wp4_visual_choice")
+        if chosen is not None:
+            detail = selected_candidate(data["path"], int(chosen))
+            feedback_view(detail)
+            with st.expander("Full technical candidate record (JSON)"):
+                st.json(detail)
 with tab_restore:
     source = st.text_input("Source dossier", st.session_state.get("d1_path", str(workspace / "d1-example.json")))
     if st.button("Verify integrity and recompute"):

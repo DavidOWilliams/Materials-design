@@ -16,3 +16,11 @@ The candidate handoff intentionally *does not* pretend the WP3 three-member prop
 
 ## Acceptance gate
 PR #18 is an implementation correction, not an owner-approved scope exception. Dedicated `test_wp7_ir01_ir04.py` plus WP7 workflow and independent browser extension are required. Preserve original WP7 source, reviewer artifact and prior failures. Do not merge, tag, or self-declare independent Gate 1 closure.
+
+## Executed corrective qualification — 28 October 2026
+
+**Exactly tested corrective application SHA:** `c8f0292351553129fbcbdac3bd4f7a84a39365f9`. **CI run:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40686565663, **SUCCESS**. Python 3.12.15 on Ubuntu; clean install + dependency checks successful. New and existing focused tests: **10 passed**. Entire foundation/recovered suite: **360 passed**. WP3/WP4 synthetic 4096-element reproducible examples: **PASS**, three separate Python-process replays. Existing WP7 real Chromium test: **PASS**. New WP7 IR real Chromium test: **PASS**, selecting an original completed A/B gradient from WP3, evaluating/saving new WP4 scenario, verifying source provenance, inspecting the journal, and recovering/replaying a saved independent WP4 dossier. These browser outputs are present in the archive, including `wp7-ir01-browser.png`, `wp7-ir04-browser.png`, `selected-wp4.json`, source-hash manifest and `selected-wp4-recovered.json`.
+
+**Evidence archive:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40686565663/artifacts/12815911040, artifact ID **12815911040**, size **4,886,481 bytes**. ZIP SHA256 **456e0211e8dd8c4b9c639857a3ed02b471836cce1395be2acf383b57c7e37c0e**. Workflow's SHA256SUMS verification succeeded. Earlier failing attempts 40685691836 (natural stop vs requested cancellation) and 40686044140 (old title locator) are retained separately and do not provide a PASS.
+
+**Corrective implementation qualification:** WP7-IR01 and WP7-IR04 are **implemented and implementation-tested; awaiting independent reviewer repeat/disposition**. WP7-IR02 and IR03 remain independently closed. WP7-IR05 remains OPEN, historic provenance record not found. WP7-IR06 is corrected in the interface and tested. Independent Gate 1 has NOT been re-approved, nor is release authorized. No merge or tag.

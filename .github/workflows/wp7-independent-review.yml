@@ -39,6 +39,12 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_independent_challenges.py 2>&1 | tee /tmp/wp7-independent/independent-challenges.log
+      - name: Independent real-browser WP3 ZIP and restart challenge
+        run: |
+          set -o pipefail
+          .venv-foundation/bin/python -m pip install playwright==1.58.0
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+          WP7_REVIEW_BROWSER_ROOT=/tmp/wp7-independent/browser PYTHONPATH=foundation .venv-foundation/bin/python review/wp7_independent_browser.py 2>&1 | tee /tmp/wp7-independent/independent-browser.log
       - name: Inherited full foundation/recovery suite
         run: |
           set -o pipefail

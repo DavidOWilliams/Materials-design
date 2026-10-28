@@ -1,0 +1,198 @@
+FFFFFFFFF.                                                               [100%]
+=================================== FAILURES ===================================
+______ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[zero] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne0')
+invalid_budget = 0
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne0/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+____ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[negative] _____
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne1')
+invalid_budget = -1
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne1/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+______ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[true] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne2')
+invalid_budget = True
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne2/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+______ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[false] ______
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne3')
+invalid_budget = False
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne3/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+_ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[integral-float] __
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne4')
+invalid_budget = 1.0
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne4/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+_ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[fractional-float] _
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne5')
+invalid_budget = 1.5
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne5/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+_ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[numeric-string] __
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne6')
+invalid_budget = '1'
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne6/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+______ test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[none] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne7')
+invalid_budget = None
+
+    @pytest.mark.parametrize("invalid_budget", [0, -1, True, False, 1.0, 1.5, "1", None],
+                             ids=["zero", "negative", "true", "false", "integral-float",
+                                  "fractional-float", "numeric-string", "none"])
+    def test_wp5_ir2_invalid_budget_never_creates_journal_or_parent(tmp_path, invalid_budget):
+        """IR2: validate strict positive int before even creating a parent directory."""
+        from material_core.wp5_service import execute_journal
+        parent = tmp_path / "not-created" / "nested"
+        journal = parent / "invalid.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=invalid_budget)
+>       assert not parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_invalid_budget_ne7/not-created/nested').exists
+
+wp5_ir2_evidence/historical_tests.py:230: AssertionError
+_________ test_wp5_ir2_retry_same_path_after_invalid_and_real_recovery _________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_retry_same_path_a0')
+
+    def test_wp5_ir2_retry_same_path_after_invalid_and_real_recovery(tmp_path):
+        from material_core.wp5_service import execute_journal, recover_journal, journal_status
+        from material_core.wp4_journal import recover
+        journal = tmp_path / "fresh" / "campaign.jsonl"
+        with pytest.raises(ValueError, match="[Bb]udget"):
+            execute_journal(journal, elements=128, budget=0)
+>       assert not journal.parent.exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_retry_same_path_a0/fresh').exists
+E        +      where PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_retry_same_path_a0/fresh') = PosixPath('/tmp/pytest-of-root/pytest-5/test_wp5_ir2_retry_same_path_a0/fresh/campaign.jsonl').parent
+
+wp5_ir2_evidence/historical_tests.py:242: AssertionError
+=========================== short test summary info ============================
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[zero]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[negative]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[true]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[false]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[integral-float]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[fractional-float]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[numeric-string]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[none]
+FAILED wp5_ir2_evidence/historical_tests.py::test_wp5_ir2_retry_same_path_after_invalid_and_real_recovery
+9 failed, 1 passed, 19 deselected in 0.47s

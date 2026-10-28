@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.0.2, pluggy-1.7.0 -- /workspace/scratch/d7a1442313c0/wp5_ir2_review/../wp5-review-env/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/scratch/d7a1442313c0/wp5_ir2_review
+configfile: pytest.ini
+collecting ... collected 29 items / 19 deselected / 10 selected
+
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[zero] PASSED [ 10%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[negative] PASSED [ 20%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[true] PASSED [ 30%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[false] PASSED [ 40%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[integral-float] PASSED [ 50%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[fractional-float] PASSED [ 60%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[numeric-string] PASSED [ 70%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_invalid_budget_never_creates_journal_or_parent[none] PASSED [ 80%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_retry_same_path_after_invalid_and_real_recovery PASSED [ 90%]
+foundation/tests/test_wp5_service.py::test_wp5_ir2_saved_brief_mismatch_no_journal_or_parent PASSED [100%]
+
+====================== 10 passed, 19 deselected in 0.44s =======================

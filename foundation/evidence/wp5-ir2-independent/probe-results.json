@@ -1,0 +1,60 @@
+[
+  {
+    "value": "0",
+    "type": "int",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "-1",
+    "type": "int",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "True",
+    "type": "bool",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "False",
+    "type": "bool",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "1.0",
+    "type": "float",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "1.5",
+    "type": "float",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "'1'",
+    "type": "str",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "value": "None",
+    "type": "NoneType",
+    "error": "Positive budget required",
+    "no_files_or_directories": true
+  },
+  {
+    "valid_retry": true,
+    "cancelled_after_one": true,
+    "reused_candidates": 1,
+    "replay": "passed",
+    "overwrite_unchanged": true
+  },
+  {
+    "saved_brief_mismatch_no_files": true
+  }
+]

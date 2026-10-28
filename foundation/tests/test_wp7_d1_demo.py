@@ -87,5 +87,5 @@ def test_d1_invalid_input_no_overwrite_and_determinism(tmp_path):
         execute(first, elements=128, mass_limit=31., budget=4)
     execute(second, elements=128, mass_limit=31., budget=4)
     assert first.read_bytes() == second.read_bytes()
-    with pytest.raises(ValueError):
+    with pytest.raises(FileExistsError):
         portable_import(first, first)

@@ -16,7 +16,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1500, "height": 950})
         page.goto("http://127.0.0.1:8509", wait_until="networkidle", timeout=120000)
-        expect(page.get_by_text("D1 — synthetic ceramic gradient design")).to_be_visible()
+        expect(page.get_by_text("D1 — synthetic ceramic material-system design")).to_be_visible()
         page.get_by_label("D1 workspace").fill(str(workspace))
         page.get_by_label("D1 workspace").press("Enter")
         expect(page.get_by_label("D1 workspace")).to_have_value(str(workspace))

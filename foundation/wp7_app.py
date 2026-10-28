@@ -106,7 +106,7 @@ with tab_mixed:
                     st.session_state["wp7_handoff"] = {
                         "ledger": mixed["ledger"], "index": int(chosen_mixed),
                         "elements": cfg["elements"], "mass_limit": cfg["mass_limit"]}
-                    st.success("Compatible, qualified gradient selected. A separate WP4 achieved-state evaluation is required.")
+                    st.success("Compatible completed A/B gradient selected. Original WP3 numerical eligibility remains explicit; a separate WP4 achieved-state evaluation is required.")
                     st.json(provenance)
                 except Exception as exc:
                     st.session_state.pop("wp7_handoff", None)

@@ -66,13 +66,13 @@ with tab_mixed:
     mixed_root = workspace / "mixed-architecture"
     mixed_path = mixed_root / "campaign.json"
     mixed_elements = st.selectbox("WP3 mesh elements", [128, 256, 512, 4096], index=3)
-    mixed_budget = st.number_input("WP3 candidate budget", min_value=3, max_value=90, value=9, step=1)
+    mixed_budget = st.number_input("WP3 candidate budget", min_value=4, max_value=90, value=9, step=1)
     mixed_seed = st.number_input("WP3 deterministic seed", min_value=0, value=17, step=1)
     mixed_mass = st.number_input("WP3 mass ceiling (kg/m²)", min_value=0.01, value=31.0)
     if st.button("Generate three architecture classes and persist WP3 campaign"):
         try:
-            if int(mixed_budget) < 3:
-                raise ValueError("At least three proposals are needed for structured three-architecture coverage")
+            if int(mixed_budget) < 4:
+                raise ValueError("At least four proposals are needed: starting homogeneous, then homogeneous, layered and gradient")
             ledger = run_search(mixed_path, seed=int(mixed_seed), budget=int(mixed_budget),
                                 elements=mixed_elements, mass_limit=mixed_mass, method="explore")
             st.success(f"Saved {len(ledger['proposals'])} intended-state proposals to {mixed_path}")

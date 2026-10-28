@@ -19,7 +19,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         root=Path(tmp)
         def positive():
-            p=root/"positive.json"; r=execute(p,elements=128,mass_limit=31.,budget=4,feedback=True)
+            p=root/"positive.json"; r=execute(p,elements=4096,mass_limit=31.,budget=4,feedback=True)
             v=summary(p)
             assert r["stop_reason"]=="qualified_scenario_feasible",r["stop_reason"]
             assert any(row["eligible"] for row in v["rows"]),v["rows"]
@@ -30,7 +30,7 @@ def main():
             return {"stop":r["stop_reason"],"eligible":sum(x["eligible"] for x in v["rows"]),"pareto":v["pareto"]["pareto_ids"],"bytes_sha":hashlib.sha256(p.read_bytes()).hexdigest()}
         check("IR01_feasible_eligible_pareto",positive)
         def negative():
-            p=root/"infeasible.json";r=execute(p,elements=128,mass_limit=1.,budget=4)
+            p=root/"infeasible.json";r=execute(p,elements=4096,mass_limit=1.,budget=4)
             v=summary(p)
             assert not any(x["eligible"] for x in v["rows"])
             assert not v["pareto"]["pareto_ids"]
@@ -41,7 +41,7 @@ def main():
             outcomes={}
             for mass in (30.0,31.0,31.000001):
                 p=root/f"mass-{mass}.json"
-                r=execute(p,elements=128,mass_limit=mass,budget=4,feedback=True)
+                r=execute(p,elements=4096,mass_limit=mass,budget=4,feedback=True)
                 v=summary(p)
                 outcomes[str(mass)]={"eligible":sum(x["eligible"] for x in v["rows"]),"stop":r["stop_reason"]}
                 assert all(x["numerical_quality"] != "qualified" or isinstance(x["eligible"],bool) for x in v["rows"])
@@ -49,11 +49,11 @@ def main():
         check("IR03_mass_boundary_sweep",boundary)
         def invalid():
             p=root/"invalid.json"
-            try:execute(p,elements=128,budget=0)
+            try:execute(p,elements=4096,budget=0)
             except ValueError:pass
             else:raise AssertionError("zero budget accepted")
             assert not p.exists()
-            try:execute(root/"positive.json",elements=128,budget=4)
+            try:execute(root/"positive.json",elements=4096,budget=4)
             except FileExistsError:pass
             else:raise AssertionError("overwrite accepted")
             try:summary(root/"missing.json")
@@ -79,13 +79,13 @@ def main():
             return {"status":status["status"],"recomputed":status.get("recomputed")}
         check("IR05_independent_process_replay",replay_check)
         def deterministic():
-            p=root/"repeat.json";execute(p,elements=128,mass_limit=31.,budget=4,feedback=True)
+            p=root/"repeat.json";execute(p,elements=4096,mass_limit=31.,budget=4,feedback=True)
             assert p.read_bytes()==(root/"positive.json").read_bytes()
             return {"byte_equal":True}
         check("IR06_deterministic",deterministic)
         def mixed():
             ledger=root/"mixed"/"campaign.json"
-            run_search(ledger,seed=17,budget=4,elements=128,mass_limit=31.,method="explore")
+            run_search(ledger,seed=17,budget=4,elements=4096,mass_limit=31.,method="explore")
             v=mixed_summary(ledger)
             architectures={r["architecture"] for r in v["rows"]}
             assert {"homogeneous","layered","gradient"} <= architectures

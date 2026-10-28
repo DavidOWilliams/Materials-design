@@ -89,3 +89,41 @@ Preserve all scientific boundaries: synthetic property pack and planar thermo-me
 4. Owner David: only an explicit scope trade-off or D1 release authorization requires owner approval; routine testing and fixes do not.
 
 **RELEASE STATUS: NOT READY.** D1 release approval is not recommended at this SHA. WP7 implementation and developer-tested reproducibility have significant merit, but an independent full user journey and specific original D1 integration requirements are not yet demonstrated.
+
+
+---
+
+## Final independent execution addendum — 28 October 2026 (supersedes earlier test-pending statuses)
+
+The reviewer's source-isolated GitHub Actions execution has now **completed successfully**. This addendum supersedes this report's earlier statement that reviewer-authored numerical tests had not executed, and closes the corresponding evidence finding. Historical failed reviewer attempts remain retained, with provenance and cause; no implementation defect is falsely inferred from those reviewer-runner failures.
+
+### Exact separately executed reviewer evidence
+
+- **Independent review workflow:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40683793540 (job `122800889689`): **SUCCESS**. Reviewer authored both numerical challenges and real Chromium browser test, executed against a PR merge checkout of unchanged frozen WP7 application code and review-only files.
+- **Reviewer workflow actual merge checkout SHA:** `054357153f2013df46ae547ba90d8af8aa0f0f46` (from independently downloaded `checkout-sha.txt`). Git tree `473094d239ecc0258c9b8edd203efc38131a6ebe`; baseline tested WP7 source tree `e2362c6123fb41e543264035ed2a40f743c46547`. Source-tree differences are reviewer scripts/workflow and six Markdown-only developer reports; **WP7 application and underlying scientific code are unchanged relative to exact tested source `4fc1bc3...`**.
+- **Reviewer artifact:** `12813368786`, full ZIP SHA256 independently recomputed `3b59c38a6151337a725874b1e143c4bbe48e2500c846cab260580df1aac2eb2d` matching GitHub metadata. All **56/56 internal SHA256SUMS entries independently verified**. Evidence includes `independent-challenges.log`, `independent-browser.log`, `browser/result.json`, complete browser-generated WP3 ZIP and restored campaign/run store, three Chromium screenshots, Streamlit server log, Python/dependency provenance, and `regressions.log`.
+- **Independent numerical challenge suite:** `review/wp7_independent_challenges.py` **IR01–IR07 all 7 passed**, run at the 4096-cell qualified fixture where needed; actual feasible candidate, infeasible mass, 30/31/31.000001 kg/m² constraint sweep, invalid/missing/forged/overwrite rejection, **fresh separate-process WP4 numerical replay of three candidates**, byte-deterministic repetition, three-class WP3 search, ZIP restore with numerical recomputation, ZIP payload tamper rejection. No new model/physics code written.
+- **Independent real-browser WP3 usability test:** `review/wp7_independent_browser.py` **PASS** using real headless Chromium against a live fresh Streamlit server, not AppTest or HTTP health alone. Generated three architecture classes, persisted and inspected WP3 ledger, **downloaded real 742,698-byte ZIP through UI**, uploaded it via file picker, clicked Verify and restore, recomputed restored numerical evidence, **shut down and restarted Streamlit**, reopened restored campaign in real browser and selected candidate. Archived `browser/result.json`: `status=passed`, architectures `gradient/homogeneous/layered`, `restore_replay=passed`, `restart_verified=true`; screenshots and actual restored files preserved. **WP7-IR02 CLOSED**.
+- **Fresh independent inherited foundation/recovery suite:** **357/357 PASSED** in 60.48 seconds, Python 3.12.15, `pip check` clean; frozen foundation lock plus pinned Streamlit/Playwright. This is review execution, not reuse of implementation's 357-test report.
+- Reviewer first CI `40683335781` stopped before tests because shallow checkout omitted ancestor; second `40683425201` exposed an overstrict reviewer assumption that 128-element *preview* would meet 4096-element qualified feasibility; third `40683537767` executed seven numerics **PASS** but full regression collection failed solely because reviewer runner omitted Streamlit. Review-workflow-only corrections made; **none were WP7 application or solver defects**. Also completed independent numeric/regression run `40683663278` (artifact `12813892747`) separately passed 7/7 numerical probes + 357 regressions; independently verified ZIP SHA256 `d51c0fa00bfca3d58575a6252caba5b7e3cb63729c385caf0b411ed6ad4bed85`, **9/9** internal hashes.
+
+### Superseding gate and finding dispositions
+
+| Gate | FINAL | Evidence / outstanding limitation |
+|---|---|---|
+| **Gate 1 Functional user release** | **BLOCKED** | WP4 real-browser flow and newly independent WP3 real-browser ZIP restore/restart both succeed; however there is **no user-facing candidate transfer from multi-architecture WP3 search into WP4 estimated-achieved feedback/revision** and no demonstrated cancellation from the new WP7 D1 interface. The original complete integrated D1 workflow and cancellation checklist require resolution, not an invented combined Pareto. |
+| **Gate 2 Independent challenge testing** | **PASS** | Executed independent IR01–IR07, independent real-browser journey, 357 regression tests and five independent archived-data challenges; negative/inconclusive and unsupported cases preserved. |
+| **Gate 3 Provenance, reproducibility, scientific assurance** | **PASS for bounded source and evidence** | Verified exact tested WP7 SHA and later docs-only changes, developer artifact 67/67 plus independent artifact 56/56 hashes, fresh reviewer Python 3.12 environment, separate-process numerical replays, honest scientific limits. This is bounded computational/engineering software verification, **not** measured physical validation or external numerical physics benchmark. |
+
+| Finding | FINAL |
+|---|---|
+| WP7-IR01 — integrated candidate-to-manufacturing workflow | **OPEN — release blocker** |
+| WP7-IR02 — browser WP3 download/upload/restore/restart | **CLOSED — independently executed** |
+| WP7-IR03 — independent numerical challenge execution | **CLOSED — 7/7 independently executed, 357 regression pass** |
+| WP7-IR04 — user-facing cancellation in D1 journey | **OPEN — major; needs demonstrable accepted workflow or explicit restriction** |
+| WP7-IR05 — historical WP6 final reviewer report provenance | **OPEN — minor documentary traceability** |
+| WP7-IR06 — two-constituent caption versus mixed catalogue | **OPEN — informational UI clarity** |
+
+### Formal release disposition
+
+**WP7 remains NOT READY FOR D1 RELEASE APPROVAL solely on Gate 1's integration and cancellation requirements.** The source **passes independent numerical challenge, restart/ZIP UI and evidence integrity**. No P1 or V1 physical-science issue is an additional D1 gate. The minimal WP7 correction brief is: document/prove a continuous candidate-handoff and manufacturing-feedback experience for at least one chosen WP3 proposed design **without silently pooling intended vs achieved Pareto**, and prove cancellation/recovery as part of a coherent release-user walkthrough; alternatively place a precise bounded-scope exception before the owner for explicit approval. If implementation changes, new source SHA, fresh targeted UI/numerical regression and independent recheck are compulsory. Never merge PR #16/#17 or tag before release approval.

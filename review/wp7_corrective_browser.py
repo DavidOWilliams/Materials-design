@@ -42,7 +42,7 @@ def main():
    page.get_by_role("button",name="Inspect WP3 search and numerical Pareto").click()
    select=page.get_by_label("Select WP3 candidate")
    expect(select).to_be_visible()
-   select.select_option("3")
+   select.click()\n   page.keyboard.press("Home")\n   for _ in range(3):page.keyboard.press("ArrowDown")\n   page.keyboard.press("Enter")\n   page.wait_for_timeout(500)
    page.get_by_role("button",name="Select WP3 candidate for WP4 handoff").click()
    expect(page.get_by_text("Compatible completed A/B gradient selected",exact=False)).to_be_visible(timeout=120000)
    page.get_by_role("tab").nth(2).click()

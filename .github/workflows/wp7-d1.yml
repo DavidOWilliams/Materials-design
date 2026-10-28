@@ -8,6 +8,8 @@ on:
       - 'foundation/tests/wp7_browser_acceptance.py'
       - 'foundation/wp7_create_examples.py'
       - 'foundation/material_core/wp7_search_dossier.py'
+      - 'foundation/material_core/wp7_handoff.py'
+      - 'foundation/tests/test_wp7_ir01_ir04.py'
       - '.github/workflows/wp7-d1.yml'
   workflow_dispatch:
 permissions:
@@ -42,7 +44,7 @@ jobs:
       - name: Gate 1 - actual Streamlit widget interactions and independent process replay
         run: |
           set -o pipefail
-          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py foundation/tests/test_wp7_mixed_architectures.py -vv --tb=long 2>&1 | tee /tmp/wp7-evidence/wp7-focused.log
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_d1_demo.py foundation/tests/test_wp7_mixed_architectures.py foundation/tests/test_wp7_ir01_ir04.py -vv --tb=long 2>&1 | tee /tmp/wp7-evidence/wp7-focused.log
       - name: Gate 2 - accepted numerical/application regressions
         run: |
           set -o pipefail

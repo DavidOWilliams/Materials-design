@@ -13,3 +13,10 @@
 Reviewer final report source: `review/WP7_FINAL_INDEPENDENT_CORRECTIVE_ACCEPTANCE_2026-10-28.md` on PR #19 branch. Earlier PR #17 Gate 1 BLOCKED record retained. Original earlier independent WP6 Gate 2 OPEN report on PR #8 is `foundation/WP6_INDEPENDENT_ACCEPTANCE.md` at docs-only `5c6c2e368664ee91a038f2677d4304eed7db7a4e`, **not** the later reported final WP6 three-gate PASS original. Later WP6 final acceptance is programme-owner-supplied and documented in `foundation/WP6_FINAL_ACCEPTANCE_PROVENANCE_2026-10-27.md`; original final reviewer report remains unlocated; **IR05 nonblocking but open**.
 
 Full release-candidate exact-tree equivalence and packaging verification must be documented at final HEAD. This manifest is a release packaging document, not an independent release review or final tag record. P1/P2/P3/E1/E2 remain excluded.
+
+
+---
+
+## IR05 documentary-source correction — 28 October 2026 (authoritative supersession of outdated gap statements above)
+
+**IR05 CLOSED — original final independent WP6 acceptance recovered:** [`foundation/WP6_INDEPENDENT_ACCEPTANCE.md` at documentation-only commit `5c6c2e368664ee91a038f2677d4304eed7db7a4e`](https://github.com/DavidOWilliams/Materials-design/blob/5c6c2e368664ee91a038f2677d4304eed7db7a4e/foundation/WP6_INDEPENDENT_ACCEPTANCE.md). Its final dated section, **“FINAL independent WP6 Gate 3 acceptance — 27 October 2026”**, explicitly accepts bounded WP6 at tested `1f89c2d1bf64b669ca98b81f4305d20d08104e5c`, Gates 1, 2 and 3 PASS. Independent WP6 workflow [40538857738](https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857738), artifact `12748729866`, ZIP SHA256 `ff8c4ecad1be50f5a5b6d5c5496ade2bb906cd615cb9819bf8d585a3e7f459b2`, archived manifest 28/28; independent WP3 run `40538857597` and WP4 run `40538857615` succeeded. The same original report retains earlier Gate 2 OPEN and withheld findings as historical, source-specific snapshots; those are **superseded by the final acceptance section, not overwritten**. The final report commit is documentation-only, distinct from tested WP6 application source.

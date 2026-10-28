@@ -23,7 +23,11 @@ def main():
         # The first tab is selected by default; do not depend on a brittle label lookup.
         page.get_by_role("button", name="Generate, evaluate and save dossier").click()
         path = workspace / "d1-example.json"
-        expect(page.get_by_text("Persisted", exact=False)).to_be_visible(timeout=120000)
+        page.wait_for_timeout(3000)
+        print("After execution, actual file exists:", path.exists(), flush=True)
+        print("Visible page content after execution:", page.locator("body").inner_text()[-6500:], flush=True)
+        page.screenshot(path=str(workspace / "wp7-after-execution.png"), full_page=True)
+        expect(page.get_by_text("Persisted", exact=False)).to_be_visible(timeout=15000)
         assert path.exists()
         assert inspect(path)["measured_evidence"] is None
         page.get_by_role("tab").nth(2).click()

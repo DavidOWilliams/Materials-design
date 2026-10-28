@@ -74,3 +74,18 @@ def test_d1_actual_streamlit_widgets(tmp_path):
     assert not list(app.exception)
     assert not list(app.error)
     assert replay(path)["status"] == "passed"
+
+
+def test_d1_invalid_input_no_overwrite_and_determinism(tmp_path):
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    with pytest.raises(ValueError):
+        execute(first, elements=128, budget=0)
+    assert not first.exists()
+    execute(first, elements=128, mass_limit=31., budget=4)
+    with pytest.raises(FileExistsError):
+        execute(first, elements=128, mass_limit=31., budget=4)
+    execute(second, elements=128, mass_limit=31., budget=4)
+    assert first.read_bytes() == second.read_bytes()
+    with pytest.raises(ValueError):
+        portable_import(first, first)

@@ -11,3 +11,12 @@ Environment: GitHub Actions Ubuntu Linux runner; Python 3.12; foundation/setup.s
 Full workflow run: https://github.com/DavidOWilliams/Materials-design/actions/runs/40673439977. Expected evidence: source-sha.txt, changes-from-wp6.txt, install.log, python.txt, platform.txt, freeze.txt and final-freeze.txt, pip-check reports, wp7-focused.log, full-regression.log, examples.log, example-dossiers directory including WP3 ledger/run-store, portable ZIP, WP4 JSON dossiers, manifests, independent-process replay evidence, browser logs and screenshots, SHA256SUMS. Nonempty SHA256SUMS must pass verification.
 
 At initial authorship: run in progress, exact artifact ID and ZIP SHA256 PENDING. Previously verified source-specific historical WP6 artifact 12807606181 remains preserved. Prior failed WP7 runs/artifacts remain negative evidence, not erased.
+
+
+## Final manifest — verified from completed workflow
+
+Source SHA: **4fc1bc3bd07de146460be1729469c7ea1e35969c**. Actions run **40673439977** (job **122765726102**) concluded **SUCCESS**. Archive name wp7-d1-exact-source-evidence, artifact ID **12808843984**, uploaded ZIP size **3,285,296 bytes**, SHA256 **6c660389e94ed6873b4f8931f5647458159fbf2d989087a0b375e3476250b028**. Link: https://github.com/DavidOWilliams/Materials-design/actions/runs/40673439977/artifacts/12808843984.
+
+Environment Python **3.12.15**, Linux Ubuntu GitHub runner, hash-locked foundation with separately pinned Streamlit and Playwright (full versions in final-freeze.txt). Seven focused WP7 tests passed, **357 full regression tests passed**, 4096 mesh examples and 3 separate-process replays succeeded; one true Chromium journey successful. **68 archive files** each checked by SHA256SUMS in CI; includes WP3 mixed-architecture ledger + store + ZIP and original/restored evidence, WP4 valid/infeasible dossiers, screenshots and logs. Independent auditor should separately download/recheck archive; this authorship is automated archive verification only. Earlier negative run evidence remains preserved and distinct.
+
+The implementation/qualifying SHA above is the source baseline. Subsequent commits to these Markdown reports are **documentation-only and NOT a new tested implementation**. Do not copy the result to modified application/dependency/evidence content.

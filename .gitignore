@@ -3,8 +3,10 @@ __pycache__/
 *.pyc
 .env
 .venv/
+.venv-wp0r/
 
 # Python cache files
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv-foundation/

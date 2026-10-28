@@ -1,0 +1,34 @@
+# WP4 execution, recovery and evidence
+
+Run from repository root after `bash foundation/setup.sh`.
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback run /tmp/wp4-dossier.json --journal /tmp/wp4-journal.jsonl --elements 4096 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback resume /tmp/wp4-journal.jsonl --elements 4096 --budget 4
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback reopen /tmp/wp4-journal.jsonl.resumed.json
+PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp4_feedback recompute /tmp/wp4-journal.jsonl.resumed.json
+```
+
+The journal, `.manifest.json` and `.attempts.jsonl` sidecar must be retained together. The manifest freezes the original typed baseline, process, solver and implementation identities **before** numerical work. Resumption reuses completed baseline/candidate evaluations and appends only newly completed candidates; it does not restart an interrupted solver kernel. Missing legacy manifests or attempt histories are rejected rather than inventing exact costs. `recompute` is a separate optional verification process whose solver calls are **not** continuation cost.
+
+For the alternate duty, run with `--adapter wp3-alternate-duty-layered-provider-v1` and a journal, then resume with the same resolution, budget and route options. The manifest preserves the original 380/320 K duty; it does not substitute the default 400/300 K fixture. A second synthetic route is `--route synthetic_ideal_uniform_batch_deposition --layer 0.01`.
+
+The `run` service supports cooperative cancellation between candidate evaluations; no mid-solver cancellation/restart is promised. `wp4_export.export(dossier_path)` exports the canonical intended design hash and marks measured evidence unavailable.
+
+**Scientific limits:** synthetic ideal deposition, no empirical ceramic measurements, CFD, sintering, porosity or manufacturing residual-stress prediction. Thermal stress can increase while mass and heat transmission improve.
+
+**Review:** independent Gate 3 performed; changes required; corrected evidence awaits independent closure. The acceptance matrix and final CI checkout SHA are authoritative.
+
+
+## Optional verification and final checkpoint recovery
+
+`resume(journal_path, verify=True, output="new-verified-dossier.json")` numerically recomputes the baseline and each candidate **after** continuation, and saves the immutable final dossier only after verification succeeds. The returned record and saved dossier both report `accounting.verification_evaluations` and the `verification` proof. A verification failure does not create a successful final dossier. Reuse and numerical verification are separately accounted. Do not reuse an existing output path.
+
+A journal interrupted after its final feasible candidate has been checkpointed is recognised as already terminal and produces a dossier with **zero additional continuation evaluations**. The same applies to supported budget and no-feedback terminal decisions. The manifest, checkpoint journal and event sidecar must remain together; embedded event history preserves hash-chain fields and a continuation marker for reopening.
+
+
+## R2 checkpoint-write recovery
+
+A numerical evaluation may finish without a candidate checkpoint being durably committed. When a checkpoint callback fails before writing, the original completed numerical attempt and the failed checkpoint remain in the append-only attempt ledger. Because the candidate was not durably checkpointed, continuation performs a **new** transform/evaluation attempt for that candidate, counts the extra numerical work, and reports only actually persisted candidates as reused. A callback that writes successfully and then raises retains the committed candidate and does **not** trigger reevaluation.
+
+`resume` validates the embedded event ledger and reopens any saved dossier before returning success. The evidence archive includes `default-write-failure-*`, `alternate-write-failure-*`, and `default-final-write-failure-*` artifacts with independent evaluator-call audits. Optional `verify=True` remains a separate, recorded numerical replay, not continuation work. Mid-solver restart is not supported.

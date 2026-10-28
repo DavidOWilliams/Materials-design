@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "status": "partial_published_dataset_not_complete_achieved_state_validation",
+  "source": {
+    "id": "Li2018_CODE",
+    "title": "Fabricating Functionally Graded Materials by Ceramic On-Demand Extrusion with Dynamic Mixing",
+    "doi": "10.26153/tsw/17109",
+    "url": "https://utw10945.utweb.utexas.edu/sites/default/files/2018/088%20FabricatingFunctionallyGradedMaterialsbyCeram.pdf",
+    "access_date": "2026-10-19",
+    "source_pdf_sha256": "0d7ae208b389b2e3e7362f9d9eaf1ebbad89472e0b2b853db6835659f3c35e6a",
+    "extraction": "Manual transcription; Figures 3 and 7 and Table 1 visually checked against PDF",
+    "reuse_license": "No general open-data redistribution license verified; numeric facts attributed; source figures not redistributed"
+  },
+  "process": {
+    "materials": ["Al2O3", "3Y-ZrO2"],
+    "paste_solid_volume_fraction": [0.5, 0.5],
+    "nominal_dimensions_mm": [70,20,6.6],
+    "nominal_layer_count": 11,
+    "purge_per_composition_change_ml": 0.5,
+    "purge_uncertainty_ml": null,
+    "source_location": "pp.1089,1091-1092",
+    "actual_gcode": null,
+    "timestamped_feed_rates": null,
+    "measured_extruded_volume_log": null,
+    "per_layer_achieved_geometry": null,
+    "specimen_specific_porosity": null,
+    "reason_for_nulls": "Not supplied in the inspected publication; not assumed zero"
+  },
+  "transition": {
+    "specimen": "serpentine_cycle_1",
+    "command": "Switch from zirconia to alumina at location 1",
+    "mixer_rpm": 900,
+    "measurement_stage": "EDS on sintered deposited trace; indirect record of outlet composition",
+    "composition_basis": "Al atomic counts / (Al + Zr + Y atomic counts); NOT paste or ceramic volume fraction",
+    "measurement_sampling": "42 locations, three approximately 120 by 120 micrometre areas at each location",
+    "source_location": "pp.1090-1091, Figure 3",
+    "raw_spectra_and_repeat_values": null,
+    "measurement_uncertainty": null,
+    "anchor_points": [
+      {"location":1,"cumulative_volume_ml":0.0,"Al_atomic_percent_approx":2,"volume_status":"command origin"},
+      {"location":7,"cumulative_volume_ml":0.12,"Al_atomic_percent_approx":7,"volume_status":"reported delivery-delay endpoint"},
+      {"location":38,"cumulative_volume_ml":0.48,"Al_atomic_percent_approx":95,"volume_status":"reported total-delay endpoint"}
+    ],
+    "anchor_composition_reading_uncertainty_pp": 2,
+    "reading_uncertainty_basis": "Analyst-assigned visual reading allowance only, not experimental uncertainty or confidence interval",
+    "intermediate_volume_mapping": null,
+    "warning": "Sample-location spacing is nonuniform; do not assign evenly spaced extrusion volumes. Source completion label does not mean measured 100% Al."
+  },
+  "type1_composition": {
+    "source_location": "p.1094 Figure 7; measurement protocol p.1093",
+    "stage": "sintered cross-section",
+    "basis": "Al atomic percentage as labelled; retain source basis, no conversion to volume fraction",
+    "aggregation": "Means from two specimens; three sampled regions per layer per specimen; specimen IDs and raw values unavailable",
+    "layer": [1,2,3,4,5,6,7,8,9,10,11],
+    "nominal_Al_atomic_percent": [100,98,94,90,87,83,79,75,71,66,62],
+    "measured_Al_atomic_percent": [99,97,93,90,86,82,77,74,69,65,61],
+    "display_resolution_pp": 1,
+    "measurement_uncertainty_pp": null,
+    "warning": "Integer figure labels; rounding is not measurement uncertainty; cannot join these aggregates to specific curling specimens"
+  },
+  "designs": [
+    {"id":"type1","role":"alternative_case_revised","commanded_zirconia_volume_fraction_by_layer":[0,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50],"curling_angle_deg":[2.7,2.3,2.9],"failure_status":["not_reported","not_reported","not_reported"]},
+    {"id":"type2","role":"alternative_case_baseline","commanded_zirconia_volume_fraction_by_layer":[0,0.1,0.1,0.2,0.2,0.3,0.3,0.4,0.4,0.5,0.5],"curling_angle_deg":[3.6,3.8,3.7],"failure_status":["not_reported","not_reported","not_reported"]},
+    {"id":"type3","role":"abrupt_transition_reference","commanded_zirconia_volume_fraction_by_layer":[0,0,0,0,0,0.5,0.5,0.5,0.5,0.5,0.5],"curling_angle_deg":[4.9,null,null],"failure_status":["cracked","delaminated","delaminated"]}
+  ],
+  "design_provenance": {
+    "commands": "p.1091 and Figure 4; type2 confirmed against layer groupings in Table 2",
+    "curling": "p.1095 Table 1, order Group1,Group2,Group3",
+    "curling_instrument_uncertainty_deg": null,
+    "curling_display_resolution_deg": 0.1,
+    "constraint_scope": "Published recipes only, not universal printability limits",
+    "original_B4C_SiC_4_to_1_revision_validation": "unsupported: different materials, process, architecture and outcome"
+  }
+}

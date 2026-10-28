@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "assumptions": [
+    {
+      "assumption_id": "A16",
+      "version": 1,
+      "exact_question": "What microgeometry and phase arrangement justify using a parallel-channel conductivity upper bound for a real printed ceramic gradient?",
+      "provisional_answer": "None established; the WP2 demonstration uses a documented Voigt upper-bound scenario only.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "thermal",
+        "gradient_mapping",
+        "comparison"
+      ],
+      "sensitivity_consequence": "thermal conductivity mapping and transmitted heat; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Provide a process-matched effective-conductivity data set or independently justified microgeometry and measure representative intermediate states.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    },
+    {
+      "assumption_id": "A17",
+      "version": 1,
+      "exact_question": "Are the assumed constituent densities and volume-additive density map valid for the selected printed or fired ceramic porosity state?",
+      "provisional_answer": "Not established; current values are synthetic ideal dense-phase scenarios and not printable body densities.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "mass",
+        "basis_conversion",
+        "material_budget"
+      ],
+      "sensitivity_consequence": "areal mass and mass-to-volume basis; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Obtain compatible density, porosity and processing-state measurements for the selected constituent and intermediate compositions.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    },
+    {
+      "assumption_id": "A18",
+      "version": 1,
+      "exact_question": "What elastic constants, expansion law, reference state and mechanical restraint describe the relevant thermal-mismatch contribution?",
+      "provisional_answer": "Synthetic equibiaxial plane-stress and isotropic small-strain properties; free plate bending enabled, no full residual stress model.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "mechanics",
+        "stress",
+        "comparison"
+      ],
+      "sensitivity_consequence": "thermoelastic stress and bending; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Agree boundary restraints and acquire temperature/processing matched elastic and thermal expansion inputs; review comparison with a qualified reference.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    },
+    {
+      "assumption_id": "A19",
+      "version": 1,
+      "exact_question": "Do the ideal perfect interfaces and bonded mixture assumptions hold for the candidate architecture and process?",
+      "provisional_answer": "Unresolved: zero thermal contact resistance and perfectly bonded elastic interfaces are explicitly idealised.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "thermal",
+        "mechanics",
+        "interface"
+      ],
+      "sensitivity_consequence": "layer and gradient interface evaluations; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Test interface thermal conductance, bonding and crack/delamination mechanisms in the selected process state.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    },
+    {
+      "assumption_id": "A20",
+      "version": 1,
+      "exact_question": "Are local properties adequately constant over the declared 290–410 K temperature range for the selected material state?",
+      "provisional_answer": "Only as an assumed synthetic scenario; no temperature-dependent ceramic property pack is supplied.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "thermal",
+        "mechanics",
+        "property_pack"
+      ],
+      "sensitivity_consequence": "thermal and thermoelastic spatial predictions; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Collect compatible temperature-resolved conductivity, density, modulus and thermal expansion evidence across the duty range.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    },
+    {
+      "assumption_id": "A21",
+      "version": 1,
+      "exact_question": "What evidence links the commanded process to achieved composition, geometry, porosity and a valid material property state?",
+      "provisional_answer": "No transform is delivered; the WP2 achieved-state fixture is explicitly supplied and synthetic.",
+      "value_status": "unresolved",
+      "value": null,
+      "value_range": null,
+      "unit": null,
+      "evidence_basis": "WP2 synthetic source table SHA-256 51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d; numerical scenario, not measured ceramic evidence.",
+      "affected_calculations": [
+        "achieved_state",
+        "process_mapping",
+        "future_WP4"
+      ],
+      "sensitivity_consequence": "achieved-state evaluation and first manufacturing feedback; may alter rank, eligibility or interpretation.",
+      "sensitivity_priority": "high",
+      "owner": "Scientific reviewer (not yet appointed)",
+      "resolution_criterion": "Reproduce process-state transfer with measured or independently checked deposition/mixing evidence for a selected route.",
+      "status": "open",
+      "source_path": "foundation/material_core/wp2_scenarios.py:props",
+      "source_sha256": "51721def2cb2430aca77622fe3c29cca20297a478d39e4936082aee74f491c8d",
+      "schema_version": 1
+    }
+  ]
+}

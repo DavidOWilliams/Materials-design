@@ -1,0 +1,167 @@
+name: WP3 candidate and Pareto verification
+on:
+  push:
+    branches: [wp3-inverse-search-2026-10-24]
+  pull_request:
+    paths:
+      - 'foundation/**'
+      - '.github/workflows/wp3-verification.yml'
+  workflow_dispatch:
+
+jobs:
+  wp3-contract-and-vertical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Record exact checkout and event identity
+        run: |
+          echo "event=$GITHUB_EVENT_NAME event_sha=$GITHUB_SHA head_ref=$GITHUB_HEAD_REF"
+          echo "checked_out_sha=$(git rev-parse HEAD)"
+      - name: Create hash-locked environment
+        run: bash foundation/setup.sh
+      - name: Check installed requirements
+        run: .venv-foundation/bin/python -m pip check
+      - name: Run WP3 and WP2 foundation plus recovered WP0 regressions
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q --ignore=foundation/tests/test_wp5_streamlit_interaction.py
+      - name: Verify corrected WP2 reference scenarios
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp3-wp2-reference
+      - name: Execute non-fixture WP3 proposal
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store > /tmp/wp3-result.json
+          cat /tmp/wp3-result.json
+      - name: Replay persisted run in a fresh process
+        run: |
+          RUN_ID=$(.venv-foundation/bin/python -c "import json; print(json.load(open('/tmp/wp3-result.json'))['run_id'])")
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_vertical --store /tmp/wp3-store --replay "$RUN_ID" > /tmp/wp3-replay.json
+          cat /tmp/wp3-replay.json
+      - name: Verify legacy campaign API is explicitly retired
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_campaign.py -q
+          if PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_campaign --ledger /tmp/unsupported-v1.json; then
+            echo 'Legacy campaign executed unexpectedly'; exit 1
+          fi
+      - name: Run mixed architecture search and separate-process reopen
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-mixed/search.json --budget 9 --seed 17 > /tmp/wp3-mixed-result.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-mixed/search.json --reopen > /tmp/wp3-mixed-reopened.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-mixed-result.json')); b=json.load(open('/tmp/wp3-mixed-reopened.json')); assert a==b; assert len(a['proposals'])==9; print('Mixed architecture replay verified')"
+      - name: Recompute persisted mixed campaign under recorded solver identity
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-mixed/search.json --recompute > /tmp/wp3-mixed-recomputed.json
+          .venv-foundation/bin/python -c "import json; x=json.load(open('/tmp/wp3-mixed-recomputed.json')); assert x['replay']=='passed' and x['recomputed']==9; print('Numerical campaign recomputation verified')"
+      - name: Run alternate 380 K / 320 K three-layer scenario and reopen/recompute
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --provider wp3-alternate-duty-layered-provider-v1 --seed 17 --budget 3 --elements 256 > /tmp/wp3-alternate-result.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --reopen > /tmp/wp3-alternate-reopened.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-alternate/campaign.json --recompute > /tmp/wp3-alternate-recomputed.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-alternate-result.json')); b=json.load(open('/tmp/wp3-alternate-reopened.json')); c=json.load(open('/tmp/wp3-alternate-recomputed.json')); assert a==b and len(a['proposals'])==3 and c['recomputed']==3; assert a['config']['provider']=='wp3-alternate-duty-layered-provider-v1'; print('Alternate scenario persisted, reopened and numerically recomputed')"
+      - name: Verify registered evaluator in isolated process
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -c "from material_core.wp3_search import run_search; from material_core.wp3_evaluators import DELEGATE; run_search('/tmp/wp3-evaluator/campaign.json',seed=7,budget=2,elements=256,evaluator_identity=DELEGATE)"
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-evaluator/campaign.json --reopen > /tmp/wp3-evaluator-open.json
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --ledger /tmp/wp3-evaluator/campaign.json --recompute > /tmp/wp3-evaluator-replay.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-evaluator-open.json')); b=json.load(open('/tmp/wp3-evaluator-replay.json')); assert a['config']['evaluation_adapter']=='wp2-delegate-test-v1' and b['recomputed']==2"
+      - name: Run preregistered paired sampling comparison
+        run: |
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --paired /tmp/wp3-paired --budget 3 --elements 4096 > /tmp/wp3-paired-result.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-paired-result.json')); assert len(a['pairs'])==3; print('Paired results', a['pairs'])"
+          PYTHONPATH=foundation .venv-foundation/bin/python -m material_core.wp3_search --paired /tmp/wp3-paired --paired-reopen > /tmp/wp3-paired-reopened.json
+          .venv-foundation/bin/python -c "import json; a=json.load(open('/tmp/wp3-paired-result.json')); b=json.load(open('/tmp/wp3-paired-reopened.json')); assert a==b; print('Paired export independently reopened and validated')"
+
+      - name: Store reproducible output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp3-vertical-output
+          path: |
+            /tmp/wp3-result.json
+            /tmp/wp3-replay.json
+            /tmp/wp3-store/**
+            /tmp/wp3-mixed/**
+            /tmp/wp3-mixed-result.json
+            /tmp/wp3-mixed-reopened.json
+            /tmp/wp3-mixed-recomputed.json
+            /tmp/wp3-alternate/**
+            /tmp/wp3-alternate-result.json
+            /tmp/wp3-alternate-reopened.json
+            /tmp/wp3-alternate-recomputed.json
+            /tmp/wp3-evaluator/**
+            /tmp/wp3-evaluator-open.json
+            /tmp/wp3-evaluator-replay.json
+            /tmp/wp3-paired/**
+            /tmp/wp3-paired-result.json
+            /tmp/wp3-paired-reopened.json
+            /tmp/wp3-wp2-reference/**
+          if-no-files-found: ignore
+
+  wp3-legacy-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned legacy dependencies
+        run: python -m pip install -r requirements.txt scikit-fem==12.0.2
+      - name: Verify dependency consistency
+        run: python -m pip check
+      - name: Run original legacy and recovery tests
+        run: python -m pytest tests recovered_wp0 -q
+
+  wp3-exact-branch-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Record exact branch-head SHA and event
+        run: |
+          echo "event=$GITHUB_EVENT_NAME event_sha=$GITHUB_SHA"
+          echo "checked_out_branch_head=$(git rev-parse HEAD)"
+          git rev-parse HEAD | grep -Fx "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Install locked runtime
+        run: bash foundation/setup.sh
+      - name: Check dependencies
+        run: .venv-foundation/bin/python -m pip check
+      - name: Reproduce corrected interruption and tamper acceptance
+        run: PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp3_inspection_corrections.py foundation/tests/test_wp3_evaluator_identity.py -q
+      - name: Verify WP2 numerical references
+        run: PYTHONPATH=foundation .venv-foundation/bin/python foundation/verify_wp2.py --output /tmp/wp3-head-wp2-reference
+      - name: Upload exact-head evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp3-branch-head-corrections
+          path: /tmp/wp3-head-wp2-reference/**
+          if-no-files-found: ignore
+
+  wp3-original-review-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Freeze checked-in defect reproducer outside reviewed checkout
+        run: cp foundation/reproduce_reviewed_wp3_r1_r4.py /tmp/reproduce_reviewed_wp3_r1_r4.py
+      - uses: actions/checkout@v4
+        with:
+          ref: d62023d7205d48beba11269d4c358a7380ab9ca4
+          path: inspected
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original inspected locked dependencies
+        run: bash inspected/foundation/setup.sh
+      - name: Demonstrate four defects against unchanged reviewed source
+        run: |
+          echo "reviewed_source=$(git -C inspected rev-parse HEAD)"
+          PYTHONPATH=inspected/foundation inspected/.venv-foundation/bin/python /tmp/reproduce_reviewed_wp3_r1_r4.py

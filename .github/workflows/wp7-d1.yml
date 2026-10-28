@@ -6,6 +6,8 @@ on:
       - 'foundation/material_core/wp7_view.py'
       - 'foundation/tests/test_wp7_d1_demo.py'
       - 'foundation/tests/wp7_browser_acceptance.py'
+      - 'foundation/wp7_create_examples.py'
+      - 'foundation/material_core/wp7_search_dossier.py'
       - '.github/workflows/wp7-d1.yml'
   workflow_dispatch:
 permissions:
@@ -45,6 +47,10 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q --tb=short 2>&1 | tee /tmp/wp7-evidence/full-regression.log
+      - name: Create reproducible full-resolution WP3/WP4 dossiers and separate-process replay
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py /tmp/wp7-evidence/example-dossiers --elements 4096 --budget 9 2>&1 | tee /tmp/wp7-evidence/examples.log
       - name: Startup health (NOT actual browser test)
         run: |
           set -euo pipefail

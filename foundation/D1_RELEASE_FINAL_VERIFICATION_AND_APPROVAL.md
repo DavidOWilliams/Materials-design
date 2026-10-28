@@ -23,9 +23,16 @@
 - [x] Clean installation, numerical and WP7 regressions, new full-resolution dossiers, independent-process replay, browser check, SHA256 archive integrity all executed and independently reviewed at documented candidate SHA.
 - [x] Mandatory separate WP3 ledger/store/verified ZIP retention explicitly documented alongside WP4 JSON + `*.handoff.json`; this pair is **not** a standalone relocatable bundle.
 - [x] Scientific exclusions and distinct Pareto contexts explicitly stated.
-- [ ] Preserve/link original later WP6 final independent Gate-3 PASS reviewer report (IR05 still nonblocking source gap, not to be confused with earlier OPEN review at PR #8).
+- [x] Preserve/link original WP6 final Gate-3 PASS independent report, documentation-only commit `5c6c2e368664ee91a038f2677d4304eed7db7a4e`; earlier Gate 2 OPEN snapshots remain preserved in same file (IR05 CLOSED).
 - [ ] Owner explicitly approves bounded release scope and controlled integration PR #20.
 - [ ] Following authorised merge: inspect new `main` commit and full tree, verify source equivalence and rerun affected qualification if any functional/dep/workflow change; record independent post-integration release review.
 - [ ] Obtain separate approval for final annotated Git tag `d1-v0.1.0` and publication. Neither is done.
 
 **Decision recommendation:** RELEASE PR #20 is technically ready to request owner authorisation to integrate the bounded D1 synthetic demonstration, **not** a published release. Exact final doc-only commit/tree and corresponding Actions status must be checked after this annex commit. Do not merge or tag without owner authorisation.
+
+
+---
+
+## IR05 documentary-source correction — 28 October 2026 (authoritative supersession of outdated gap statements above)
+
+**IR05 CLOSED — original final independent WP6 acceptance recovered:** [`foundation/WP6_INDEPENDENT_ACCEPTANCE.md` at documentation-only commit `5c6c2e368664ee91a038f2677d4304eed7db7a4e`](https://github.com/DavidOWilliams/Materials-design/blob/5c6c2e368664ee91a038f2677d4304eed7db7a4e/foundation/WP6_INDEPENDENT_ACCEPTANCE.md). Its final dated section, **“FINAL independent WP6 Gate 3 acceptance — 27 October 2026”**, explicitly accepts bounded WP6 at tested `1f89c2d1bf64b669ca98b81f4305d20d08104e5c`, Gates 1, 2 and 3 PASS. Independent WP6 workflow [40538857738](https://github.com/DavidOWilliams/Materials-design/actions/runs/40538857738), artifact `12748729866`, ZIP SHA256 `ff8c4ecad1be50f5a5b6d5c5496ade2bb906cd615cb9819bf8d585a3e7f459b2`, archived manifest 28/28; independent WP3 run `40538857597` and WP4 run `40538857615` succeeded. The same original report retains earlier Gate 2 OPEN and withheld findings as historical, source-specific snapshots; those are **superseded by the final acceptance section, not overwritten**. The final report commit is documentation-only, distinct from tested WP6 application source.

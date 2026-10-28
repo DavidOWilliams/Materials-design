@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from material_core.wp5_service import execute, replay, portable_import
 from material_core.wp7_view import summary, selected_candidate
+from material_core.wp3_search import run_search, recompute_search
+from material_core.wp7_search_dossier import mixed_summary, mixed_candidate, export_mixed_zip, import_mixed_zip
 from material_core.wp5_brief_editor import open_brief
 from material_core.wp4_feedback import starting_inputs
 
@@ -22,7 +24,7 @@ st.title("D1 — synthetic ceramic gradient design")
 st.warning("Computational demonstration, NOT measured achieved-state evidence, physical ceramic validation, or production engineering guidance.")
 st.caption("Two hypothetical scenario constituents; planar coupon; thermal transmission, areal mass and tensile thermal mismatch. The supported WP4 design-revision policy changes composition after an exceeded mass constraint.")
 workspace = Path(st.text_input("D1 workspace", "d1-workspace")).expanduser()
-tab_run, tab_review, tab_restore = st.tabs(["1. Run demonstration", "2. Inspect candidates and trade-offs", "3. Restore and replay"])
+tab_run, tab_mixed, tab_review, tab_restore = st.tabs(["1. Run demonstration", "2. Explore three architectures", "3. Inspect feedback and trade-offs", "4. Restore and replay"])
 with tab_run:
     st.subheader("Representative built-in example")
     preset = st.selectbox("D1 scenario", ["Representative mass-constrained coupon", "Infeasible mass limit", "Resolution sensitivity"])
@@ -58,6 +60,61 @@ with tab_run:
             st.success(f"Persisted {len(record['records'])} candidates to {target} (stop: {record['stop_reason']}). Open tab 2.")
         except Exception as exc:
             st.error(f"Campaign rejected or failed: {type(exc).__name__}: {exc}")
+with tab_mixed:
+    st.subheader("WP3 — homogeneous, layered and gradient exploration")
+    st.warning("WP3 uses intended-state numerical evaluation only. Its Pareto eligibility does NOT establish manufacturing feasibility. These campaigns must not be mixed with WP4 estimated achieved-state results.")
+    mixed_root = workspace / "mixed-architecture"
+    mixed_path = mixed_root / "campaign.json"
+    mixed_elements = st.selectbox("WP3 mesh elements", [128, 256, 512, 4096], index=3)
+    mixed_budget = st.number_input("WP3 candidate budget", min_value=3, max_value=90, value=9, step=1)
+    mixed_seed = st.number_input("WP3 deterministic seed", min_value=0, value=17, step=1)
+    mixed_mass = st.number_input("WP3 mass ceiling (kg/m²)", min_value=0.01, value=31.0)
+    if st.button("Generate three architecture classes and persist WP3 campaign"):
+        try:
+            if int(mixed_budget) < 3:
+                raise ValueError("At least three proposals are needed for structured three-architecture coverage")
+            ledger = run_search(mixed_path, seed=int(mixed_seed), budget=int(mixed_budget),
+                                elements=mixed_elements, mass_limit=mixed_mass, method="explore")
+            st.success(f"Saved {len(ledger['proposals'])} intended-state proposals to {mixed_path}")
+        except Exception as exc:
+            st.error(f"WP3 search failed closed: {exc}")
+    reopen_path = st.text_input("WP3 ledger path", str(mixed_path))
+    if st.button("Inspect WP3 search and numerical Pareto"):
+        try:
+            st.session_state["wp7_mixed"] = mixed_summary(reopen_path)
+        except Exception as exc:
+            st.session_state.pop("wp7_mixed", None)
+            st.error(f"WP3 ledger rejected: {exc}")
+    mixed = st.session_state.get("wp7_mixed")
+    if mixed:
+        st.json({"source": mixed["ledger"], "stop_reason": mixed["stop_reason"],
+                 "qualified_pareto": mixed["pareto"], "scientific_boundary": mixed["scientific_boundary"],
+                 "measured_evidence": None})
+        st.dataframe(mixed["rows"], use_container_width=True)
+        if mixed["rows"]:
+            chosen_mixed = st.selectbox("Select WP3 candidate", [r["candidate"] for r in mixed["rows"]])
+            st.json(mixed_candidate(mixed["ledger"], int(chosen_mixed)))
+        try:
+            zip_bytes = export_mixed_zip(mixed["ledger"])
+            st.download_button("Download full verified WP3 dossier ZIP", data=zip_bytes,
+                               file_name="d1-wp3-dossier.zip", mime="application/zip")
+        except Exception as exc:
+            st.error(f"WP3 evidence packaging rejected: {exc}")
+    if st.button("Recompute WP3 numerical evidence"):
+        try:
+            st.json(recompute_search(reopen_path))
+        except Exception as exc:
+            st.error(f"WP3 numerical replay rejected: {exc}")
+    source_upload = st.file_uploader("WP3 portable ZIP to restore", type=["zip"])
+    restore_root = st.text_input("New WP3 destination directory", str(workspace / "mixed-restored"))
+    if st.button("Verify and restore WP3 ZIP"):
+        try:
+            if source_upload is None:
+                raise ValueError("Select a WP3 ZIP archive")
+            st.json(import_mixed_zip(source_upload.getvalue(), restore_root))
+        except Exception as exc:
+            st.error(f"WP3 archive restore rejected: {exc}")
+
 with tab_review:
     review_path = st.text_input("Verified dossier to inspect", st.session_state.get("d1_path", str(workspace / "d1-example.json")))
     if st.button("Inspect dossier and Pareto"):

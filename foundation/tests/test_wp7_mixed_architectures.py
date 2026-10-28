@@ -75,3 +75,32 @@ def test_wp3_archive_tamper_and_path_traversal_closed(tmp_path):
         import_mixed_zip(malicious.getvalue(), tmp_path / "unsafe-import")
     assert not (tmp_path / "unsafe-import").exists()
     assert not (tmp_path / "unsafe.txt").exists()
+
+
+def test_wp3_real_streamlit_app_widgets(tmp_path):
+    """WP3 full architecture journey through actual Streamlit widgets, not mocks."""
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    def widget(group, label):
+        matches = [w for w in group if w.label == label]
+        assert len(matches) == 1, (label, [w.label for w in group])
+        return matches[0]
+
+    app = AppTest.from_file("foundation/wp7_app.py", default_timeout=120).run()
+    assert not list(app.exception)
+    widget(app.text_input, "D1 workspace").set_value(str(tmp_path)).run()
+    widget(app.selectbox, "WP3 mesh elements").set_value(128).run()
+    widget(app.number_input, "WP3 candidate budget").set_value(4).run()
+    widget(app.button, "Generate three architecture classes and persist WP3 campaign").click().run()
+    assert not list(app.exception)
+    assert not list(app.error)
+    dossier = tmp_path / "mixed-architecture" / "campaign.json"
+    assert dossier.exists()
+    widget(app.button, "Inspect WP3 search and numerical Pareto").click().run()
+    assert not list(app.exception)
+    assert not list(app.error)
+    assert mixed_summary(dossier)["pareto"] is not None
+    widget(app.button, "Recompute WP3 numerical evidence").click().run()
+    assert not list(app.exception)
+    assert not list(app.error)

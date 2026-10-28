@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from material_core.wp5_service import execute, portable_import, replay
 from material_core.wp7_view import summary, selected_candidate
-from streamlit.testing.v1 import AppTest
 
 
 def test_d1_saved_campaign_pareto_and_independent_process(tmp_path):
@@ -53,6 +52,8 @@ def test_d1_infeasible_and_integrity_failure(tmp_path):
 
 
 def test_d1_actual_streamlit_widgets(tmp_path):
+    streamlit = pytest.importorskip('streamlit')
+    from streamlit.testing.v1 import AppTest
     app = AppTest.from_file("foundation/wp7_app.py", default_timeout=120).run()
     assert not list(app.exception)
     assert not list(app.error)

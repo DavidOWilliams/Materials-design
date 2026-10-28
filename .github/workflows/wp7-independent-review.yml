@@ -23,6 +23,8 @@ jobs:
           python-version: "3.12"
       - name: Set up numerical environment
         run: bash foundation/setup.sh
+      - name: Install pinned WP7 UI runtime for full regressions
+        run: .venv-foundation/bin/python -m pip install streamlit==1.40.2
       - name: Capture tested checkout and provenance
         run: |
           mkdir -p /tmp/wp7-independent

@@ -36,3 +36,17 @@ This document distinguishes **observed**, **corrected in source**, and **reteste
 8. Repeat after any code fix; only the **final tested source** can be the acceptance candidate.
 
 **Gate status: NOT VERIFIED** until successful final SHA evidence and independent review. Draft PR must not be merged or tagged.
+
+## Final source retest and disposition — 2026-10-29
+
+The exact implementation checkout `2bc11618ed5696bce200ed8c9b5fbcdf46d0648c` passed [dedicated GitHub Actions run 40957223174](https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174) (job conclusion **success**). Unit tests **7 passed**, full foundation scientific tests **342 passed, one warning**, exact WP3/WP4 baseline comparison **matched**, both real Chromium first-user and selected-gradient handoff/recovery scripts **passed**, and SHA256 evidence archive uploaded as artifact **12934327177**.
+
+The interim stale-selector and shallow-tag CI failures D1-UI-004, 005, 009, 010 and 011 are **closed by executed final-source regression**; they are not outstanding product failures. D1-UI-001, 002 and 003 are **closed for tested immutable-collision workflows**, with actual AppTest and Chromium evidence. D1-UI-006 is **closed for implemented mismatch guards and unit/chart presentations**, but full independent review of all plotted coordinates remains an explicit acceptance task. D1-UI-007 and 008 are **implemented, with residual medium usability and environment-coverage limitations** below.
+
+An additional test-harness finding D1-UI-012 (medium verification integrity): in an intermediate real-browser handoff run, the checkpoint journal was asserted immediately after button activation while Streamlit was still running. A bounded browser wait was added; final-source browser checkpoint/recovery test passed. No overwritten source or backend regression was observed.
+
+**Unresolved critical findings:** none identified in executed implementation-team tests.  
+**Unresolved high findings:** none identified in executed implementation-team tests.  
+**Residual medium/low:** four inherited tabs rather than a wholly new seven-stage navigation; selecting candidates through a labelled control rather than directly clicking scatter markers; complete manual contrast and assistive-technology audit not conducted; independent scientific review of all graphical samples still required. These limitations must not be represented as final acceptance.
+
+Evidence ZIP SHA256: `f6f891aa72c458cfc59596968bfc0c6f6980185445498f9e64d2b5487d75feb9`. Original test artifacts, screenshots, log captures, numeric comparisons and SHA256SUMS manifest are preserved at [GitHub Actions artifact 12934327177](https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174/artifacts/12934327177).

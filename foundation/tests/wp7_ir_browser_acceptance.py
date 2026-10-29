@@ -17,7 +17,7 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width":1600,"height":1000})
-        page.goto("http://127.0.0.1:8509", wait_until="networkidle", timeout=120000)
+        page.goto(os.environ.get("D1_BROWSER_BASE_URL", "http://127.0.0.1:8509"), wait_until="networkidle", timeout=120000)
         expect(page.get_by_text("D1 — guided material-system design")).to_be_visible()
         workspace = page.get_by_label("D1 workspace")
         workspace.fill(str(root))

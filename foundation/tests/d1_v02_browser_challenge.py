@@ -32,7 +32,7 @@ def main():
         page.screenshot(path=str(root/"02-collision.png"),full_page=True)
         page.get_by_role("button",name="Use suggested unused filename").click()
         expect(page.get_by_label("New D1 dossier filename")).to_have_value("d1-example-run-001.json")
-        page.get_by_role("button",name="Create new run and save immutable dossier").click()
+        page.get_by_role("button",name="Generate, evaluate and save dossier").click()
         expect(page.get_by_text("Saved",exact=False)).to_be_visible(timeout=120000)
         assert (root/"d1-example.json").read_text()=="preserved-existing-evidence"
         assert replay(root/"d1-example-run-001.json")["status"]=="passed"

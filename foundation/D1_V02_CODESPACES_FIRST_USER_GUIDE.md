@@ -63,7 +63,7 @@ To stop D1, select its running terminal and press **Ctrl+C**. Existing dossiers 
 ## First user journey
 
 1. **Tab 1: Run demonstration.** Read the synthetic evidence limitation and inspect objective/constraint data. Select **Representative mass-constrained coupon**. Change the filename if needed; this is an immutable evidence name, not an overwrite target.
-2. If `d1-example.json` already exists, the app shows a warning and disables the new-run button. Select **Inspect existing dossier** to verify it, or **Use suggested unused filename**, then **Create new run and save immutable dossier**.
+2. If `d1-example.json` already exists, the app shows a warning and disables the new-run button. Select **Inspect existing dossier** to verify it, or **Use suggested unused filename**, then **Generate, evaluate and save dossier**.
 3. **Tab 2: Explore architectures.** Choose a new WP3 campaign directory and generate homogeneous, layered and gradient alternatives. If `mixed-architecture` exists, open its saved `campaign.json` or use the unused-directory suggestion. The WP3 scatter comparison is **intended state** only. Select a candidate to inspect structure, exact constituent fractions and numerical qualification.
 4. If the chosen WP3 candidate is a **numerically qualified, supported A/B gradient**, choose it for WP4 handoff. Unsupported architectures and unqualified candidates must be rejected.
 5. **Tab 3: Manufacturing and trade-offs.** Create a separate WP4 dossier at an unused destination; inspect synthetic estimated-achieved results, potential feedback and **WP4-only** Pareto. C1 profile overlays and C3 deviations appear only for source-supported compatible representations. The graph is not measured evidence.

@@ -4,6 +4,9 @@ on:
     branches:
       - d1-v0.2-guided-ui
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 permissions:
   contents: read
 jobs:

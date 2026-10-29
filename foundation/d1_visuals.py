@@ -155,7 +155,8 @@ def feedback_view(record):
         st.caption("Synthetic process prediction only. Distinct marker/line styles distinguish the states; constituent colours identify material IDs.")
         a_kind, a_rows, _ = _rows(intended)
         b_kind, b_rows, _ = _rows(estimated)
-        if (a_kind == b_kind and a_rows and b_rows
+        if (a_kind == b_kind and a_kind != "layered" and a_rows and b_rows
+                and intended.get("coordinate_system") == estimated.get("coordinate_system")
                 and {r["constituent"] for r in a_rows} == {r["constituent"] for r in b_rows}
                 and {r["basis"] for r in a_rows} == {r["basis"] for r in b_rows}):
             both = pd.DataFrame([dict(r, state="Intended") for r in a_rows]+
@@ -169,9 +170,6 @@ def feedback_view(record):
             # Differences are only defined at positions where both actual records exist.
             left = pd.DataFrame(a_rows); right=pd.DataFrame(b_rows)
             common = left.merge(right,on=["position","constituent","basis"],suffixes=("_intended","_estimated"))
-            # Never cross-join duplicated layer interface positions or mix coordinate systems.
-            if a_kind == "layered":
-                common = common.iloc[0:0]
             if not common.empty:
                 common["difference_percentage_points"] = 100*(common["fraction_estimated"]-common["fraction_intended"])
                 with st.expander("C3 — differences at matched recorded positions"):
@@ -180,7 +178,7 @@ def feedback_view(record):
                     st.dataframe(common,hide_index=True,use_container_width=True)
                     st.caption("Difference values apply only to matched recorded positions; not interpolated or measured.")
         else:
-            st.info("The two profile representations cannot be compared directly without unsupported assumptions.")
+            st.info("The intended and estimated profiles have different geometry, constituent basis or coordinate system, or contain discontinuous layers. No unsupported overlay or pointwise difference is drawn.")
     else:
         st.info("The accepted WP4 record does not expose a compatible achieved-design composition profile here. "
                 "No hypothetical achieved curve has been drawn; inspect the actual estimated_state and manufacturing commands below.")

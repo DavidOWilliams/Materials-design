@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 import tempfile
 from pathlib import Path
-from d1_visual_data import _rows, _value, _valid, _pareto_ids, _estimated_design, output_conflicts, unused_output
+from d1_visual_data import _rows, _value, _valid, _pareto_ids, _estimated_design, output_conflicts, unused_output, explain_stop, wp4_lineage_rows
 
 def comp(a):
     return {"basis":"volume","fractions":[
@@ -55,6 +55,14 @@ class DisplayTransformTests(unittest.TestCase):
             companion.write_text("sidecar")
             self.assertEqual(unused_output(target,(".handoff.json",)).name,"d1-example-run-002.json")
             self.assertEqual(target.read_text(),"do-not-overwrite")
+
+    def test_stop_explanations_and_lineage_are_source_based(self):
+        self.assertIn("configured",explain_stop("evaluation_budget_exhausted"))
+        self.assertIn("cancellation",explain_stop("cancelled"))
+        rows=wp4_lineage_rows([{"index":0,"intended_design":{"id":"coupon","parent_hashes":[]},"objectives":{"areal_mass":31.5},"feasible":False,"feedback":{"excess":.5},"numerical_quality":"qualified"}])
+        self.assertEqual(rows[0]["synthetic_achieved_mass_kg_m2"],31.5)
+        self.assertEqual(rows[0]["feedback_excess_kg_m2"],.5)
+        self.assertTrue(rows[0]["revision_triggered_by_this_evaluation"])
 
     def test_pareto_source_only(self):
         self.assertEqual(_pareto_ids({"pareto_ids":["2"]}),{"2"})

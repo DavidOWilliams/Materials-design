@@ -28,7 +28,7 @@ def main():
         expect(page.get_by_text("Saved", exact=False)).to_be_visible(timeout=120000)
         page.get_by_role("button", name="Inspect WP3 search and numerical Pareto").click()
         expect(page.get_by_label("Inspect candidate ID")).to_be_visible(timeout=120000)
-        candidate = page.get_by_label("Select WP3 candidate")
+        candidate = page.get_by_label("Inspect candidate ID")
         candidate.click()
         page.keyboard.press("Home")
         for _ in range(3):

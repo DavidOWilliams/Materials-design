@@ -50,7 +50,11 @@ def main():
         # Nonbinding 31 kg/m² cases may stop naturally before an explicit
         # cancellation, but the journal must remain inspectable and recoverable.
         journal = root / "selected-wp4-journal.jsonl"
-        assert journal.exists(), "Checkpoint journal not persisted"
+        for _ in range(240):
+            if journal.exists():
+                break
+            page.wait_for_timeout(500)
+        assert journal.exists(), "Checkpoint journal not persisted after browser wait"
         page.get_by_role("button", name="Inspect cancellation checkpoints").click()
         page.get_by_role("button", name="Recover selected-design journal into immutable dossier").click()
         expect(page.get_by_text("Recovered original selected design", exact=False)).to_be_visible(timeout=120000)

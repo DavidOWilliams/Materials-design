@@ -25,8 +25,10 @@ def main():
         # Existing dossier: immutability protected before execution.
         (root/"d1-example.json").write_text("preserved-existing-evidence")
         page.reload(wait_until="networkidle")
+        page.get_by_label("D1 workspace").fill(str(root))
+        page.get_by_label("D1 workspace").press("Enter")
         expect(page.get_by_text("This dossier already exists",exact=False)).to_be_visible()
-        expect(page.get_by_role("button",name="Create new run and save immutable dossier")).to_be_disabled()
+        expect(page.get_by_role("button",name="Generate, evaluate and save dossier")).to_be_disabled()
         page.screenshot(path=str(root/"02-collision.png"),full_page=True)
         page.get_by_role("button",name="Use suggested unused filename").click()
         expect(page.get_by_label("New D1 dossier filename")).to_have_value("d1-example-run-001.json")
@@ -42,7 +44,7 @@ def main():
         page.screenshot(path=str(root/"04-wp4-analysis.png"),full_page=True)
         page.get_by_role("tab").nth(1).click()
         # Lower mesh for browser smoke; scientific 4096 demo is run separately in CI.
-        page.get_by_role("button",name="Create new WP3 campaign").click()
+        page.get_by_role("button",name="Generate three architecture classes and persist WP3 campaign").click()
         expect(page.get_by_text("Saved",exact=False)).to_be_visible(timeout=120000)
         page.get_by_role("button",name="Inspect WP3 search and numerical Pareto").click()
         expect(page.get_by_text("WP3 intended-state only",exact=False)).to_be_visible(timeout=60000)

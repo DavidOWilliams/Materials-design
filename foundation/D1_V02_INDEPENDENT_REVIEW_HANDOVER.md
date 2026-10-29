@@ -1,6 +1,8 @@
 # D1 v0.2 — Independent-review handover
 
-**Disposition:** NOT INDEPENDENTLY ACCEPTED. Development PR #22 remains draft; no main merge and no tag changes.
+**Disposition:** Implementation verification passed at checkout `2bc11618ed5696bce200ed8c9b5fbcdf46d0648c`; **INDEPENDENT ACCEPTANCE PENDING**. PR #22 remains draft; no main merge and no tag changes.
+
+**CI and preserved evidence:** [Green run 40957223174](https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174), [artifact 12934327177](https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174/artifacts/12934327177), ZIP SHA256 `f6f891aa72c458cfc59596968bfc0c6f6980185445498f9e64d2b5487d75feb9`. This run includes 7 display unit tests, 342 foundation tests (one warning), exact v0.1 comparison, 4096-element example, first-user Chromium Tab 1–4, and browser handoff/cancellation/recovery. Documentation-only commits after the tested checkout must not be presented as the tested implementation.
 
 ## Accepted baseline and governance
 

@@ -81,6 +81,7 @@ with tab_run:
             record = execute(target, elements=elements, mass_limit=mass_limit, layer=layer,
                              feed=feed, budget=int(budget), feedback=feedback, brief=brief)
             st.session_state["d1_path"] = str(target)
+            st.session_state["d1_review_path"] = str(target)
             st.session_state["d1_review"] = summary(target)
             st.success(f"Saved {len(record['records'])} candidates to {target} (stop: {record['stop_reason']}). Inspect them in step 3.")
         except Exception as exc:
@@ -202,6 +203,7 @@ with tab_review:
                     layer=handoff_layer, feed=handoff_feed, budget=int(handoff_budget))
                 st.json(verify_handoff(handoff_file))
                 st.session_state["d1_path"] = handoff_file
+                st.session_state["d1_review_path"] = handoff_file
                 st.session_state["d1_review"] = summary(handoff_file)
                 st.success("WP3 lineage verified and new WP4 estimated-state dossier saved; inspect below.")
             except Exception as exc:
@@ -226,6 +228,7 @@ with tab_review:
                 st.json(verify_handoff(recovered_file))
                 st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
                 st.session_state["d1_path"] = recovered_file
+                st.session_state["d1_review_path"] = recovered_file
                 st.session_state["d1_review"] = summary(recovered_file)
                 st.success("Recovered original selected design and verified source lineage.")
             except Exception as exc:

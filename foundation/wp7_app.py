@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from d1_visuals import campaign_view, feedback_view, architecture_view
-from d1_visual_data import output_conflicts, unused_output
+from d1_visual_data import output_conflicts, unused_output, explain_stop, wp4_lineage_rows
 from material_core.wp5_service import execute, replay, portable_import
 from material_core.wp7_view import summary, selected_candidate
 from material_core.wp3_search import run_search, recompute_search
@@ -121,7 +121,7 @@ with tab_mixed:
             st.error(f"WP3 ledger rejected: {exc}")
     mixed = st.session_state.get("wp7_mixed")
     if mixed:
-        st.info("WP3 stopped: " + str(mixed["stop_reason"]) + ". These are intended-state numerical results, not achieved-state predictions or measurements.")
+        st.info("WP3: " + explain_stop(mixed["stop_reason"]) + " These are intended-state numerical results, not achieved-state predictions or measurements.")
         with st.expander("WP3 source, scientific qualification and full Pareto evidence"):
             st.json({"source": mixed["ledger"], "stop_reason": mixed["stop_reason"], "qualified_pareto": mixed["pareto"], "scientific_boundary": mixed["scientific_boundary"], "measured_evidence": None})
         chosen_mixed = campaign_view(mixed, scope="WP3 intended-state only", key="wp3_visual_choice")
@@ -247,7 +247,10 @@ with tab_review:
     data = st.session_state.get("d1_review")
     if data:
         st.info("Eligibility and Pareto use accepted WP4 feasibility and WP3 strict dominance, not a new scientific model. Only candidates from this one common scenario are compared.")
-        st.info("WP4 stopped: " + str(data["stop_reason"]) + ". All achieved states are synthetic estimates, not measurements.")
+        st.info("WP4: " + explain_stop(data["stop_reason"]) + " All achieved states are synthetic estimates, not measurements.")
+        st.markdown("**Manufacturing feedback and design revision history**")
+        st.dataframe(wp4_lineage_rows(data["records"]), use_container_width=True, hide_index=True)
+        st.caption("A feedback trigger does not prove the next candidate improved. Compare exact source values and parent hashes.")
         with st.expander("WP4 verified source, objective definitions and scientific evidence"):
             st.json({"source": data["path"], "brief_hash": data["brief_hash"], "stop_reason": data["stop_reason"], "objective_definitions": data["directions"], "pareto": data["pareto"], "measured_evidence": None, "manufacturing_validation": data["manufacturing_validation"]})
         chosen = campaign_view(data, scope="WP4 synthetic estimated-achieved state", key="wp4_visual_choice")

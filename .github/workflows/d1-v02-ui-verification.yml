@@ -38,6 +38,11 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests -q 2>&1 | tee /tmp/d1-v02-verification/scientific-regression.log
+      - name: Compare WP3 and WP4 outcomes with accepted v0.1.0
+        run: |
+          set -o pipefail
+          git worktree add --detach /tmp/d1-v01-baseline d1-v0.1.0
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_compare_baseline.py /tmp/d1-v01-baseline /tmp/d1-v02-verification/baseline-compare 2>&1 | tee /tmp/d1-v02-verification/baseline-compare.log
       - name: Reproduce WP7 example dossier
         run: |
           set -o pipefail

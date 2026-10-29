@@ -16,7 +16,7 @@ def main():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1500, "height": 950})
         page.goto("http://127.0.0.1:8509", wait_until="networkidle", timeout=120000)
-        expect(page.get_by_text("D1 — synthetic ceramic material-system design")).to_be_visible()
+        expect(page.get_by_text("D1 — guided material-system design")).to_be_visible()
         page.get_by_label("D1 workspace").fill(str(workspace))
         page.get_by_label("D1 workspace").press("Enter")
         expect(page.get_by_label("D1 workspace")).to_have_value(str(workspace))
@@ -30,12 +30,12 @@ def main():
         print("After execution, actual file exists:", path.exists(), flush=True)
         print("Visible page content after execution:", page.locator("body").inner_text()[-6500:], flush=True)
         page.screenshot(path=str(workspace / "wp7-after-execution.png"), full_page=True)
-        expect(page.get_by_text("Persisted", exact=False)).to_be_visible(timeout=15000)
+        expect(page.get_by_text("Saved", exact=False)).to_be_visible(timeout=15000)
         assert path.exists()
         assert inspect(path)["measured_evidence"] is None
         page.get_by_role("tab").nth(2).click()
         page.get_by_role("button", name="Inspect dossier and Pareto").click()
-        expect(page.get_by_text("Select saved candidate")).to_be_visible(timeout=120000)
+        expect(page.get_by_text("Inspect candidate ID")).to_be_visible(timeout=120000)
         page.get_by_role("tab").nth(3).click()
         page.get_by_role("button", name="Verify integrity and recompute").click()
         assert replay(path)["status"] == "passed"

@@ -62,3 +62,36 @@ def unused_output(path, companions=()):
         if not output_conflicts(q,companions):
             return q
     raise ValueError("Could not find a fresh dossier destination")
+
+STOP_EXPLANATIONS = {
+    "qualified_scenario_feasible": "Stopped because a candidate met the bounded conditional scenario criteria. This is not physical validation.",
+    "evaluation_budget_exhausted": "Stopped after using the configured proposal/evaluation budget; no further candidates were evaluated.",
+    "feedback_disabled": "Stopped because design-revision feedback was switched off.",
+    "no_supported_revision_trigger": "Stopped because the supported synthetic mass-constraint feedback rule did not produce a revision trigger.",
+    "no_improvement_possible": "Stopped because the bounded density-guided revision could not change the intended composition further.",
+    "cancelled": "Stopped at a supported cancellation boundary; preserved evidence remains available.",
+    "wall_time_budget_exhausted": "Stopped because the configured time allowance expired.",
+    "running": "The search has not recorded a terminal reason; do not interpret the campaign as complete.",
+}
+
+def explain_stop(reason):
+    return STOP_EXPLANATIONS.get(reason, "Recorded stop code: "+str(reason)+". Inspect the source ledger for details.")
+
+def wp4_lineage_rows(records):
+    """No fabricated revision links: report source-declared parents and exact values."""
+    result=[]
+    for r in records:
+        design=r.get("intended_design") or {}
+        feedback=r.get("feedback")
+        objectives=r.get("objectives") or {}
+        result.append({
+            "candidate":r["index"],
+            "design_id":design.get("id"),
+            "parent_hashes":", ".join(design.get("parent_hashes",[])),
+            "synthetic_achieved_mass_kg_m2":objectives.get("areal_mass"),
+            "conditional_scenario_feasible":r.get("feasible") is True,
+            "revision_triggered_by_this_evaluation":feedback is not None,
+            "feedback_excess_kg_m2":feedback.get("excess") if isinstance(feedback,dict) else None,
+            "numerical_quality":r.get("numerical_quality"),
+        })
+    return result

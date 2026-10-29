@@ -54,9 +54,9 @@ with tab_run:
     elif existing:
         st.warning("This dossier already exists and will never be overwritten: " + ", ".join(existing))
         st.info("To review it, use 'Inspect existing dossier' below, or choose a new filename.")
-        if st.button("Use suggested unused filename", key="d1_suggest_name"):
-            st.session_state["d1_new_filename"] = unused_output(proposed).name
-            st.rerun()
+        st.button("Use suggested unused filename", key="d1_suggest_name",
+                  on_click=lambda: st.session_state.update(
+                      d1_new_filename=unused_output(proposed).name))
         if st.button("Inspect existing dossier", key="d1_inspect_existing"):
             try:
                 st.session_state["d1_review"] = summary(proposed)
@@ -93,9 +93,9 @@ with tab_mixed:
     mixed_collisions = [str(mixed_root)] if mixed_root.exists() else []
     if mixed_collisions:
         st.warning("A WP3 campaign directory already exists. Open its ledger below or choose a fresh destination.")
-        if st.button("Suggest unused WP3 campaign directory"):
-            st.session_state["wp3_new_dir"] = str(unused_output(mixed_root))
-            st.rerun()
+        st.button("Suggest unused WP3 campaign directory",
+                  on_click=lambda: st.session_state.update(
+                      wp3_new_dir=str(unused_output(mixed_root))))
     mixed_elements = st.selectbox("WP3 mesh elements", [128, 256, 512, 4096], index=3)
     mixed_budget = st.number_input("WP3 candidate budget", min_value=4, max_value=90, value=9, step=1)
     mixed_seed = st.number_input("WP3 deterministic seed", min_value=0, value=17, step=1)

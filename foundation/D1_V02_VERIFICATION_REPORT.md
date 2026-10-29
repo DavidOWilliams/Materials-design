@@ -1,13 +1,16 @@
 # D1 v0.2 — Functional, scientific and browser verification report
 
-**Status at draft creation:** NOT VERIFIED for independent acceptance. This report records real observed CI output; later results must be added explicitly. Draft PR #22 is not merged.
+**Implementation verification:** PASSED at the exact tested checkout SHA below. **Independent scientific acceptance:** PENDING. Draft PR #22 remains unmerged.
 
 ## Source identity
 
 - Scientific baseline: release tag `d1-v0.1.0`, accepted WP7 commit `c8f0292351553129fbcbdac3bd4f7a84a39365f9`.
 - UI code-change checkpoint: `45445d85a9b42ab4d3b5d53fb6126505b180cc10`.
 - CI baseline-fetch fix: `83e015779bce6f44db7c5beed53913a5def890aa`.
-- Subsequent documentation commits change no physics; **only a completed green CI checkout SHA may be called tested**.
+- **Exact tested checkout SHA:** `2bc11618ed5696bce200ed8c9b5fbcdf46d0648c` (implementation + test correction). Later documentation-only changes are distinct and must not be reported as the tested implementation.
+- **Green CI run:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174
+- **Preserved evidence artifact:** https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174/artifacts/12934327177
+- **Uploaded artifact ZIP SHA256:** `f6f891aa72c458cfc59596968bfc0c6f6980185445498f9e64d2b5487d75feb9`.
 
 ## Verified partial evidence
 
@@ -20,7 +23,13 @@
 | WP7 Streamlit interaction, numerical/application regression, separate-process replay at `945bf625` | PASS (executed) | [WP7 40953991247](https://github.com/DavidOWilliams/Materials-design/actions/runs/40953991247) |
 | Existing WP7 real-browser test at `945bf625` | FAIL due outdated page-title selector. No acceptance claim | Same WP7 run |
 | Deterministic v0.1/v0.2 numeric comparison at `dbbac04c` | NOT EXECUTED: shallow checkout lacked release tag and failed before comparison. Workflow corrected at `83e01577` | [CI 40954823890](https://github.com/DavidOWilliams/Materials-design/actions/runs/40954823890) |
-| Final source `83e01577` full test and browser gates | PENDING as of initial drafting; check [CI 40955414384](https://github.com/DavidOWilliams/Materials-design/actions/runs/40955414384) | Must obtain final job conclusion and logs |
+| Final source `2bc11618ed56` display unit tests | PASS — 7 tests, exit code 0 | [Green CI 40957223174](https://github.com/DavidOWilliams/Materials-design/actions/runs/40957223174) |
+| Final source complete foundation test suite | PASS — 342 tests, one warning, exit code 0 | Same green CI run |
+| Final source exact WP3/WP4 comparison to tagged release | PASS — identical intended Pareto/proposals and WP4 feedback/objectives, exit code 0 | Same run; baseline-compare JSON and log |
+| Final source full-resolution example generation | PASS — 4096 elements, nine-proposal example, exit code 0 | Same run; archived dossiers |
+| Final source Chromium four-tab first-user journey | PASS — real browser interaction, evidence collision, screenshots, restored replay and narrow viewport, exit code 0 | Same run; `browser/` screenshot folder and browser log |
+| Final source Chromium selected-gradient handoff / checkpoint / recovery | PASS — real WP3-to-WP4 handoff, verified companion and replay, checkpoint journal and recovery, exit code 0 | Same run; `browser-handoff/` screenshots and browser-handoff log |
+| SHA256 manifest and artifact upload | PASS — artifact 12934327177, zip digest above | Same run; `SHA256SUMS` manifest |
 
 ## Immutability challenge evidence
 
@@ -42,4 +51,4 @@ The dedicated CI workflow creates `/tmp/d1-v02-verification` with source SHA, Py
 
 ## Acceptance decision
 
-**NOT VERIFIED pending successful browser and exact-baseline outcome comparison on one final SHA.** No unresolved critical/high defects may be waived by a visual demonstration alone. Independent reviewer must separately evaluate evidence and record an explicit disposition.
+**Implementation team verification PASSED at `2bc11618ed5696bce200ed8c9b5fbcdf46d0648c`.** This includes the required scientific, baseline-comparison and major browser journeys. **Independent acceptance remains PENDING**: the external reviewer must separately inspect chart/source accuracy, scenario challenges, accessibility, exact evidence hashes and known medium/low limitations. No source was merged or released.

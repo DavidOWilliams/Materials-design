@@ -1,7 +1,9 @@
 """Presentation regression checks: no physics, search or eligibility changes."""
 from __future__ import annotations
 import unittest
-from d1_visuals import _rows, _value, _valid, _pareto_ids, _estimated_design
+import tempfile
+from pathlib import Path
+from d1_visual_data import _rows, _value, _valid, _pareto_ids, _estimated_design, output_conflicts, unused_output
 
 def comp(a):
     return {"basis":"volume","fractions":[
@@ -41,6 +43,18 @@ class DisplayTransformTests(unittest.TestCase):
     def test_no_manufacturing_geometry_no_fake_profile(self):
         self.assertIsNone(_estimated_design({"estimated_inputs":{"estimated_state":{"geometry":None}}}))
         self.assertIsNone(_estimated_design({"estimated_inputs":{}}))
+
+    def test_immutable_output_conflicts_and_unused_name(self):
+        with tempfile.TemporaryDirectory() as root:
+            target=Path(root)/"d1-example.json"
+            self.assertEqual(unused_output(target),target)
+            target.write_text("do-not-overwrite")
+            self.assertEqual(output_conflicts(target),[str(target)])
+            self.assertEqual(unused_output(target).name,"d1-example-run-001.json")
+            companion=Path(root)/"d1-example-run-001.json.handoff.json"
+            companion.write_text("sidecar")
+            self.assertEqual(unused_output(target,(".handoff.json",)).name,"d1-example-run-002.json")
+            self.assertEqual(target.read_text(),"do-not-overwrite")
 
     def test_pareto_source_only(self):
         self.assertEqual(_pareto_ids({"pareto_ids":["2"]}),{"2"})

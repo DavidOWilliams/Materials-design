@@ -81,6 +81,7 @@ with tab_run:
             record = execute(target, elements=elements, mass_limit=mass_limit, layer=layer,
                              feed=feed, budget=int(budget), feedback=feedback, brief=brief)
             st.session_state["d1_path"] = str(target)
+            st.session_state["d1_review"] = summary(target)
             st.success(f"Saved {len(record['records'])} candidates to {target} (stop: {record['stop_reason']}). Inspect them in step 3.")
         except Exception as exc:
             st.error(f"Campaign rejected or failed: {type(exc).__name__}: {exc}")
@@ -183,14 +184,14 @@ with tab_review:
         cancel_after = st.number_input("Cooperatively cancel after completed candidates", min_value=0,
                                        max_value=int(handoff_budget)-1, value=1)
         handoff_collisions = output_conflicts(handoff_file, (".handoff.json",))
-        journal_collisions = output_conflicts(journal_file)
+        journal_collisions = output_conflicts(journal_file, (".manifest.json", ".attempts.jsonl"))
         recovery_collisions = output_conflicts(recovered_file, (".handoff.json",))
         if handoff_collisions:
             st.warning("Selected WP4 output or companion already exists: " + ", ".join(handoff_collisions))
             st.caption("Suggested new WP4 dossier: " + str(unused_output(handoff_file, (".handoff.json",))))
         if journal_collisions:
             st.warning("Checkpoint journal already exists: " + ", ".join(journal_collisions))
-            st.caption("Suggested fresh journal: " + str(unused_output(journal_file)))
+            st.caption("Suggested fresh journal: " + str(unused_output(journal_file, (".manifest.json", ".attempts.jsonl"))))
         if recovery_collisions:
             st.warning("Recovery output or companion exists: " + ", ".join(recovery_collisions))
             st.caption("Suggested new recovery dossier: " + str(unused_output(recovered_file, (".handoff.json",))))
@@ -201,6 +202,7 @@ with tab_review:
                     layer=handoff_layer, feed=handoff_feed, budget=int(handoff_budget))
                 st.json(verify_handoff(handoff_file))
                 st.session_state["d1_path"] = handoff_file
+                st.session_state["d1_review"] = summary(handoff_file)
                 st.success("WP3 lineage verified and new WP4 estimated-state dossier saved; inspect below.")
             except Exception as exc:
                 st.error(f"Selected-design evaluation rejected: {exc}")
@@ -224,16 +226,18 @@ with tab_review:
                 st.json(verify_handoff(recovered_file))
                 st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
                 st.session_state["d1_path"] = recovered_file
+                st.session_state["d1_review"] = summary(recovered_file)
                 st.success("Recovered original selected design and verified source lineage.")
             except Exception as exc:
                 st.error(f"Recovery rejected: {exc}")
     else:
         st.info("For selected-design WP4 handoff, first explore WP3 and choose a compatible qualified A/B gradient. You can separately inspect a standalone WP4 demonstration dossier below.")
     st.subheader("WP4 dossier inspection and conditional Pareto")
-    review_path = st.text_input("Verified dossier to inspect", st.session_state.get("d1_path", str(workspace / "d1-example.json")))
+    review_path = st.text_input("Verified dossier to inspect", st.session_state.get("d1_path", str(workspace / "d1-example.json")), key="d1_review_path")
     if st.button("Inspect dossier and Pareto"):
         try:
             st.session_state["d1_review"] = summary(review_path)
+            st.session_state["d1_path"] = review_path
         except Exception as exc:
             st.session_state.pop("d1_review", None)
             st.error(f"Dossier verification failed: {exc}")

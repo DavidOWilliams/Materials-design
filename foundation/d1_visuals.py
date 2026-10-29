@@ -4,7 +4,6 @@ No synthesis, scientific modelling, qualification or Pareto recalculation is per
 """
 from __future__ import annotations
 
-import math
 import pandas as pd
 import streamlit as st
 import altair as alt
@@ -17,26 +16,7 @@ OBJECTIVES = (
 COLORS = ["#2476b5", "#cc832b", "#369e8a", "#8759ba", "#bb536b"]
 
 
-def _value(row, objective, scope):
-    key = objective if scope == "WP4" else {
-        "thermal_transmission": "thermal_transmission_W_m2",
-        "areal_mass": "areal_mass_kg_m2",
-        "tensile_thermal_mismatch": "tensile_thermal_mismatch_Pa",
-    }[objective]
-    v = row.get(key)
-    return float(v) if type(v) in (int, float) and math.isfinite(v) else None
-
-
-def _valid(row, scope):
-    return (row.get("eligible") is True if scope == "WP4"
-            else row.get("qualified_for_numerical_pareto") is True)
-
-
-def _pareto_ids(result):
-    if not isinstance(result, dict):
-        return set()
-    return {str(i) for i in result.get("pareto_ids", [])}
-
+from d1_visual_data import _value, _valid, _pareto_ids, _rows, _estimated_design
 
 def campaign_view(data, *, scope: str, key: str):
     """Display only a single campaign's values; never pool WP3 and WP4."""
@@ -98,27 +78,6 @@ def campaign_view(data, *, scope: str, key: str):
     return int(chosen)
 
 
-def _rows(design):
-    """Return source-supported composition samples and plot mode, not inferred interpolation."""
-    arch = design["architecture"]
-    kind = arch["kind"]
-    if kind == "homogeneous":
-        entries = [(0., arch["composition"]), (1., arch["composition"])]
-    elif kind == "layered":
-        entries = [(float(layer["start"]), layer["composition"]) for layer in arch["layers"]]
-        entries.append((float(arch["layers"][-1]["end"]), arch["layers"][-1]["composition"]))
-    elif kind == "gradient" and arch.get("interpolation") == "piecewise_linear":
-        entries = [(float(k["position"]), k["composition"]) for k in arch["knots"]]
-    else:
-        return kind, [], []
-    table = []
-    for i, (pos, comp) in enumerate(entries):
-        for frac in comp["fractions"]:
-            table.append(dict(position=pos, constituent=frac["material_id"],
-                              fraction=float(frac["fraction"]), basis=comp["basis"], sample=i))
-    return kind, table, entries
-
-
 def architecture_view(design, *, key="architecture"):
     """A1 spatial-strip plus actual architecture profile; A2 detail from original knots/layers."""
     if not isinstance(design, dict) or "architecture" not in design:
@@ -155,11 +114,23 @@ def architecture_view(design, *, key="architecture"):
             tooltip=["segment:N","start:Q","end:Q"]).properties(height=55)
         st.altair_chart(strip, use_container_width=True)
         st.caption("Structural regions are identified by actual interfaces/knots; colours do not represent measured microstructure.")
-    line_mode = "step-after" if kind == "layered" else "linear"
-    plot = alt.Chart(frame).mark_line(point=(kind=="gradient"), interpolate=line_mode).encode(
+    line_mode = "linear"
+    # Layer boundaries are plotted as separate start/end points; never connect across interfaces.
+    if kind == "layered":
+        samples=[]
+        for i,layer in enumerate(design["architecture"]["layers"]):
+            for f in layer["composition"]["fractions"]:
+                for pos in (layer["start"],layer["end"]):
+                    samples.append({"position":float(pos),"constituent":f["material_id"],"fraction":float(f["fraction"]),"basis":layer["composition"]["basis"],"layer_id":str(i+1)})
+        profile_frame=pd.DataFrame(samples)
+    else:
+        profile_frame=frame.copy()
+        profile_frame["layer_id"]="continuous"
+    plot = alt.Chart(profile_frame).mark_line(point=(kind=="gradient"), interpolate=line_mode).encode(
         x=alt.X("position:Q", scale=alt.Scale(domain=[0,1]), title="Normalized thickness position"),
         y=alt.Y("fraction:Q", scale=alt.Scale(domain=[0,1]), title="Constituent fraction"),
         color=alt.Color("constituent:N", scale=alt.Scale(range=COLORS)),
+        detail="layer_id:N",
         tooltip=["position:Q","constituent:N",alt.Tooltip("fraction:Q",format=".9g"),"basis:N"])
     st.altair_chart(plot, use_container_width=True)
     with st.expander("A2 — exact composition samples and architecture assumptions"):
@@ -170,21 +141,6 @@ def architecture_view(design, *, key="architecture"):
         st.json({"design_id":design.get("id"),"parent_hashes":design.get("parent_hashes"),
                  "proposal_method":design.get("proposal_method"),
                  "assumptions":design.get("assumptions")})
-
-
-def _estimated_design(record):
-    estimated = record.get("estimated_inputs")
-    if not isinstance(estimated,dict):
-        return None
-    # WP4 estimated Inputs is a RunInputs-like model containing the original design,
-    # commands and estimated_state. Never treat commands as achieved measurements.
-    state = estimated.get("estimated_state")
-    if not isinstance(state,dict):
-        return None
-    geometry = state.get("geometry")
-    if isinstance(geometry,dict) and isinstance(geometry.get("architecture"),dict):
-        return geometry
-    return None
 
 
 def feedback_view(record):
@@ -213,6 +169,9 @@ def feedback_view(record):
             # Differences are only defined at positions where both actual records exist.
             left = pd.DataFrame(a_rows); right=pd.DataFrame(b_rows)
             common = left.merge(right,on=["position","constituent","basis"],suffixes=("_intended","_estimated"))
+            # Never cross-join duplicated layer interface positions or mix coordinate systems.
+            if a_kind == "layered":
+                common = common.iloc[0:0]
             if not common.empty:
                 common["difference_percentage_points"] = 100*(common["fraction_estimated"]-common["fraction_intended"])
                 with st.expander("C3 — differences at matched recorded positions"):

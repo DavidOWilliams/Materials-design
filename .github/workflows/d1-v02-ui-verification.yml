@@ -53,6 +53,12 @@ jobs:
           done
           export D1_V02_BROWSER_WORKSPACE=/tmp/d1-v02-verification/browser
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_browser_challenge.py 2>&1 | tee /tmp/d1-v02-verification/browser.log
+      - name: Browser handoff cancellation recovery and lineage
+        run: |
+          set -o pipefail
+          export D1_BROWSER_BASE_URL=http://127.0.0.1:8512
+          export WP7_IR_BROWSER_WORKSPACE=/tmp/d1-v02-verification/browser-handoff
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/d1-v02-verification/browser-handoff.log
       - name: Build evidence hashes
         if: always()
         run: |

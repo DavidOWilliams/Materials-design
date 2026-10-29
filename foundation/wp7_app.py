@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st
 from d1_visuals import campaign_view, feedback_view, architecture_view
+from d1_visual_data import output_conflicts, unused_output
 from material_core.wp5_service import execute, replay, portable_import
 from material_core.wp7_view import summary, selected_candidate
 from material_core.wp3_search import run_search, recompute_search
@@ -44,7 +45,24 @@ with tab_run:
     st.dataframe([c.model_dump(mode="json") for c in fixture.brief.constraints], use_container_width=True)
     with st.expander("Technical challenge and assumption details"):
         st.json({"duty": fixture.brief.duty, "constraints": [c.model_dump(mode="json") for c in fixture.brief.constraints], "materials": [m.id for m in fixture.materials], "measured_evidence": None})
-    filename = st.text_input("New D1 dossier filename", "d1-example.json")
+    filename = st.text_input("New D1 dossier filename", "d1-example.json", key="d1_new_filename")
+    filename_valid = bool(filename) and Path(filename).name == filename and filename.endswith(".json") and filename not in (".json", "..json")
+    proposed = workspace / filename if filename_valid else None
+    existing = output_conflicts(proposed) if proposed is not None else []
+    if not filename_valid:
+        st.error("Enter a simple filename ending in .json, without directory separators.")
+    elif existing:
+        st.warning("This dossier already exists and will never be overwritten: " + ", ".join(existing))
+        st.info("To review it, use 'Inspect existing dossier' below, or choose a new filename.")
+        if st.button("Use suggested unused filename", key="d1_suggest_name"):
+            st.session_state["d1_new_filename"] = unused_output(proposed).name
+            st.rerun()
+        if st.button("Inspect existing dossier", key="d1_inspect_existing"):
+            try:
+                st.session_state["d1_review"] = summary(proposed)
+                st.success("Verified existing dossier opened. See Tab 3 for charts and evidence.")
+            except Exception as exc:
+                st.error("Existing file could not be verified as a valid D1 dossier: " + str(exc))
     elements = st.selectbox("Mesh elements", [128, 256, 512, 4096], index=0)
     mass_limit = st.number_input("Mass ceiling (kg/m²)", min_value=0.01, value=mass, key=preset)
     layer = st.selectbox("Assumed layer resolution (m)", [0.0025, 0.005, 0.01],
@@ -54,11 +72,11 @@ with tab_run:
     budget = st.number_input("Candidate evaluation budget", min_value=1, max_value=100, value=4, step=1)
     feedback = st.checkbox("Apply supported feedback composition revision", value=True)
     saved_brief = st.text_input("Optional immutable brief snapshot path", "")
-    if st.button("Generate, evaluate and save dossier", type="primary"):
+    if st.button("Create new run and save immutable dossier", type="primary", disabled=(not filename_valid or bool(existing))):
         try:
             target = workspace / filename
-            if not filename or Path(filename).name != filename or not filename.endswith(".json"):
-                raise ValueError("Use a plain .json dossier filename without directories")
+            if output_conflicts(target):
+                raise FileExistsError("Destination became occupied; choose an unused filename. No record was replaced.")
             brief = open_brief(saved_brief).model_dump(mode="json") if saved_brief else None
             record = execute(target, elements=elements, mass_limit=mass_limit, layer=layer,
                              feed=feed, budget=int(budget), feedback=feedback, brief=brief)
@@ -69,16 +87,24 @@ with tab_run:
 with tab_mixed:
     st.subheader("WP3 — homogeneous, layered and gradient exploration")
     st.warning("WP3 uses intended-state numerical evaluation only. Its Pareto eligibility does NOT establish manufacturing feasibility. These campaigns must not be mixed with WP4 estimated achieved-state results.")
-    mixed_root = workspace / "mixed-architecture"
+    mixed_root = Path(st.text_input("New WP3 campaign directory", str(workspace / "mixed-architecture"), key="wp3_new_dir"))
     mixed_path = mixed_root / "campaign.json"
+    mixed_collisions = [str(mixed_root)] if mixed_root.exists() else []
+    if mixed_collisions:
+        st.warning("A WP3 campaign directory already exists. Open its ledger below or choose a fresh destination.")
+        if st.button("Suggest unused WP3 campaign directory"):
+            st.session_state["wp3_new_dir"] = str(unused_output(mixed_root))
+            st.rerun()
     mixed_elements = st.selectbox("WP3 mesh elements", [128, 256, 512, 4096], index=3)
     mixed_budget = st.number_input("WP3 candidate budget", min_value=4, max_value=90, value=9, step=1)
     mixed_seed = st.number_input("WP3 deterministic seed", min_value=0, value=17, step=1)
     mixed_mass = st.number_input("WP3 mass ceiling (kg/m²)", min_value=0.01, value=31.0)
-    if st.button("Generate three architecture classes and persist WP3 campaign"):
+    if st.button("Create new WP3 campaign", disabled=bool(mixed_collisions)):
         try:
             if int(mixed_budget) < 4:
                 raise ValueError("At least four proposals are needed: starting homogeneous, then homogeneous, layered and gradient")
+            if mixed_root.exists():
+                raise FileExistsError("Existing campaign directory cannot be reused for a new run.")
             ledger = run_search(mixed_path, seed=int(mixed_seed), budget=int(mixed_budget),
                                 elements=mixed_elements, mass_limit=mixed_mass, method="explore")
             st.success(f"Saved {len(ledger['proposals'])} intended-state proposals to {mixed_path}")
@@ -130,7 +156,9 @@ with tab_mixed:
             st.error(f"WP3 numerical replay rejected: {exc}")
     source_upload = st.file_uploader("WP3 portable ZIP to restore", type=["zip"])
     restore_root = st.text_input("New WP3 destination directory", str(workspace / "mixed-restored"))
-    if st.button("Verify and restore WP3 ZIP"):
+    if Path(restore_root).exists():
+        st.warning("WP3 restore destination already exists. Select a new directory; evidence will not be overwritten.")
+    if st.button("Verify and restore WP3 ZIP", disabled=Path(restore_root).exists()):
         try:
             if source_upload is None:
                 raise ValueError("Select a WP3 ZIP archive")
@@ -142,8 +170,10 @@ with tab_review:
     st.subheader("Selected WP3 candidate → fresh WP4 manufacturing feedback")
     chosen = st.session_state.get("wp7_handoff")
     if chosen:
-        st.json({"source_ledger": chosen["ledger"], "candidate_index": chosen["index"],
-                 "scope": "A/B gradient only; numerical context recomputed; no mixed Pareto"})
+        st.info("Selected WP3 candidate " + str(chosen["index"]) + ". A fresh WP4 estimated-state evaluation is required; WP3 Pareto is not reused.")
+        with st.expander("WP3 source lineage"):
+            st.json({"source_ledger": chosen["ledger"], "candidate_index": chosen["index"],
+                     "scope": "A/B gradient only; numerical context recomputed; no mixed Pareto"})
         handoff_file = st.text_input("New handoff WP4 dossier", str(workspace / "selected-wp4.json"))
         journal_file = st.text_input("New checkpoint journal", str(workspace / "selected-wp4-journal.jsonl"))
         recovered_file = st.text_input("New recovered dossier", str(workspace / "selected-wp4-recovered.json"))
@@ -152,7 +182,19 @@ with tab_review:
         handoff_budget = st.number_input("Selected design candidate budget", min_value=2, max_value=30, value=4)
         cancel_after = st.number_input("Cooperatively cancel after completed candidates", min_value=0,
                                        max_value=int(handoff_budget)-1, value=1)
-        if st.button("Evaluate selected design through WP4 and save"):
+        handoff_collisions = output_conflicts(handoff_file, (".handoff.json",))
+        journal_collisions = output_conflicts(journal_file)
+        recovery_collisions = output_conflicts(recovered_file, (".handoff.json",))
+        if handoff_collisions:
+            st.warning("Selected WP4 output or companion already exists: " + ", ".join(handoff_collisions))
+            st.caption("Suggested new WP4 dossier: " + str(unused_output(handoff_file, (".handoff.json",))))
+        if journal_collisions:
+            st.warning("Checkpoint journal already exists: " + ", ".join(journal_collisions))
+            st.caption("Suggested fresh journal: " + str(unused_output(journal_file)))
+        if recovery_collisions:
+            st.warning("Recovery output or companion exists: " + ", ".join(recovery_collisions))
+            st.caption("Suggested new recovery dossier: " + str(unused_output(recovered_file, (".handoff.json",))))
+        if st.button("Evaluate selected design through WP4 and save", disabled=bool(handoff_collisions)):
             try:
                 result = execute_handoff(chosen["ledger"], chosen["index"], handoff_file,
                     elements=chosen["elements"], mass_limit=chosen["mass_limit"],
@@ -162,7 +204,7 @@ with tab_review:
                 st.success("WP3 lineage verified and new WP4 estimated-state dossier saved; inspect below.")
             except Exception as exc:
                 st.error(f"Selected-design evaluation rejected: {exc}")
-        if st.button("Start checkpointed selected-design campaign and cancel"):
+        if st.button("Start checkpointed selected-design campaign and cancel", disabled=bool(journal_collisions)):
             try:
                 outcome = start_checkpointed_handoff(chosen["ledger"], chosen["index"],
                     journal_file, elements=chosen["elements"], mass_limit=chosen["mass_limit"],
@@ -176,7 +218,7 @@ with tab_review:
                 st.json(journal_status(journal_file))
             except Exception as exc:
                 st.error(f"Journal rejected: {exc}")
-        if st.button("Recover selected-design journal into immutable dossier"):
+        if st.button("Recover selected-design journal into immutable dossier", disabled=bool(recovery_collisions)):
             try:
                 result = recover_checkpointed_handoff(journal_file, recovered_file)
                 st.json(verify_handoff(recovered_file))
@@ -218,7 +260,9 @@ with tab_restore:
         except Exception as exc:
             st.error(f"Replay failed closed: {exc}")
     destination = st.text_input("Immutable import destination", str(workspace / "restored.json"))
-    if st.button("Restore copied dossier"):
+    if output_conflicts(destination):
+        st.warning("Restore destination already exists: " + destination + ". Suggested: " + str(unused_output(destination)))
+    if st.button("Restore copied dossier", disabled=bool(output_conflicts(destination))):
         try:
             result = portable_import(source, destination)
             st.success(f"Imported {len(result['records'])} verified candidates without rewriting the original evidence.")

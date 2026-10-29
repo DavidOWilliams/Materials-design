@@ -72,7 +72,7 @@ with tab_run:
     budget = st.number_input("Candidate evaluation budget", min_value=1, max_value=100, value=4, step=1)
     feedback = st.checkbox("Apply supported feedback composition revision", value=True)
     saved_brief = st.text_input("Optional immutable brief snapshot path", "")
-    if st.button("Create new run and save immutable dossier", type="primary", disabled=(not filename_valid or bool(existing))):
+    if st.button("Generate, evaluate and save dossier", type="primary", disabled=(not filename_valid or bool(existing))):
         try:
             target = workspace / filename
             if output_conflicts(target):
@@ -100,7 +100,7 @@ with tab_mixed:
     mixed_budget = st.number_input("WP3 candidate budget", min_value=4, max_value=90, value=9, step=1)
     mixed_seed = st.number_input("WP3 deterministic seed", min_value=0, value=17, step=1)
     mixed_mass = st.number_input("WP3 mass ceiling (kg/m²)", min_value=0.01, value=31.0)
-    if st.button("Create new WP3 campaign", disabled=bool(mixed_collisions)):
+    if st.button("Generate three architecture classes and persist WP3 campaign", disabled=bool(mixed_collisions)):
         try:
             if int(mixed_budget) < 4:
                 raise ValueError("At least four proposals are needed: starting homogeneous, then homogeneous, layered and gradient")

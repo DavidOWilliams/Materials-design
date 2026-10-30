@@ -4,7 +4,10 @@ Runs against localhost:8509 and a fresh WP7_IR_BROWSER_WORKSPACE.
 Captures actual rendered browser screenshots and preserves original dossiers.
 """
 import json
+import hashlib
 import os
+import subprocess
+import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 from material_core.wp7_handoff import verify_handoff
@@ -55,14 +58,84 @@ def main():
                 break
             page.wait_for_timeout(500)
         assert journal.exists(), "Checkpoint journal not persisted after browser wait"
-        page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+        checkpoint_control = page.get_by_role("button", name="Inspect cancellation checkpoints")
+        checkpoint_control.focus()
+        checkpoint_control.press("Enter")
+        original_sha = hashlib.sha256(dossier.read_bytes()).hexdigest()
+        journal_sha = hashlib.sha256(journal.read_bytes()).hexdigest()
+        ledger_sha = hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest()
         page.get_by_role("button", name="Recover selected-design journal into immutable dossier").click()
-        expect(page.get_by_text("Recovered original selected design", exact=False)).to_be_visible(timeout=120000)
+        recovery_notice = page.get_by_text("Recovered original selected design and verified source lineage", exact=False)
+        try:
+            expect(recovery_notice).to_be_visible(timeout=120000)
+        except AssertionError:
+            page.screenshot(path=str(root/"wp7-ir04-recovery-visible-failure.png"), full_page=True)
+            print("Recovery UI DOM after failed confirmation:\\n" + page.locator("body").inner_text()[-8000:], flush=True)
+            raise
         recovered = root / "selected-wp4-recovered.json"
         assert recovered.exists()
         assert verify_handoff(recovered)["verified"]
+        assert (root / "selected-wp4-recovered.json.handoff.json").exists()
         assert replay(recovered)["status"] == "passed"
+        # Reopen and numerically replay in a new Python process, not shared memory.
+        proc = subprocess.run([sys.executable, "-c",
+            "import sys; from material_core.wp7_handoff import verify_handoff; from material_core.wp5_service import replay; "
+            "assert verify_handoff(sys.argv[1])['verified']; assert replay(sys.argv[1])['status']=='passed'; print('separate-process verified')",
+            str(recovered)], check=True, text=True, capture_output=True)
+        assert "separate-process verified" in proc.stdout
+        assert hashlib.sha256(dossier.read_bytes()).hexdigest() == original_sha
+        assert hashlib.sha256(journal.read_bytes()).hexdigest() == journal_sha
+        assert hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest() == ledger_sha
+        # An unrelated Streamlit rerun must not erase the successful recovery feedback.
+        checkpoint_control = page.get_by_role("button", name="Inspect cancellation checkpoints")
+        checkpoint_control.focus()
+        checkpoint_control.press("Enter")
+        expect(recovery_notice).to_be_visible(timeout=120000)
         page.screenshot(path=str(root / "wp7-ir04-browser.png"), full_page=True)
+        # A new browser context has no WP3 selection: reopen the saved dossier directly.
+        fresh = browser.new_context(viewport={"width":1400,"height":850})
+        reopened = fresh.new_page()
+        reopened.goto(os.environ.get("D1_BROWSER_BASE_URL", "http://127.0.0.1:8509"),
+                      wait_until="networkidle", timeout=120000)
+        reopened.get_by_label("D1 workspace").fill(str(root))
+        reopened.get_by_label("D1 workspace").press("Enter")
+        reopened.get_by_role("tab").nth(2).click()
+        reopened.get_by_label("Verified dossier to inspect").fill(str(recovered))
+        reopened.get_by_label("Verified dossier to inspect").press("Enter")
+        reopened.get_by_role("button", name="Inspect dossier and Pareto").click()
+        expect(reopened.get_by_text("WP4 synthetic estimated-achieved state", exact=False)).to_be_visible(timeout=120000)
+        reopened.screenshot(path=str(root/"wp7-ir04-reopened-new-session.png"), full_page=True)
+        fresh.close()
+        # Independent-review IR25-T03: corrupt integrity AFTER visible success.
+        # Keep both files present and use a real unrelated Streamlit rerender.
+        companion = Path(str(recovered) + ".handoff.json")
+        pristine = companion.read_bytes()
+        try:
+            broken = json.loads(pristine)
+            broken["sha256"] = "0" * 64
+            companion.write_text(json.dumps(broken), encoding="utf-8")
+            try:
+                verify_handoff(recovered)
+            except ValueError as exc:
+                assert "integrity mismatch" in str(exc).lower()
+            else:
+                raise AssertionError("Tampered recovered handoff incorrectly accepted")
+            checkpoint_button = page.get_by_role("button", name="Inspect cancellation checkpoints")
+            checkpoint_button.focus()
+            checkpoint_button.press("Enter")
+            warning = page.get_by_text("Previously recovered dossier can no longer be verified", exact=False)
+            expect(warning).to_be_visible(timeout=120000)
+            expect(recovery_notice).to_have_count(0)
+            page.screenshot(path=str(root / "wp7-ir25-tampered-companion-warning.png"), full_page=True)
+            # Once invalidated, previous green status must never reappear merely
+            # because the bytes have been restored.
+            companion.write_bytes(pristine)
+            assert verify_handoff(recovered)["verified"]
+            checkpoint_button.focus()
+            checkpoint_button.press("Enter")
+            expect(recovery_notice).to_have_count(0)
+        finally:
+            companion.write_bytes(pristine)
         browser.close()
 
 

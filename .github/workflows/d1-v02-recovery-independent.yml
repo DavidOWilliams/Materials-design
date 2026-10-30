@@ -1,0 +1,53 @@
+name: Independent D1 v0.2 browser recovery verification
+on:
+  push:
+    branches: [independent/d1-v02-browser-recovery-review-2026-10-30]
+  pull_request:
+    branches: [fix/d1-v02-browser-recovery-confirmation-2026-10-30]
+    paths: [review/**, .github/workflows/d1-v02-recovery-independent.yml]
+  workflow_dispatch:
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install foundation and UI browser
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2 playwright==1.56.0
+          .venv-foundation/bin/python -m pip check
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+      - name: Source and environment identity
+        run: |
+          mkdir -p /tmp/d1-ir-review
+          git rev-parse HEAD > /tmp/d1-ir-review/checkout-sha.txt
+          git rev-parse ef06a529bdbdda7d4a2bd43d532ad54e4c266696 > /tmp/d1-ir-review/tested-sha.txt
+          git diff --name-only ef06a529bdbdda7d4a2bd43d532ad54e4c266696 HEAD > /tmp/d1-ir-review/review-diff.txt
+          .venv-foundation/bin/python --version > /tmp/d1-ir-review/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/d1-ir-review/dependencies.txt
+      - name: Independent real Chromium recovery and adversarial provenance test
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/d1_v02_recovery_independent_browser.py 2>&1 | tee /tmp/d1-ir-review/browser.log
+      - name: Focused recovery, user interface and scientific regressions
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_ir01_ir04.py foundation/tests/test_d1_visuals.py foundation/ui_tests/test_d1_v02_ui_collision.py -q 2>&1 | tee /tmp/d1-ir-review/focused-tests.log
+      - name: Archive browser evidence and checksums
+        if: always()
+        run: |
+          mkdir -p /tmp/d1-ir-review
+          if [ -d /tmp/d1-ir-browser ]; then cp -a /tmp/d1-ir-browser /tmp/d1-ir-review/browser; fi
+          cd /tmp/d1-ir-review
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-v02-independent-recovery-evidence
+          path: /tmp/d1-ir-review/**

@@ -101,6 +101,8 @@ def main():
    page.screenshot(path=str(ROOT/"04-tampered-companion-rerender.png"),full_page=True)
    warning=page.get_by_text("Previously recovered dossier can no longer be verified",exact=False)
    expect(warning).to_be_visible(timeout=120000)
+   expect(success).to_have_count(0,timeout=120000)
+   stale_visible=success.count()>0
    assert not stale_visible,"Green verified-success improperly persisted after corrupted companion"
    print("REVIEW_PASS R2_T03 corrupted_companion_green_absent_warning_visible",json.dumps({"success_visible":stale_visible,"warning_visible":warning.is_visible(),"verify_handoff":"rejected"}),flush=True)
    companion.write_bytes(original)

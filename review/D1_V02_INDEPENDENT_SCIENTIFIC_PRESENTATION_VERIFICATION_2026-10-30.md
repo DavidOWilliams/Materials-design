@@ -76,3 +76,37 @@ Do not merge PR #22, move tag `d1-v0.1.0`, create `d1-v0.2.0` or declare release
 ## 7. Independent record and authority
 
 This report is an independent test/qualification assessment, **not** owner approval or physical validation. Its documentation commit is separate from the exact tested v0.2 source. The reviewer added only `review/d1_v02_independent_scientific_tests.py`, `review/d1_v02_chart_encoding_review.py`, the independent workflow and this report on a separate review branch. Original implementation PR #22, previous tests, archive and release tag are unchanged. Do not merge review PR simply to accept the findings.
+
+
+---
+
+## Final targeted Gate 3 re-review — 30 October 2026 (supersedes earlier F01 OPEN disposition)
+
+**Decision: V02-IR-F01 CLOSED. Gate 3 PASS (bounded). All three independent D1 v0.2 technical acceptance gates are now PASS for the original evaluated scientific presentation and a narrow CI-only correction. Overall: READY FOR PROGRAMME-OWNER v0.2 INTEGRATION APPROVAL, NOT MERGED OR RELEASED.** The earlier failed WP3 run and reviewer OPEN judgement remain historical, not deleted. Independent human/assistive-tech/Windows-Codespaces usability confirmation remains a nonblocking distribution consideration, not a claim of passed testing.
+
+**Exact tested corrected source:** `d9e63ea468294eba4fc25493395ad68d60edf9a5` on PR #22, distinct from subsequent documentation-only HEAD `f8b97b91889d61848bee7afbed80c5b3853edc23`. GitHub compare against the earlier documentation HEAD `fdf6d8407ef21706b6ab60ed020f9512bdaaa06e` proves **exactly two changed paths:** `foundation/tests/test_d1_v02_ui_collision.py` was renamed byte-identically to `foundation/ui_tests/test_d1_v02_ui_collision.py` (0 changes), and `.github/workflows/d1-v02-ui-verification.yml` now explicitly runs this three-case UI suite in its pinned Streamlit 1.40.2 environment. Source compared to accepted earlier scientific display `2bc11618ed5696bce200ed8c9b5fbcdf46d0648c` has no new presentation/UI/scientific production code changes after earlier independent tests. Later PR HEAD difference: one Markdown correction report only. No accepted `d1-v0.1.0` tag or WP3/WP4/WP7 scientific code changes.
+
+### Re-verified corrected-source CI
+
+- [WP3 workflow 41047548251](https://github.com/DavidOWilliams/Materials-design/actions/runs/41047548251): all four jobs **SUCCESS**, including formerly failing contract/vertical job `124035245296`, with **359 passed, 2 skipped** broad WP3 scientific suite, fresh WP2/3 scenarios and nine-record numerical search recomputation. The two previous `ModuleNotFoundError: No module named streamlit` failures are no longer in WP3 scientific discovery.
+- [Dedicated v0.2 workflow 41047548183](https://github.com/DavidOWilliams/Materials-design/actions/runs/41047548183): job `124035244651` **SUCCESS**. **339 foundation tests passed, one warning; the explicitly relocated collision suite ran and passed all 3 tests** (one warning); the seven original display-transform unit tests were retained; direct WP3 intended Pareto/proposals and WP4 feedback/numerical comparison against `d1-v0.1.0` reports **identical**. 4096-element examples, three separate-process replays, real first-user Chromium, existing-dossier protection, and integrated selected handoff/recovery browsers passed.
+- [WP4 workflow 41047548198](https://github.com/DavidOWilliams/Materials-design/actions/runs/41047548198): direct-branch job **SUCCESS**.
+- [WP7 exact-head workflow 41047548148](https://github.com/DavidOWilliams/Materials-design/actions/runs/41047548148): qualification job **SUCCESS**.
+- Associated next docs-only PR HEAD `f8b97b...` also has four successful PR workflow conclusions, but is not substituted for the exact implementation source.
+
+**Independently downloaded and verified implementation correction artifact:** WP7/D1 v0.2 Actions artifact `12972374769` from run `41047548183`. ZIP SHA256 `bc6fc216e5d6bea985d5f7017f4635b85a08bc4f98f8fad15f366d0d500053a7` independently computed and matching GitHub artifact metadata. All **159/159 SHA256SUMS manifest entries** independently matched archived file contents. Preserved original v0.2 review archive `12972198847` and reviewer branch remain unchanged.
+
+### Final findings
+
+| Finding | Targeted final decision | Remaining significance |
+|---|---|---|
+| **V02-IR-F01** | **CLOSED; release blocker resolved** | UI interaction tests explicitly executed in dedicated pinned graphical environment; WP3 pure-science regression environment remains independent and green. |
+| **V02-IR-F02** | **OPEN informational/minor usability** | First-time owner user experience, formal screen-reader/keyboard/contrast and Windows/Edge/Codespaces observation have NOT been independently performed; not acceptance PASS for those experiences. |
+| **V02-IR-F03** | **ACCEPTED BOUNDED SCIENTIFIC LIMITATION** | WP3 intended-state and WP4 estimated-achieved Pareto contexts remain distinct; no measured manufactured outcome or P1/P2/P3/V1 claim. |
+| **V02-IR-F04** | **CLOSED** | Historical reviewer-script fixture errors preserved, original first WP3 CI failure retained. |
+
+**Gate 1 — PASS (bounded):** original reviewer direct Altair-data-to-source and scientific presentation cases remain applicable, since correction is CI/test relocation only.  
+**Gate 2 — PASS:** original four independent challenges, actual chart encoding checks, 370 foundation/recovery regressions retained, plus fresh dedicated v0.2 tests (339+3) and WP3 science (359) green; no source physics/UI behavioural delta.  
+**Gate 3 — PASS (bounded):** four corrected-source workflows green; source identity, dependency/test scoping, historical baseline equivalence, evidence ZIP and 159/159 manifest hashes independently verified.
+
+**Overall:** **READY FOR CONTROLLED D1 v0.2 INTEGRATION APPROVAL** for the bounded synthetic UI/presentation improvements at corrected source `d9e63ea...`. No PR #22/#23 merge, `d1-v0.2.0` tag, release publication, end-user deployment or owner approval has been performed or implied. Governance should prepare a controlled source-equivalent integration; programme owner must authorise it separately. Retain independent usability and accessibility as distribution follow-ups.

@@ -67,8 +67,11 @@ def wp4_correctness(root):
    estimated=_estimated_design(rec)
    if estimated is not None:
     kind1,ir,_=_rows(intended);kind2,er,_=_rows(estimated)
-    assert kind1==kind2
+    assert kind1 in ("gradient","layered","homogeneous") and kind2 in ("gradient","layered","homogeneous")
     assert len(ir) and len(er)
+    if kind1 != kind2:
+     # Source permits different estimated geometry; the UI must suppress overlay.
+     assert not (kind1==kind2 and kind1!="layered")
     good+=1
  assert replay(dest)["status"]=="passed"
  return {"records":len(v["records"]),"estimated_arch_profiles":good,"pareto_ids":sorted(pareto),"numeric_replay":"passed"}

@@ -58,7 +58,9 @@ def main():
                 break
             page.wait_for_timeout(500)
         assert journal.exists(), "Checkpoint journal not persisted after browser wait"
-        page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+        checkpoint_control = page.get_by_role("button", name="Inspect cancellation checkpoints")
+        checkpoint_control.focus()
+        checkpoint_control.press("Enter")
         original_sha = hashlib.sha256(dossier.read_bytes()).hexdigest()
         journal_sha = hashlib.sha256(journal.read_bytes()).hexdigest()
         ledger_sha = hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest()
@@ -85,7 +87,9 @@ def main():
         assert hashlib.sha256(journal.read_bytes()).hexdigest() == journal_sha
         assert hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest() == ledger_sha
         # An unrelated Streamlit rerun must not erase the successful recovery feedback.
-        page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+        checkpoint_control = page.get_by_role("button", name="Inspect cancellation checkpoints")
+        checkpoint_control.focus()
+        checkpoint_control.press("Enter")
         expect(recovery_notice).to_be_visible(timeout=120000)
         page.screenshot(path=str(root / "wp7-ir04-browser.png"), full_page=True)
         # A new browser context has no WP3 selection: reopen the saved dossier directly.

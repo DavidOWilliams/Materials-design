@@ -1,0 +1,57 @@
+name: D1 v0.2 independent scientific-display review
+on:
+  push:
+    branches:
+      - independent/d1-v02-scientific-display-review-2026-10-30
+  pull_request:
+    branches:
+      - d1-v0.2-guided-ui
+    paths:
+      - review/**
+      - .github/workflows/d1-v02-independent-review.yml
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project + pinned UI
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2
+          .venv-foundation/bin/python -m pip check
+      - name: Record source and environment
+        run: |
+          mkdir -p /tmp/v02-independent
+          git rev-parse HEAD > /tmp/v02-independent/checkout-sha.txt
+          git diff --name-only 2bc11618ed5696bce200ed8c9b5fbcdf46d0648c HEAD > /tmp/v02-independent/review-only-diff.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/v02-independent/dependencies.txt
+          .venv-foundation/bin/python --version > /tmp/v02-independent/python.txt
+      - name: Independently authored scientific display challenges
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/d1_v02_independent_scientific_tests.py 2>&1 | tee /tmp/v02-independent/challenges.log
+      - name: Independently compare Altair charts against persisted source data
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/d1_v02_chart_encoding_review.py 2>&1 | tee /tmp/v02-independent/chart-encoding.log
+      - name: Full foundation/recovered WP0 regressions
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests recovered_wp0 -q 2>&1 | tee /tmp/v02-independent/regression.log
+      - name: Build SHA256 manifest
+        if: always()
+        run: |
+          cd /tmp/v02-independent
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-v02-independent-review
+          path: /tmp/v02-independent/**

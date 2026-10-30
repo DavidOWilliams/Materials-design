@@ -38,6 +38,10 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests -q 2>&1 | tee /tmp/d1-v02-verification/scientific-regression.log
+      - name: Run isolated Streamlit collision interaction tests
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/ui_tests/test_d1_v02_ui_collision.py -v 2>&1 | tee /tmp/d1-v02-verification/ui-collision.log
       - name: Compare WP3 and WP4 outcomes with accepted v0.1.0
         run: |
           set -o pipefail

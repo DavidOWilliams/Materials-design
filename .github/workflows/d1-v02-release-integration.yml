@@ -28,13 +28,14 @@ jobs:
           mkdir -p /tmp/d1-v02-release
           git rev-parse HEAD | tee /tmp/d1-v02-release/checkout-head.txt
           git rev-parse HEAD^{tree} | tee /tmp/d1-v02-release/checkout-tree.txt
-          test "$(git rev-parse d9e63ea468294eba4fc25493395ad68d60edf9a5^{tree})" = "f63327ed03e7b22bb8c655c2d7ec608f0b0d7bb2"
-          git diff --name-status d9e63ea468294eba4fc25493395ad68d60edf9a5 HEAD | tee /tmp/d1-v02-release/diff-from-accepted.txt
+          test "$(git rev-parse 8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a^{tree})" = "84513ca9aaa2d923bb3e3ff7a333eb8c131f9a93"
+          git diff --name-status 8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a HEAD | tee /tmp/d1-v02-release/diff-from-accepted.txt
           python - <<'PY'
           import subprocess
-          paths=subprocess.check_output(["git","diff","--name-only","d9e63ea468294eba4fc25493395ad68d60edf9a5","HEAD"], text=True).splitlines()
+          paths=subprocess.check_output(["git","diff","--name-only","8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a","HEAD"], text=True).splitlines()
           allow={
             "foundation/D1_V02_WP3_CI_COMPATIBILITY_CORRECTION_REPORT.md",
+            "foundation/D1_V02_RECOVERY_CONFIRMATION_INTEGRITY_CORRECTION_REPORT.md",
             "foundation/D1_V02_RELEASE_NOTES.md",
             "foundation/D1_V02_RELEASE_APPROVAL_DOSSIER.md",
             "foundation/D1_V02_RELEASE_INSTALL_FIRST_USE.md",
@@ -47,7 +48,12 @@ jobs:
             ".github/workflows/d1-v02-release-integration.yml",
           }
           assert paths and all(p in allow for p in paths),f"UNREVIEWED changes: {sorted(set(paths)-allow)}"
-          print("ACCEPTED SCIENTIFIC/APPLICATION/DEPENDENCY TREE UNCHANGED; DOCS AND RELEASE-ONLY CI")
+          protected=["foundation/wp7_app.py","foundation/tests/wp7_ir_browser_acceptance.py","foundation/ui_tests/test_d1_v02_recovery_status_integrity.py",".github/workflows/d1-v02-ui-verification.yml"]
+          for p in protected:
+              a=subprocess.check_output(["git","rev-parse","8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a:"+p],text=True).strip()
+              b=subprocess.check_output(["git","rev-parse","HEAD:"+p],text=True).strip()
+              assert a==b, f"Accepted corrected blob mismatch for {p}: {a} != {b}"
+          print("ACCEPTED CORRECTED WP7/UI SOURCE EXACT-BLOB EQUIVALENCE; ONLY DOCS AND RELEASE CI DIFFER")
           PY
           git status --short > /tmp/d1-v02-release/git-status.txt
       - name: Clean Python 3.12 numerical and graphical installation

@@ -104,7 +104,7 @@ def integrity(root):
  assert proposed.name=="one-run-002.json"
  assert p.read_bytes()==b"original protected bytes"
  must_reject(lambda:execute(p,elements=128,mass_limit=31.,budget=4),"overwrite")
- source=root/"mixed"/"campaign.json"
+ source=root/"wp3"/"campaign.json"
  data=export_mixed_zip(source)
  target=root/"restored"
  assert import_mixed_zip(data,target)["replay"]=="passed"

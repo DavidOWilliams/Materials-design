@@ -58,7 +58,7 @@ def compare_architecture(design):
      expected.append({"position":float(pos),"constituent":f["material_id"],"fraction":float(f["fraction"]),"basis":layer["composition"]["basis"],"layer_id":str(i+1)})
  else:
   expected=[dict(r,layer_id="continuous") for r in records]
-  for e in expected:e.pop("sample",None)
+  # Source sample index is intentionally retained in chart data.
  assert sorted(source_samples,key=str)==sorted(expected,key=str),(kind,source_samples,expected)
  return kind,len(source_samples)
 

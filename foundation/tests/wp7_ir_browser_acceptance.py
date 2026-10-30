@@ -6,6 +6,8 @@ Captures actual rendered browser screenshots and preserves original dossiers.
 import json
 import hashlib
 import os
+import subprocess
+import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 from material_core.wp7_handoff import verify_handoff
@@ -62,12 +64,23 @@ def main():
         ledger_sha = hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest()
         page.get_by_role("button", name="Recover selected-design journal into immutable dossier").click()
         recovery_notice = page.get_by_text("Recovered original selected design and verified source lineage", exact=False)
-        expect(recovery_notice).to_be_visible(timeout=120000)
+        try:
+            expect(recovery_notice).to_be_visible(timeout=120000)
+        except AssertionError:
+            page.screenshot(path=str(root/"wp7-ir04-recovery-visible-failure.png"), full_page=True)
+            print("Recovery UI DOM after failed confirmation:\\n" + page.locator("body").inner_text()[-8000:], flush=True)
+            raise
         recovered = root / "selected-wp4-recovered.json"
         assert recovered.exists()
         assert verify_handoff(recovered)["verified"]
         assert (root / "selected-wp4-recovered.json.handoff.json").exists()
         assert replay(recovered)["status"] == "passed"
+        # Reopen and numerically replay in a new Python process, not shared memory.
+        proc = subprocess.run([sys.executable, "-c",
+            "import sys; from material_core.wp7_handoff import verify_handoff; from material_core.wp5_service import replay; "
+            "assert verify_handoff(sys.argv[1])['verified']; assert replay(sys.argv[1])['status']=='passed'; print('separate-process verified')",
+            str(recovered)], check=True, text=True, capture_output=True)
+        assert "separate-process verified" in proc.stdout
         assert hashlib.sha256(dossier.read_bytes()).hexdigest() == original_sha
         assert hashlib.sha256(journal.read_bytes()).hexdigest() == journal_sha
         assert hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest() == ledger_sha

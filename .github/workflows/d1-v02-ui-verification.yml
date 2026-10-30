@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - d1-v0.2-guided-ui
+      - independent/d1-v02-ir25-rereview-2026-10-30
       - fix/d1-v02-browser-recovery-confirmation-2026-10-30
   workflow_dispatch:
   pull_request:
@@ -71,6 +72,11 @@ jobs:
           export D1_BROWSER_BASE_URL=http://127.0.0.1:8512
           export WP7_IR_BROWSER_WORKSPACE=/tmp/d1-v02-verification/browser-handoff
           PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/d1-v02-verification/browser-handoff.log
+      - name: Independently authored Chromium IR25 adverse-case review
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/d1_v02_ir25_independent_chromium.py 2>&1 | tee /tmp/d1-v02-verification/independent-ir25.log
+          cp -a /tmp/d1-ir-browser /tmp/d1-v02-verification/independent-ir25-browser
       - name: Build evidence hashes
         if: always()
         run: |

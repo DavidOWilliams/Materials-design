@@ -1,0 +1,48 @@
+name: Independent D1 v0.2 IR25 re-review
+on:
+  push:
+    branches: [independent/d1-v02-ir25-rereview-2026-10-30]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned environment and real Chromium
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2 playwright==1.56.0
+          .venv-foundation/bin/python -m pip check
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+      - name: Freeze source and environment
+        run: |
+          mkdir -p /tmp/ir25-review
+          git rev-parse HEAD > /tmp/ir25-review/actual-checkout.txt
+          git diff --name-only 8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a HEAD > /tmp/ir25-review/reviewer-only-diff.txt
+          .venv-foundation/bin/python --version > /tmp/ir25-review/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/ir25-review/dependencies.txt
+      - name: Independently reproduce original adverse browser test
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python review/d1_v02_ir25_independent_chromium.py 2>&1 | tee /tmp/ir25-review/chromium.log
+      - name: Focused real recovery and UI integrity regressions
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests/test_wp7_ir01_ir04.py foundation/tests/test_d1_visuals.py foundation/ui_tests/test_d1_v02_recovery_status_integrity.py -q 2>&1 | tee /tmp/ir25-review/regressions.log
+      - name: Capture immutable evidence
+        if: always()
+        run: |
+          if [ -d /tmp/d1-ir-browser ]; then cp -a /tmp/d1-ir-browser /tmp/ir25-review/browser; fi
+          cd /tmp/ir25-review
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-ir25-rereview
+          path: /tmp/ir25-review/**

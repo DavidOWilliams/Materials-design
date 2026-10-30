@@ -116,7 +116,9 @@ def main():
                 assert "integrity mismatch" in str(exc).lower()
             else:
                 raise AssertionError("Tampered recovered handoff incorrectly accepted")
-            page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+            checkpoint_button = page.get_by_role("button", name="Inspect cancellation checkpoints")
+            checkpoint_button.focus()
+            checkpoint_button.press("Enter")
             warning = page.get_by_text("Previously recovered dossier can no longer be verified", exact=False)
             expect(warning).to_be_visible(timeout=120000)
             expect(recovery_notice).to_have_count(0)
@@ -125,7 +127,8 @@ def main():
             # because the bytes have been restored.
             companion.write_bytes(pristine)
             assert verify_handoff(recovered)["verified"]
-            page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+            checkpoint_button.focus()
+            checkpoint_button.press("Enter")
             expect(recovery_notice).to_have_count(0)
         finally:
             companion.write_bytes(pristine)

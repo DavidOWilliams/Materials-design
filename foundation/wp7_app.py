@@ -170,6 +170,15 @@ with tab_mixed:
 
 with tab_review:
     st.subheader("Selected WP3 candidate → fresh WP4 manufacturing feedback")
+    # Keep verified recovery feedback visible after Streamlit widget/session reruns.
+    recovery_status = st.session_state.get("d1_recovery_status")
+    if recovery_status:
+        if Path(recovery_status["dossier"]).is_file() and Path(recovery_status["companion"]).is_file():
+            st.success("Recovered original selected design and verified source lineage. "
+                       "Immutable dossier: " + recovery_status["dossier"])
+        else:
+            st.warning("A previously verified recovery destination or provenance companion is now missing. "
+                       "Inspect the original journal; do not assume the recovered dossier remains available.")
     chosen = st.session_state.get("wp7_handoff")
     if chosen:
         st.info("Selected WP3 candidate " + str(chosen["index"]) + ". A fresh WP4 estimated-state evaluation is required; WP3 Pareto is not reused.")
@@ -223,6 +232,7 @@ with tab_review:
             except Exception as exc:
                 st.error(f"Journal rejected: {exc}")
         if st.button("Recover selected-design journal into immutable dossier", disabled=bool(recovery_collisions)):
+            st.session_state.pop("d1_recovery_status", None)
             try:
                 result = recover_checkpointed_handoff(journal_file, recovered_file)
                 st.json(verify_handoff(recovered_file))
@@ -230,6 +240,10 @@ with tab_review:
                 st.session_state["d1_path"] = recovered_file
                 st.session_state["d1_review_path"] = recovered_file
                 st.session_state["d1_review"] = summary(recovered_file)
+                st.session_state["d1_recovery_status"] = {
+                    "dossier": str(recovered_file),
+                    "companion": str(recovered_file) + ".handoff.json",
+                }
                 st.success("Recovered original selected design and verified source lineage.")
             except Exception as exc:
                 st.error(f"Recovery rejected: {exc}")

@@ -4,6 +4,7 @@ Runs against localhost:8509 and a fresh WP7_IR_BROWSER_WORKSPACE.
 Captures actual rendered browser screenshots and preserves original dossiers.
 """
 import json
+import hashlib
 import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
@@ -56,13 +57,38 @@ def main():
             page.wait_for_timeout(500)
         assert journal.exists(), "Checkpoint journal not persisted after browser wait"
         page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+        original_sha = hashlib.sha256(dossier.read_bytes()).hexdigest()
+        journal_sha = hashlib.sha256(journal.read_bytes()).hexdigest()
+        ledger_sha = hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest()
         page.get_by_role("button", name="Recover selected-design journal into immutable dossier").click()
-        expect(page.get_by_text("Recovered original selected design", exact=False)).to_be_visible(timeout=120000)
+        recovery_notice = page.get_by_text("Recovered original selected design and verified source lineage", exact=False)
+        expect(recovery_notice).to_be_visible(timeout=120000)
         recovered = root / "selected-wp4-recovered.json"
         assert recovered.exists()
         assert verify_handoff(recovered)["verified"]
+        assert (root / "selected-wp4-recovered.json.handoff.json").exists()
         assert replay(recovered)["status"] == "passed"
+        assert hashlib.sha256(dossier.read_bytes()).hexdigest() == original_sha
+        assert hashlib.sha256(journal.read_bytes()).hexdigest() == journal_sha
+        assert hashlib.sha256((root/"mixed-architecture"/"campaign.json").read_bytes()).hexdigest() == ledger_sha
+        # An unrelated Streamlit rerun must not erase the successful recovery feedback.
+        page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+        expect(recovery_notice).to_be_visible(timeout=120000)
         page.screenshot(path=str(root / "wp7-ir04-browser.png"), full_page=True)
+        # A new browser context has no WP3 selection: reopen the saved dossier directly.
+        fresh = browser.new_context(viewport={"width":1400,"height":850})
+        reopened = fresh.new_page()
+        reopened.goto(os.environ.get("D1_BROWSER_BASE_URL", "http://127.0.0.1:8509"),
+                      wait_until="networkidle", timeout=120000)
+        reopened.get_by_label("D1 workspace").fill(str(root))
+        reopened.get_by_label("D1 workspace").press("Enter")
+        reopened.get_by_role("tab").nth(2).click()
+        reopened.get_by_label("Verified dossier to inspect").fill(str(recovered))
+        reopened.get_by_label("Verified dossier to inspect").press("Enter")
+        reopened.get_by_role("button", name="Inspect dossier and Pareto").click()
+        expect(reopened.get_by_text("WP4 synthetic estimated-achieved state", exact=False)).to_be_visible(timeout=120000)
+        reopened.screenshot(path=str(root/"wp7-ir04-reopened-new-session.png"), full_page=True)
+        fresh.close()
         browser.close()
 
 

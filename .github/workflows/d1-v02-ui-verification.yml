@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - d1-v0.2-guided-ui
+      - fix/d1-v02-browser-recovery-confirmation-2026-10-30
   workflow_dispatch:
   pull_request:
     branches:

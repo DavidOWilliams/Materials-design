@@ -235,16 +235,25 @@ with tab_review:
             st.session_state.pop("d1_recovery_status", None)
             try:
                 result = recover_checkpointed_handoff(journal_file, recovered_file)
-                st.json(verify_handoff(recovered_file))
-                st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
-                st.session_state["d1_path"] = recovered_file
-                st.session_state["d1_review_path"] = recovered_file
-                st.session_state["d1_review"] = summary(recovered_file)
+                verified = verify_handoff(recovered_file)
+                # Recovery is complete once the immutable dossier AND its lineage
+                # have passed the authoritative verifier. A secondary chart/summary
+                # refresh must not suppress the user-visible recovery confirmation.
                 st.session_state["d1_recovery_status"] = {
                     "dossier": str(recovered_file),
                     "companion": str(recovered_file) + ".handoff.json",
                 }
                 st.success("Recovered original selected design and verified source lineage.")
+                st.json(verified)
+                st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
+                try:
+                    st.session_state["d1_path"] = recovered_file
+                    st.session_state["d1_review_path"] = recovered_file
+                    st.session_state["d1_review"] = summary(recovered_file)
+                except Exception as view_exc:
+                    st.warning("Recovery and source lineage verified, but the optional "
+                               "comparison view could not be refreshed: " + str(view_exc)
+                               + ". Reopen the preserved dossier using 'Inspect dossier and Pareto'.")
             except Exception as exc:
                 st.error(f"Recovery rejected: {exc}")
     else:

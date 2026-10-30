@@ -170,6 +170,27 @@ with tab_mixed:
 
 with tab_review:
     st.subheader("Selected WP3 candidate → fresh WP4 manufacturing feedback")
+    # Keep verified recovery feedback visible after Streamlit widget/session reruns.
+    recovery_status = st.session_state.get("d1_recovery_status")
+    if recovery_status:
+        # A persisted success is not proof of *current* integrity. Reuse the
+        # authoritative WP7 handoff/provenance verifier on every rerender;
+        # never replace it with file-existence or an independent weaker hash rule.
+        try:
+            current = verify_handoff(recovery_status["dossier"])
+            if current.get("verified") is not True:
+                raise ValueError("Handoff verification did not establish verified provenance")
+        except Exception as verification_exc:
+            st.session_state.pop("d1_recovery_status", None)
+            st.warning(
+                "Previously recovered dossier can no longer be verified. "
+                "The earlier recovery remains recorded, but its CURRENT source "
+                "lineage must not be trusted: " + str(verification_exc)
+                + ". Preserve the existing evidence and inspect its provenance."
+            )
+        else:
+            st.success("Recovered original selected design and verified source lineage. "
+                       "Immutable dossier: " + recovery_status["dossier"])
     chosen = st.session_state.get("wp7_handoff")
     if chosen:
         st.info("Selected WP3 candidate " + str(chosen["index"]) + ". A fresh WP4 estimated-state evaluation is required; WP3 Pareto is not reused.")
@@ -223,14 +244,28 @@ with tab_review:
             except Exception as exc:
                 st.error(f"Journal rejected: {exc}")
         if st.button("Recover selected-design journal into immutable dossier", disabled=bool(recovery_collisions)):
+            st.session_state.pop("d1_recovery_status", None)
             try:
                 result = recover_checkpointed_handoff(journal_file, recovered_file)
-                st.json(verify_handoff(recovered_file))
-                st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
-                st.session_state["d1_path"] = recovered_file
-                st.session_state["d1_review_path"] = recovered_file
-                st.session_state["d1_review"] = summary(recovered_file)
+                verified = verify_handoff(recovered_file)
+                # Recovery is complete once the immutable dossier AND its lineage
+                # have passed the authoritative verifier. A secondary chart/summary
+                # refresh must not suppress the user-visible recovery confirmation.
+                st.session_state["d1_recovery_status"] = {
+                    "dossier": str(recovered_file),
+                    "companion": str(recovered_file) + ".handoff.json",
+                }
                 st.success("Recovered original selected design and verified source lineage.")
+                st.json(verified)
+                st.json({"stop_reason":result["stop_reason"],"records":len(result["records"])})
+                try:
+                    st.session_state["d1_path"] = recovered_file
+                    st.session_state["d1_review_path"] = recovered_file
+                    st.session_state["d1_review"] = summary(recovered_file)
+                except Exception as view_exc:
+                    st.warning("Recovery and source lineage verified, but the optional "
+                               "comparison view could not be refreshed: " + str(view_exc)
+                               + ". Reopen the preserved dossier using 'Inspect dossier and Pareto'.")
             except Exception as exc:
                 st.error(f"Recovery rejected: {exc}")
     else:

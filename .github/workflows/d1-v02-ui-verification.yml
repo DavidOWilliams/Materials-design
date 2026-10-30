@@ -1,0 +1,85 @@
+name: D1 v0.2 UI and scientific challenge verification
+on:
+  push:
+    branches:
+      - d1-v0.2-guided-ui
+      - fix/d1-v02-browser-recovery-confirmation-2026-10-30
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - d1-v0.2-guided-ui
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install numerical foundation and UI
+        run: |
+          bash foundation/setup.sh
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2 playwright==1.56.0
+          .venv-foundation/bin/python -m pip check
+          .venv-foundation/bin/python -m playwright install --with-deps chromium
+      - name: Capture source and environment
+        run: |
+          mkdir -p /tmp/d1-v02-verification
+          git rev-parse HEAD | tee /tmp/d1-v02-verification/tested-source-sha.txt
+          .venv-foundation/bin/python --version | tee /tmp/d1-v02-verification/python.txt
+          .venv-foundation/bin/python -m pip freeze > /tmp/d1-v02-verification/pip-freeze.txt
+      - name: Test display transforms
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m unittest foundation.tests.test_d1_visuals -v 2>&1 | tee /tmp/d1-v02-verification/visual-unit.log
+      - name: Run full scientific suite
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests -q 2>&1 | tee /tmp/d1-v02-verification/scientific-regression.log
+      - name: Run isolated Streamlit collision interaction tests
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/ui_tests/test_d1_v02_ui_collision.py foundation/ui_tests/test_d1_v02_recovery_status_integrity.py -v 2>&1 | tee /tmp/d1-v02-verification/ui-collision.log
+      - name: Compare WP3 and WP4 outcomes with accepted v0.1.0
+        run: |
+          set -o pipefail
+          git fetch --no-tags origin refs/tags/d1-v0.1.0:refs/tags/d1-v0.1.0
+          git worktree add --detach /tmp/d1-v01-baseline refs/tags/d1-v0.1.0
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_compare_baseline.py /tmp/d1-v01-baseline /tmp/d1-v02-verification/baseline-compare 2>&1 | tee /tmp/d1-v02-verification/baseline-compare.log
+      - name: Reproduce WP7 example dossier
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py /tmp/d1-v02-verification/example-dossiers --elements 4096 --budget 9 2>&1 | tee /tmp/d1-v02-verification/example-generation.log
+      - name: Start Streamlit and exercise Chromium
+        run: |
+          set -o pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8512 > /tmp/d1-v02-verification/streamlit.log 2>&1 &
+          echo $! > /tmp/d1-v02-verification/streamlit.pid
+          for i in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:8512/_stcore/health && break
+            sleep 2
+          done
+          export D1_V02_BROWSER_WORKSPACE=/tmp/d1-v02-verification/browser
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_browser_challenge.py 2>&1 | tee /tmp/d1-v02-verification/browser.log
+      - name: Browser handoff cancellation recovery and lineage
+        run: |
+          set -o pipefail
+          export D1_BROWSER_BASE_URL=http://127.0.0.1:8512
+          export WP7_IR_BROWSER_WORKSPACE=/tmp/d1-v02-verification/browser-handoff
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/d1-v02-verification/browser-handoff.log
+      - name: Build evidence hashes
+        if: always()
+        run: |
+          cd /tmp/d1-v02-verification
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-v02-ui-verification
+          path: /tmp/d1-v02-verification
+          if-no-files-found: error

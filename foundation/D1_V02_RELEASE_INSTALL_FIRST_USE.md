@@ -1,0 +1,52 @@
+# D1 v0.2 — clean install, first use and evidence retention
+
+**Internal bounded synthetic demonstration; not validated ceramic production design.** First confirm that your checkout is the approved candidate and you have Python 3.12. Do not use the old `d1-v0.2-guided-ui` development branch once a controlled release has been approved.
+
+## Setup (Linux/Codespaces with Python 3.12)
+
+```bash
+git rev-parse HEAD
+python3.12 --version
+PYTHON=python3.12 bash foundation/setup.sh
+.venv-foundation/bin/python -m pip install streamlit==1.40.2
+.venv-foundation/bin/python -m pip check
+PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.address 0.0.0.0 --server.port 8501
+```
+
+In Codespaces use the forwarded port 8501 from Ports → Open in Browser. Existing `.venv-foundation` created by an earlier source must be inspected before reuse; do not overwrite evidence. These instructions are based on source + Ubuntu CI; **a user-led Windows/Edge/Codespaces trial is not independently passed**. For details consult `foundation/D1_V02_CODESPACES_FIRST_USER_GUIDE.md`.
+
+## Walkthrough
+
+1. **Run demonstration:** inspect hypothetical scenario, mass ceiling and objectives. If `d1-example.json` exists, inspect the saved dossier or choose **Use suggested unused filename**. Do not overwrite immutable records.
+2. **Explore architectures:** create a WP3 search campaign at a **new directory**; use 4096 elements and reproducible seed/budget for qualified full-resolution examples. Compare homogeneous, layered and gradient schematic composition with source knots/interfaces, exact tables and **WP3 intended-state** mass/thermal mismatch/transmission results. Green numerical status does not imply manufactured feasibility.
+3. Choose a **completed supported A/B gradient** and verify source lineage to WP4. Unsupported materials, homogeneous/layered candidates or incompatible duty/mesh must reject explicitly. Source WP3 Pareto eligibility does not transfer to WP4.
+4. **Manufacturing and trade-offs:** run WP4 into a *new* dossier filename. View conditional synthetic estimated-achieved profile/deviations where coordinate, material and source basis match; preserve unknown results and separate WP4 Pareto.
+5. Exercise checkpoint/candidate-boundary cancellation in a new binding scenario and recover into a different immutable dossier. No mid-solver interruption. Verify the saved companion `<wp4-dossier>.handoff.json`.
+6. **Restore and replay:** reopen source WP3 ledger and WP4 dossier, verify immutable hashes, generate WP3 portable ZIP, restore into unused directory, replay numerical results in separate process and restart browser.
+
+## Reproducible evidence
+
+```bash
+PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py d1-v02-examples --elements 4096 --budget 9
+```
+
+Preserve the generated manifest, WP3 complete ledger/SQLite/run-store/hash-addressed files or verified WP3 ZIP, WP4 JSON, `*.handoff.json`, journal and evidence hashes. The WP4 JSON+companion alone **cannot be relocated as a standalone combined bundle**. Existing dossiers must never be overwritten.
+
+Scientific interpretation: intended vs estimated achieved are different contexts; no measurements, process accuracy or physical validation. Unsupported overlays are withheld and nonfinite fields not treated as qualified. User-accessibility and Windows/Edge experience remain an outstanding distribution gate.
+
+
+---
+
+## D1 v0.2 Issue #25 final accepted correction — governance supersession (30 October 2026)
+
+**Authoritative final scientific/application implementation:** `8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a`, Git tree `84513ca9aaa2d923bb3e3ff7a333eb8c131f9a93`. This supersedes the earlier original accepted v0.2 implementation `d9e63ea468294eba4fc25493395ad68d60edf9a5` **for release integration**; it does not overwrite that original acceptance. First failed recovery correction `ef06a529bdbdda7d4a2bd43d532ad54e4c266696` remains a separately recorded historical failed source. PR #26's `1f9c4dc6a0f177a2ded486e8598cc45fb0a0313b` is later documentation-only, not a tested implementation. Original independent review PR #27 BLOCKED remains preserved.
+
+**Final independent acceptance:** [PR #28](https://github.com/DavidOWilliams/Materials-design/pull/28), `review/D1_V02_ISSUE25_FINAL_INDEPENDENT_INTEGRITY_REREVIEW_2026-10-30.md` on `independent/d1-v02-ir25-rereview-2026-10-30`. R1 root-cause/integrity PASS, R2 real Chromium adverse testing PASS, R3 recovery/replay/immutability PASS, R4 science/regression preservation PASS, R5 provenance/evidence integrity PASS. **D1-V02-IR25-01 CLOSED BY INDEPENDENT REVIEW.** First unsuccessful reviewer test `41069060796` and earlier pre-merge PR #24 failures `41050841938`, `41050842001`, `41050841935` remain historical failures, not relabelled green.
+
+**Corrected-source author evidence:** [D1 41082638967](https://github.com/DavidOWilliams/Materials-design/actions/runs/41082638967), artifact `12991415168`, ZIP SHA256 `460b147a560e1491d3501a18a3e2b23eedc17d2b931e5f666282ab2747cde48c`, internal manifest 161/161 independently checked. [WP3 41082638465](https://github.com/DavidOWilliams/Materials-design/actions/runs/41082638465) (all four jobs), [WP4 41082638732](https://github.com/DavidOWilliams/Materials-design/actions/runs/41082638732) and [WP7 41082638752](https://github.com/DavidOWilliams/Materials-design/actions/runs/41082638752) all green. **Independent evidence:** [41089182257](https://github.com/DavidOWilliams/Materials-design/actions/runs/41089182257), artifact `12993441777`, ZIP SHA256 `3edfd431602a3bb8aecd130cbba541d095ce02a572000577f5e4f9c5aeb4b635`, manifest 39/39 independently checked; 16 focused tests pass.
+
+**Accepted correction scope:** only browser recovery UI state verification and its integrity-focused UI/browser tests, one UI verification workflow and documentation. On rerender the existing authoritative `verify_handoff` checks current dossier+companion; invalid/corrupted evidence clears stale green success and shows a warning. Restoring previously corrupted bytes does not resurrect stale success. Fresh browser reopening, separate-process replay, immutable original WP3/WP4/journal evidence and v0.1 numerical outcome equivalence remain verified. No WP2/3/4 scientific algorithms, visual source coordinates, WP7 eligibility/provenance contracts or dependency changes.
+
+**Controlled integration PR #24** copies the independently accepted implementation files byte-for-byte and preserves the later docs-only correction report distinctly. Its source-equivalence CI explicitly pins `8ba23e...` and checks Git blob identity for `foundation/wp7_app.py`, `foundation/tests/wp7_ir_browser_acceptance.py`, `foundation/ui_tests/test_d1_v02_recovery_status_integrity.py` and `.github/workflows/d1-v02-ui-verification.yml`; all remaining differences must be governance Markdown or the release-only workflow. **Integration checkout HEAD and full tree are determined by the final actual Actions run/PR after this appendix, NOT by an earlier failed/source checkout.**
+
+**Pre-merge gate:** independently accepted correction is CLOSED; PR #24 integration qualification is **pending actual current-HEAD execution**. No owner approval to merge, tag, release, publish or deploy. F02 remains OPEN informational: real novice users, Windows/Edge, Codespaces and assistive-tech/accessibility require assessment before broader distribution; bounded synthetic D1 is not measured ceramics/V1 and excludes P1/P2/P3/E1/E2. WP3 intended and WP4 estimated-achieved Pareto comparisons remain separate. WP4 dossier and handoff companion require retained WP3 ledger/store or verified ZIP.

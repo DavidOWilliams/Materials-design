@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - d1-v0.2-guided-ui
 permissions:
   contents: read
 jobs:

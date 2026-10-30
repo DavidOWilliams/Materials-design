@@ -62,7 +62,6 @@ Python **3.12.15** in the dedicated D1 run; pinned Streamlit **1.40.2**, Playwri
 ## E. Evidence archive and integrity
 
 - **Final D1 artifact [12991415168](https://github.com/DavidOWilliams/Materials-design/actions/runs/41082638967/artifacts/12991415168)**, ZIP SHA256 `460b147a560e1491d3501a18a3e2b23eedc17d2b931e5f666282ab2747cde48c`. Independently rehashed the actual ZIP; **161/161** `SHA256SUMS` entries matched, zero missing/mismatches. It contains screenshots `browser-handoff/wp7-ir04-browser.png`, `wp7-ir04-reopened-new-session.png`, **`wp7-ir25-tampered-companion-warning.png`**, numerical comparisons, dossiers, logs, source SHA and Python/dependency versions.
-- WP7 artifact **12991160302** from successful final correction source? **NO** — historical prior-source artifact. The correct final WP7 artifact is **12991160302?** Reviewer must rely on current final WP7 run `41082638752` and its artifact list rather than any stale ID.
 - Final WP3 artifact **12989533533**, ZIP SHA256 `f837d7866939ebdc8702ff5d35d8df08fa8c4488617faab084a774e7221ed214`.
 - Final WP4 artifact **12990352857**, ZIP SHA256 `51f406a526db665f125e96e25107f3241692a0af3349d7994bc553d9469c72d1`.
 - Final WP7 artifact **12991160302**, ZIP SHA256 `722e2658ee64f9fd3cb6222404cbab9edbdc7528bb9804fdd5f41ca78ed567ab`.

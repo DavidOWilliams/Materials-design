@@ -1,0 +1,127 @@
+name: D1 v0.2 postmerge exact-main source qualification
+on:
+  push:
+    branches: [audit/d1-v02-postmerge-exact-main-2026-10-30]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout actual candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: 280e21e3df62a6e2fcbf5bf4668b6b235ccd8384
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enforce accepted scientific source and exact-tree allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d1-v02-release
+          test "$(git rev-parse HEAD)" = "280e21e3df62a6e2fcbf5bf4668b6b235ccd8384"
+          git rev-parse HEAD | tee /tmp/d1-v02-release/checkout-head.txt
+          echo "$GITHUB_SHA" > /tmp/d1-v02-release/ci-audit-workflow-sha.txt
+          test "$(git rev-parse HEAD^{tree})" = "60d0ef541dfe9d2dd38860308d1524206f09c5f5"
+          git rev-parse HEAD^{tree} | tee /tmp/d1-v02-release/checkout-tree.txt
+          test "$(git rev-parse 8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a^{tree})" = "84513ca9aaa2d923bb3e3ff7a333eb8c131f9a93"
+          git diff --name-status 8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a HEAD | tee /tmp/d1-v02-release/diff-from-accepted.txt
+          python - <<'PY'
+          import subprocess
+          paths=subprocess.check_output(["git","diff","--name-only","8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a","HEAD"], text=True).splitlines()
+          allow={
+            "foundation/D1_V02_WP3_CI_COMPATIBILITY_CORRECTION_REPORT.md",
+            "foundation/D1_V02_RECOVERY_CONFIRMATION_INTEGRITY_CORRECTION_REPORT.md",
+            "foundation/D1_V02_RELEASE_NOTES.md",
+            "foundation/D1_V02_RELEASE_APPROVAL_DOSSIER.md",
+            "foundation/D1_V02_RELEASE_INSTALL_FIRST_USE.md",
+            "foundation/D1_SOURCE_OF_TRUTH_REGISTER.md",
+            "foundation/D1_INTEGRATION_MANIFEST.md",
+            "foundation/PROGRAMME_DELIVERY_LEDGER.md",
+            "foundation/D1_RELEASE_APPROVAL_CHECKLIST.md",
+            "foundation/D1_RELEASE_FINAL_VERIFICATION_AND_APPROVAL.md",
+            "foundation/D1_RELEASE_SOURCE_AND_EVIDENCE_MANIFEST.md",
+            ".github/workflows/d1-v02-release-integration.yml",
+            ".github/workflows/d1-immutable-source.yml",
+            ".github/workflows/d1-full-replay.yml",
+          }
+          assert paths and all(p in allow for p in paths),f"UNREVIEWED changes: {sorted(set(paths)-allow)}"
+          protected=["foundation/wp7_app.py","foundation/tests/wp7_ir_browser_acceptance.py","foundation/ui_tests/test_d1_v02_recovery_status_integrity.py",".github/workflows/d1-v02-ui-verification.yml"]
+          for p in protected:
+              a=subprocess.check_output(["git","rev-parse","8ba23e859e920bcd7dbf19b87f2f07ddeeb4c62a:"+p],text=True).strip()
+              b=subprocess.check_output(["git","rev-parse","HEAD:"+p],text=True).strip()
+              assert a==b, f"Accepted corrected blob mismatch for {p}: {a} != {b}"
+          print("ACCEPTED CORRECTED WP7/UI SOURCE EXACT-BLOB EQUIVALENCE; ONLY DOCS AND RELEASE CI DIFFER")
+          PY
+          git status --short > /tmp/d1-v02-release/git-status.txt
+      - name: Clean Python 3.12 numerical and graphical installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash foundation/setup.sh 2>&1 | tee /tmp/d1-v02-release/install.log
+          .venv-foundation/bin/python -m pip install streamlit==1.40.2 playwright==1.56.0 2>&1 | tee /tmp/d1-v02-release/ui-install.log
+          .venv-foundation/bin/python -m pip check | tee /tmp/d1-v02-release/pip-check.log
+          .venv-foundation/bin/python -m pip freeze > /tmp/d1-v02-release/freeze.txt
+          .venv-foundation/bin/python --version > /tmp/d1-v02-release/python.txt
+          .venv-foundation/bin/python -m playwright install --with-deps chromium > /tmp/d1-v02-release/chromium-install.log 2>&1
+      - name: Scientific graphs and source-data encoding challenges
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m unittest foundation.tests.test_d1_visuals -v 2>&1 | tee /tmp/d1-v02-release/visual-tests.log
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/tests -q --tb=long 2>&1 | tee /tmp/d1-v02-release/foundation-tests.log
+          PYTHONPATH=foundation .venv-foundation/bin/python -m pytest foundation/ui_tests/test_d1_v02_ui_collision.py -v --tb=long 2>&1 | tee /tmp/d1-v02-release/relocated-ui-tests.log
+      - name: Prove v0.1.0 vs v0.2 numerical outcome identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin refs/tags/d1-v0.1.0:refs/tags/d1-v0.1.0
+          test "$(git rev-parse refs/tags/d1-v0.1.0^{commit})" = "ec4bea044858bc275a1be80c3df24be438085279"
+          git worktree add --detach /tmp/d1-v01-release-comparison refs/tags/d1-v0.1.0
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_compare_baseline.py /tmp/d1-v01-release-comparison /tmp/d1-v02-release/baseline-comparison 2>&1 | tee /tmp/d1-v02-release/baseline-comparison.log
+      - name: Full resolution WP3 and WP4 dossiers with separate-process replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python foundation/wp7_create_examples.py /tmp/d1-v02-release/example-dossiers --elements 4096 --budget 9 2>&1 | tee /tmp/d1-v02-release/example-replay.log
+          test -s /tmp/d1-v02-release/example-dossiers/example-manifest.json
+      - name: Actual Chromium first-user journey and handoff recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=foundation .venv-foundation/bin/python -m streamlit run foundation/wp7_app.py --server.headless true --server.port 8512 > /tmp/d1-v02-release/streamlit.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8512/_stcore/health > /tmp/d1-v02-release/health.txt 2>/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          D1_V02_BROWSER_WORKSPACE=/tmp/d1-v02-release/browser PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/d1_v02_browser_challenge.py 2>&1 | tee /tmp/d1-v02-release/browser-first-user.log
+          D1_BROWSER_BASE_URL=http://127.0.0.1:8512 WP7_IR_BROWSER_WORKSPACE=/tmp/d1-v02-release/browser-handoff PYTHONPATH=foundation .venv-foundation/bin/python foundation/tests/wp7_ir_browser_acceptance.py 2>&1 | tee /tmp/d1-v02-release/browser-handoff.log
+      - name: Fail closed on evidence archive and manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/d1-v02-release
+          test -s checkout-head.txt
+          test -s diff-from-accepted.txt
+          test -s example-dossiers/example-manifest.json
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+          test -s SHA256SUMS
+          sha256sum -c SHA256SUMS > integrity-check.log
+      - name: Preserve evidence on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-v02-controlled-integration-evidence
+          path: /tmp/d1-v02-release/
+          if-no-files-found: warn
+          retention-days: 90

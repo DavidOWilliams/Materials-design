@@ -102,6 +102,33 @@ def main():
         expect(reopened.get_by_text("WP4 synthetic estimated-achieved state", exact=False)).to_be_visible(timeout=120000)
         reopened.screenshot(path=str(root/"wp7-ir04-reopened-new-session.png"), full_page=True)
         fresh.close()
+        # Independent-review IR25-T03: corrupt integrity AFTER visible success.
+        # Keep both files present and use a real unrelated Streamlit rerender.
+        companion = Path(str(recovered) + ".handoff.json")
+        pristine = companion.read_bytes()
+        try:
+            broken = json.loads(pristine)
+            broken["sha256"] = "0" * 64
+            companion.write_text(json.dumps(broken), encoding="utf-8")
+            try:
+                verify_handoff(recovered)
+            except ValueError as exc:
+                assert "integrity mismatch" in str(exc).lower()
+            else:
+                raise AssertionError("Tampered recovered handoff incorrectly accepted")
+            page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+            warning = page.get_by_text("Previously recovered dossier can no longer be verified", exact=False)
+            expect(warning).to_be_visible(timeout=120000)
+            expect(recovery_notice).to_have_count(0)
+            page.screenshot(path=str(root / "wp7-ir25-tampered-companion-warning.png"), full_page=True)
+            # Once invalidated, previous green status must never reappear merely
+            # because the bytes have been restored.
+            companion.write_bytes(pristine)
+            assert verify_handoff(recovered)["verified"]
+            page.get_by_role("button", name="Inspect cancellation checkpoints").click()
+            expect(recovery_notice).to_have_count(0)
+        finally:
+            companion.write_bytes(pristine)
         browser.close()
 
 

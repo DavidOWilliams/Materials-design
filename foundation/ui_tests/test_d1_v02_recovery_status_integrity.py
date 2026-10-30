@@ -22,11 +22,11 @@ def test_persisted_verified_status_fails_closed_on_rerender(tmp_path, mode):
     }
     app.run()
     assert not list(app.exception)
-    warnings = [str(x.message) for x in app.warning]
-    successes = [str(x.message) for x in app.success]
+    warnings = [str(x.value) for x in app.warning]
+    successes = [str(x.value) for x in app.success]
     assert any("can no longer be verified" in x for x in warnings), warnings
     assert all("Recovered original selected design" not in x for x in successes)
     assert "d1_recovery_status" not in app.session_state
     # Warning/success must not return automatically on another rerender.
     app.run()
-    assert all("Recovered original selected design" not in str(x.message) for x in app.success)
+    assert all("Recovered original selected design" not in str(x.value) for x in app.success)

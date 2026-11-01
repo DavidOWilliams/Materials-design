@@ -27,7 +27,7 @@ jobs:
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/d1-release-candidate-qualification.yml"
           test "$(git rev-parse HEAD:foundation/wp7_app.py)" = "$(git rev-parse HEAD^:foundation/wp7_app.py)"
           test "$(git rev-parse HEAD:foundation/d1_visual_data.py)" = "$(git rev-parse HEAD^:foundation/d1_visual_data.py)"
-          test "$(git rev-parse HEAD:foundation/requirements.lock)" = "$(git rev-parse HEAD^:foundation/requirements.lock)"
+          test "$(git rev-parse HEAD:foundation/requirements.lock.txt)" = "$(git rev-parse HEAD^:foundation/requirements.lock.txt)"
           mkdir -p /tmp/issue29-evidence
           git rev-parse HEAD > /tmp/issue29-evidence/tested-head.txt
           git rev-parse HEAD^{tree} > /tmp/issue29-evidence/tested-tree.txt

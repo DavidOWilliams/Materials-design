@@ -1,0 +1,72 @@
+name: Independent Issue 29 legacy-workflow-only qualification
+on:
+  push:
+    branches: [audit/issue29-workflow-only-qualification-2026-11-01]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: 204e3f8455c8da66b59f5e597385b0e953c16c66
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove only intended original workflow modified
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          test "$(git rev-parse HEAD)" = "204e3f8455c8da66b59f5e597385b0e953c16c66"
+          test "$(git rev-parse HEAD^)" = "280e21e3df62a6e2fcbf5bf4668b6b235ccd8384"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/d1-release-candidate-qualification.yml"
+          test "$(git rev-parse HEAD:foundation/wp7_app.py)" = "$(git rev-parse HEAD^:foundation/wp7_app.py)"
+          test "$(git rev-parse HEAD:foundation/d1_visual_data.py)" = "$(git rev-parse HEAD^:foundation/d1_visual_data.py)"
+          test "$(git rev-parse HEAD:foundation/requirements.lock)" = "$(git rev-parse HEAD^:foundation/requirements.lock)"
+          mkdir -p /tmp/issue29-evidence
+          git rev-parse HEAD > /tmp/issue29-evidence/tested-head.txt
+          git rev-parse HEAD^{tree} > /tmp/issue29-evidence/tested-tree.txt
+          git diff --no-ext-diff --unified=8 HEAD^ HEAD > /tmp/issue29-evidence/actual-patch.diff
+          git diff --name-status HEAD^ HEAD > /tmp/issue29-evidence/changed-paths.txt
+      - name: Validate workflow syntax and historical branch scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'PyYAML==6.0.2'
+          python - <<'PY' | tee /tmp/issue29-evidence/workflow-validation.txt
+          import pathlib, yaml
+          f=pathlib.Path(".github/workflows/d1-release-candidate-qualification.yml")
+          data=yaml.load(f.read_text(),Loader=yaml.BaseLoader)
+          assert data["on"]["push"]["branches"]==["d1-release-candidate-2026-10-28"],data["on"]
+          assert "main" not in str(data["on"])
+          assert "pull_request" not in data["on"]
+          assert "workflow_dispatch" in data["on"]
+          job=data["jobs"]["qualify"]
+          assert job["if"]=="github.ref == 'refs/heads/d1-release-candidate-2026-10-28'"
+          assert any("c8f0292351553129fbcbdac3bd4f7a84a39365f9" in str(s) for s in job["steps"])
+          print("PASS: workflow parses, retains only historical v0.1 push and guarded manual execution; v0.2 main does not run")
+          PY
+          git show HEAD^:.github/workflows/d1-release-candidate-qualification.yml > /tmp/issue29-evidence/original-v01-workflow.yml
+          git show HEAD:.github/workflows/d1-release-candidate-qualification.yml > /tmp/issue29-evidence/corrected-v01-workflow.yml
+          git show HEAD:.github/workflows/d1-v02-release-integration.yml > /tmp/issue29-evidence/unchanged-v02-verification-route.yml
+          test -s /tmp/issue29-evidence/unchanged-v02-verification-route.yml
+      - name: Checksum source-specific evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/issue29-evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue29-workflow-only-qualification
+          path: /tmp/issue29-evidence
+          if-no-files-found: warn
+          retention-days: 90

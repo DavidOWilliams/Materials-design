@@ -1,14 +1,15 @@
-name: D1 release-candidate exact-tree qualification
+name: D1 v0.1 legacy release-candidate exact-tree qualification
 on:
   push:
-    branches: [d1-release-candidate-2026-10-28, main]
-  pull_request:
-    paths: ['.github/workflows/d1-release-candidate-qualification.yml']
+    branches: [d1-release-candidate-2026-10-28]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   qualify:
+    # WP7/v0.1 allowlist is intentionally valid ONLY for the historical v0.1 candidate.
+    # D1 v0.2 main uses source-pinned v0.2/post-merge verification instead (Issue #29).
+    if: github.ref == 'refs/heads/d1-release-candidate-2026-10-28'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
